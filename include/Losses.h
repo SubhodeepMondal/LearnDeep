@@ -69,3 +69,6 @@ class Binary_Cross_Entropy : public Loss
     public:
         void findLoss(NDArray<double, 1>Y_predict, NDArray<double, 1>Y_target, NDArray<double, 1>Difference, NDArray<double, 1>Cost, cudaStream_t stream) override;
 };
+
+
+// bugfix_multilayer_dense_layer
