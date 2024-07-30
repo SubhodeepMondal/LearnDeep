@@ -1,7 +1,8 @@
 #pragma ONCE
 
 
-class NDMath
+template <class T, int typeFlag>
+class NDMath : protected NDArray<T,typeFlag>
 {
     NDArray<double, 1> intermediate_output;
     unsigned isIntermediateOutputUpdated = 0;
@@ -76,4 +77,4 @@ public:
     void confusionMatrix(NDArray<double, 1> predict, NDArray<double, 1> actual, NDArray<double, 1> confusion_matrix, cudaStream_t stream);
 
     void accuracyValue(NDArray<double, 1> confusion_matrix, NDArray<double, 1> accuracy_value, unsigned no_of_classes, unsigned no_of_samples, cudaStream_t stream);
-};
+}tensor;
