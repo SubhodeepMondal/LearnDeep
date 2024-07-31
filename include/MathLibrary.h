@@ -1,7 +1,7 @@
 #pragma ONCE
 
 
-template <class T, int typeFlag>
+template <typename T, int typeFlag>
 class NDMath : protected NDArray<T,typeFlag>
 {
     NDArray<double, 1> intermediate_output;
