@@ -4,83 +4,83 @@
 
 // #include "GPU_aux.h"
 
-template <typename T, int typeFlag>
-NDArray<T, typeFlag>::NDArray(unsigned n, ...)
-{
-    va_list valist;
-    int no_of_gpu;
+// template <typename T, int typeFlag>
+// NDArray<T, typeFlag>::NDArray(unsigned n, ...)
+// {
+//     va_list valist;
+//     int no_of_gpu;
 
-    nDim = n;
-    nElem = 1;
-    dimension = new unsigned[n];
-    isInitilized = 1;
-    va_start(valist, n);
+//     nDim = n;
+//     nElem = 1;
+//     dimension = new unsigned[n];
+//     isInitilized = 1;
+//     va_start(valist, n);
 
-    for (int i = 0; i < n; i++)
-        dimension[i] = va_arg(valist, unsigned);
+//     for (int i = 0; i < n; i++)
+//         dimension[i] = va_arg(valist, unsigned);
 
-    va_end(valist);
+//     va_end(valist);
 
-    for (int i = 0; i < nDim; i++)
-        nElem *= dimension[i];
+//     for (int i = 0; i < nDim; i++)
+//         nElem *= dimension[i];
 
-    // GPU_aux<T>::getCUDADeviceCount(&no_of_gpu);
-    if (no_of_gpu && type)
-    {
-        type = 1;
-        // GPU_aux<T>::allocateGPUMemory(data, nElem);
-        // cudaMalloc((T **)&data, nElem * sizeof(T));
-    }
-    else
-        // CPU_aux<T>::allocateCPUMemory(data, nElem);
-        this->data = new T[nElem];
-}
+//     // GPU_aux<T>::getCUDADeviceCount(&no_of_gpu);
+//     if (no_of_gpu && type)
+//     {
+//         type = 1;
+//         // GPU_aux<T>::allocateGPUMemory(data, nElem);
+//         // cudaMalloc((T **)&data, nElem * sizeof(T));
+//     }
+//     else
+//         // CPU_aux<T>::allocateCPUMemory(data, nElem);
+//         this->data = new T[nElem];
+// }
 
-template <typename T, int typeFlag>
-NDArray<T, typeFlag>::NDArray(unsigned n, unsigned *arr, unsigned isInitilized)
-{
+// template <typename T, int typeFlag>
+// NDArray<T, typeFlag>::NDArray(unsigned n, unsigned *arr, unsigned isInitilized)
+// {
 
-    int no_of_gpu;
-    nDim = n;
-    nElem = 1;
-    dimension = new unsigned[n];
+//     int no_of_gpu;
+//     nDim = n;
+//     nElem = 1;
+//     dimension = new unsigned[n];
 
-    for (int i = 0; i < n; i++)
-        dimension[i] = arr[i];
+//     for (int i = 0; i < n; i++)
+//         dimension[i] = arr[i];
 
-    for (int i = 0; i < nDim; i++)
-        nElem *= dimension[i];
+//     for (int i = 0; i < nDim; i++)
+//         nElem *= dimension[i];
 
-    this->isInitilized = isInitilized;
-    // GPU_aux<T>::getCUDADeviceCount(&no_of_gpu);
+//     this->isInitilized = isInitilized;
+//     // GPU_aux<T>::getCUDADeviceCount(&no_of_gpu);
 
-    if (this->isInitilized)
-    {
-        if (no_of_gpu && type)
-        {
-            type = 1;
-            // GPU_aux<T>::allocateGPUMemory(data, nElem);
-            // cudaMalloc((T **)&data, nElem * sizeof(T));
-        }
-        else
-            // GPU_aux<T>::allocateCPUMemory(data, nElem);
-            this->data = new T[nElem];
-    }
-    else
-    {
-        // std::cout << "Setting data pointer to NULL\n" ;
-        this->data = NULL;
-    }
-}
+//     if (this->isInitilized)
+//     {
+//         if (no_of_gpu && type)
+//         {
+//             type = 1;
+//             // GPU_aux<T>::allocateGPUMemory(data, nElem);
+//             // cudaMalloc((T **)&data, nElem * sizeof(T));
+//         }
+//         else
+//             // GPU_aux<T>::allocateCPUMemory(data, nElem);
+//             this->data = new T[nElem];
+//     }
+//     else
+//     {
+//         // std::cout << "Setting data pointer to NULL\n" ;
+//         this->data = NULL;
+//     }
+// }
 
-template <typename T, int typeFlag>
-NDArray<T, typeFlag>::NDArray(NDArray &ndarray)
-{
-    this->nDim = ndarray.nDim;
-    this->dimension = ndarray.dimension;
-    this->nElem = ndarray.nElem;
-    this->data = ndarray.data;
-}
+// template <typename T, int typeFlag>
+// NDArray<T, typeFlag>::NDArray(NDArray &ndarray)
+// {
+//     this->nDim = ndarray.nDim;
+//     this->dimension = ndarray.dimension;
+//     this->nElem = ndarray.nElem;
+//     this->data = ndarray.data;
+// }
 
 template <typename T, int typeFlag>
 unsigned *NDArray<T, typeFlag>::getDimensions()

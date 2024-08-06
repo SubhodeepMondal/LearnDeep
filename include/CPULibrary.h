@@ -2,103 +2,93 @@
 
 namespace cpu
 {
-    void initilizeData(double *data, int nElem)
-    {
-        time_t t;
-        srand((unsigned)time(&t));
 
-        for (int i = 0; i < nElem; i++)
-            data[i] = (float)(rand() & 0xFF) / 117.00000;
-    }
+    void __mmul(double *, double *, double *, unsigned, unsigned, unsigned);
 
-    void matrixMul(double *A, double *B, double *C, int a_m, int a_n, int b_m, int b_n)
-    {
-        double sum = 0;
-        for (int i = 0; i < a_m; i++)
-            for (int j = 0; j < b_n; j++)
-            {
-                sum = 0;
-                for (int k = 0; k < a_n; k++)
-                    sum += A[i * a_n + k] * B[k * b_n + j];
-                C[i * b_n + j] = sum;
-            }
-    }
+    // void initilizeData(double *data, int nElem)
+    // {
+    //     time_t t;
+    //     srand((unsigned)time(&t));
 
-    void compareArray(double *A, double *B, int n)
-    {
-        int flag = 0;
-        for (int i = 0; i < n; i++)
-            if (abs(A[i] - B[i]) > 0.01f)
-            {
-                flag = 1;
-                break;
-            }
-        if (flag == 0)
-            std::cout << "The arrays are exact match." << std::endl;
-        else
-            std::cout << "The arrays are not a match." << std::endl;
-    }
+    //     for (int i = 0; i < nElem; i++)
+    //         data[i] = (float)(rand() & 0xFF) / 117.00000;
+    // }
 
-    void matrixDotMul(double *A, double *B, double *C, double *D, unsigned a_m, unsigned a_n)
-    {
-        unsigned i, j, indx_W; // indx_A: index input A, indx_B: index weights B
-        double val;
+    // void compareArray(double *A, double *B, int n)
+    // {
+    //     int flag = 0;
+    //     for (int i = 0; i < n; i++)
+    //         if (abs(A[i] - B[i]) > 0.01f)
+    //         {
+    //             flag = 1;
+    //             break;
+    //         }
+    //     if (flag == 0)
+    //         std::cout << "The arrays are exact match." << std::endl;
+    //     else
+    //         std::cout << "The arrays are not a match." << std::endl;
+    // }
 
-        for (i = 0; i < a_m; i++)
-        {
-            val = 0;
-            for (j = 0; j < a_n; j++)
-            {
-                indx_W = i + j * a_m;
-                val += A[j] * B[indx_W];
-            }
-            val += C[i];
-            D[i] = val;
-            // std::cout << D[i] << ", ";
-        }
-        // std::cout << "\n";
-    }
+    // void matrixDotMul(double *A, double *B, double *C, double *D, unsigned a_m, unsigned a_n)
+    // {
+    //     unsigned i, j, indx_W; // indx_A: index input A, indx_B: index weights B
+    //     double val;
 
-    void matrixRelu(double *A, unsigned a_m)
-    {
-        unsigned i;
-        for (i = 0; i < a_m; i++)
-            if (A[i] < 0)
-                A[i] = 0;
-    }
+    //     for (i = 0; i < a_m; i++)
+    //     {
+    //         val = 0;
+    //         for (j = 0; j < a_n; j++)
+    //         {
+    //             indx_W = i + j * a_m;
+    //             val += A[j] * B[indx_W];
+    //         }
+    //         val += C[i];
+    //         D[i] = val;
+    //         // std::cout << D[i] << ", ";
+    //     }
+    //     // std::cout << "\n";
+    // }
 
-    void matrixSigmoid(double *A, unsigned a_m)
-    {
-        unsigned i;
-        for (i = 0; i < a_m; i++)
-            A[i] = 1.0f / (1 + exp(-1 * A[i]));
-    }
+    // void matrixRelu(double *A, unsigned a_m)
+    // {
+    //     unsigned i;
+    //     for (i = 0; i < a_m; i++)
+    //         if (A[i] < 0)
+    //             A[i] = 0;
+    // }
 
-    void getMean(double *A, double *B, unsigned nElem)
-    {
-        double sum = 0.0;
-        for (int i = 0; i < nElem; i++)
-            sum += A[i];
+    // void matrixSigmoid(double *A, unsigned a_m)
+    // {
+    //     unsigned i;
+    //     for (i = 0; i < a_m; i++)
+    //         A[i] = 1.0f / (1 + exp(-1 * A[i]));
+    // }
 
-        *B = sum / nElem;
-    }
+    // void getMean(double *A, double *B, unsigned nElem)
+    // {
+    //     double sum = 0.0;
+    //     for (int i = 0; i < nElem; i++)
+    //         sum += A[i];
 
-    void getDifference(double *A, double *B, double *C, unsigned nElem)
-    {
-        for (unsigned i = 0; i < nElem; i++)
-            C[i] = A[i] - B[i];
-    }
+    //     *B = sum / nElem;
+    // }
 
-    void getSquare(double *A, double *B, unsigned nElem)
-    {
-        for (unsigned i = 0; i < nElem; i++)
-            B[i] = A[i] * A[i];
-    }
+    // void getDifference(double *A, double *B, double *C, unsigned nElem)
+    // {
+    //     for (unsigned i = 0; i < nElem; i++)
+    //         C[i] = A[i] - B[i];
+    // }
 
-    void getSquareRoot(double *A, double *B, unsigned nElem)
-    {
-        for (unsigned i = 0; i < nElem; i++)
-            B[i] = sqrt(A[i]);
-    }
+    // void getSquare(double *A, double *B, unsigned nElem)
+    // {
+    //     for (unsigned i = 0; i < nElem; i++)
+    //         B[i] = A[i] * A[i];
+    // }
+
+    // void getSquareRoot(double *A, double *B, unsigned nElem)
+    // {
+    //     for (unsigned i = 0; i < nElem; i++)
+    //         B[i] = sqrt(A[i]);
+    // }
 
 }

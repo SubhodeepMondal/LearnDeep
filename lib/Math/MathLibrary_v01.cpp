@@ -1,6 +1,3 @@
-#include "NDynamicArray.h"
-#include "MathLibrary.h"
-
     NDArray<double, 0> NDMath::multiplication(NDArray<double, 0> a, NDArray<double, 0> b, int gpu = 1)
     {
         int noDevice;
