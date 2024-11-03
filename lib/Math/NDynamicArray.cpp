@@ -1,118 +1,59 @@
-#include <cstdarg>
 #include <iostream>
 #include <random>
-
-// #include "GPU_aux.h"
-
-// template <typename T, int typeFlag>
-// NDArray<T, typeFlag>::NDArray(unsigned n, ...)
-// {
-//     va_list valist;
-//     int no_of_gpu;
-
-//     nDim = n;
-//     nElem = 1;
-//     dimension = new unsigned[n];
-//     isInitilized = 1;
-//     va_start(valist, n);
-
-//     for (int i = 0; i < n; i++)
-//         dimension[i] = va_arg(valist, unsigned);
-
-//     va_end(valist);
-
-//     for (int i = 0; i < nDim; i++)
-//         nElem *= dimension[i];
-
-//     // GPU_aux<T>::getCUDADeviceCount(&no_of_gpu);
-//     if (no_of_gpu && type)
-//     {
-//         type = 1;
-//         // GPU_aux<T>::allocateGPUMemory(data, nElem);
-//         // cudaMalloc((T **)&data, nElem * sizeof(T));
-//     }
-//     else
-//         // CPU_aux<T>::allocateCPUMemory(data, nElem);
-//         this->data = new T[nElem];
-// }
-
-// template <typename T, int typeFlag>
-// NDArray<T, typeFlag>::NDArray(unsigned n, unsigned *arr, unsigned isInitilized)
-// {
-
-//     int no_of_gpu;
-//     nDim = n;
-//     nElem = 1;
-//     dimension = new unsigned[n];
-
-//     for (int i = 0; i < n; i++)
-//         dimension[i] = arr[i];
-
-//     for (int i = 0; i < nDim; i++)
-//         nElem *= dimension[i];
-
-//     this->isInitilized = isInitilized;
-//     // GPU_aux<T>::getCUDADeviceCount(&no_of_gpu);
-
-//     if (this->isInitilized)
-//     {
-//         if (no_of_gpu && type)
-//         {
-//             type = 1;
-//             // GPU_aux<T>::allocateGPUMemory(data, nElem);
-//             // cudaMalloc((T **)&data, nElem * sizeof(T));
-//         }
-//         else
-//             // GPU_aux<T>::allocateCPUMemory(data, nElem);
-//             this->data = new T[nElem];
-//     }
-//     else
-//     {
-//         // std::cout << "Setting data pointer to NULL\n" ;
-//         this->data = NULL;
-//     }
-// }
-
-// template <typename T, int typeFlag>
-// NDArray<T, typeFlag>::NDArray(NDArray &ndarray)
-// {
-//     this->nDim = ndarray.nDim;
-//     this->dimension = ndarray.dimension;
-//     this->nElem = ndarray.nElem;
-//     this->data = ndarray.data;
-// }
+#include <cstdarg>
 
 template <typename T, int typeFlag>
-unsigned *NDArray<T, typeFlag>::getDimensions()
+void NDArray<T, typeFlag>::addDimensions(unsigned w)
 {
-    unsigned *ptr;
-    ptr = dimension;
-    return ptr;
+    dim_node *ptr_new = new dim_node;
+
+    ptr->next = ptr_new;
+    ptr_new->value = w;
+    ptr_new->next = NULL;
+    ptr = ptr->next;
+    nDim++;
 }
 
 template <typename T, int typeFlag>
-unsigned NDArray<T, typeFlag>::getNoOfDimensions()
+void NDArray<T, typeFlag>::addDimensions(const unsigned *w)
 {
-    return nDim;
+    isDimInitilized = true;
+    nDim = head->value;
+    dimension = new unsigned[nDim];
+    arr_dim = new unsigned[nDim];
+    for (unsigned i = 0; i < nDim; i++)
+    {
+        dimension[i] = w[i];
+    }
+
+    delete head;
 }
 
 template <typename T, int typeFlag>
-unsigned NDArray<T, typeFlag>::getNoOfElem()
+template <typename... args>
+void NDArray<T, typeFlag>::addDimensions(unsigned w, args... Args)
 {
-    return nElem;
+    addDimensions(w);
+    addDimensions(Args...);
 }
 
 template <typename T, int typeFlag>
-T *NDArray<T, typeFlag>::getData()
-{
-    return data;
-}
+const unsigned *NDArray<T, typeFlag>::getDimensions() const { return dimension; }
 
 template <typename T, int typeFlag>
-void NDArray<T, typeFlag>::printDimensions()
+unsigned NDArray<T, typeFlag>::getNoOfDimensions() const { return nDim; }
+
+template <typename T, int typeFlag>
+const unsigned NDArray<T, typeFlag>::getNoOfElem() const { return nElem; }
+
+template <typename T, int typeFlag>
+T *NDArray<T, typeFlag>::getData() const { return data; }
+
+template <typename T, int typeFlag>
+void NDArray<T, typeFlag>::printDimensions() const
 {
     std::cout << "[ ";
-    for (int i = 0; i < nDim; i++)
+    for (int i = nDim - 1; i >= 0; i--)
         std::cout << dimension[i] << ", ";
     std::cout << "]";
 }
@@ -212,28 +153,37 @@ void NDArray<T, typeFlag>::initData(T *data)
         // GPU_aux<T>::cudaMemmoryCopyToDevice(this->data, data, nElem);
     }
     else
-        for (int i = 0; i < nElem; i++)
-            this->data[i] = data[i];
+        std::memcpy(this->data, data, nElem * sizeof(T));
 };
 
-template <typename T, int typeFlag>
-void NDArray<T, typeFlag>::initData(NDArray<double, 1> data)
-{
-    if (type)
-    {
-        // GPU_aux<T>::cudaMemoryDeviceToDevice(this->data, data.getData(), nElem);
-        // cudaMemcpy(this->data, data.getData(), sizeof(T) * nElem, cudaMemcpyDeviceToDevice);
-    }
-    else
-    {
-        // GPU_aux<T>::cudaMemoryCopyDeviceToHost(this->data, data.getData(), nElem);
-        // cudaMemcpy(this->data, data.getData(), sizeof(T) * nElem, cudaMemcpyDeviceToHost);
-    }
-}
+// template <typename T, int typeFlag>
+// void NDArray<T, typeFlag>::initData(NDArray<double, 1> data)
+// {
+//     if (type)
+//     {
+//         // GPU_aux<T>::cudaMemoryDeviceToDevice(this->data, data.getData(), nElem);
+//         // cudaMemcpy(this->data, data.getData(), sizeof(T) * nElem, cudaMemcpyDeviceToDevice);
+//     }
+//     else
+//     {
+//         // GPU_aux<T>::cudaMemoryCopyDeviceToHost(this->data, data.getData(), nElem);
+//         // cudaMemcpy(this->data, data.getData(), sizeof(T) * nElem, cudaMemcpyDeviceToHost);
+//     }
+// }
 
 template <typename T, int typeFlag>
 void NDArray<T, typeFlag>::initData(NDArray<double, 0> incData)
 {
+
+    nDim = incData.getNoOfDimensions();
+    nElem = 1;
+    dimension = new unsigned[nDim];
+    for (unsigned i = 0; i < nDim; i++)
+    {
+        dimension[i] = incData.getDimensions()[i];
+        nElem *= dimension[i];
+    }
+
     if (type)
     {
         // GPU_aux<T>::cudaMemoryCopyHostToDevice(this->data, incData.getData(), nElem);
@@ -241,7 +191,9 @@ void NDArray<T, typeFlag>::initData(NDArray<double, 0> incData)
     }
     else
     {
+        data = new T[nElem];
         T *ptr = incData.getData();
+
         for (int i = 0; i < nElem; i++)
             this->data[i] = ptr[i];
     }
@@ -286,14 +238,42 @@ void NDArray<T, typeFlag>::copyData(T *data)
 }
 
 template <typename T, int typeFlag>
+void NDArray<T, typeFlag>::resetDimensions(unsigned n, unsigned *arr)
+{
+
+    nDim = n;
+    nElem = 1;
+    dimension = new unsigned[nDim];
+    for (unsigned i = 0; i < nDim; i++)
+    {
+        dimension[i] = arr[i];
+        nElem *= dimension[i];
+    }
+
+    data = new T[nElem];
+}
+
+template <typename T, int typeFlag>
 void NDArray<T, typeFlag>::destroy()
 {
-    if (typeFlag)
+    // std::cout << "destroy data:\n" << data << " dim ptr: " << dimension << " arr ptr: " << arr_dim << "\n";
+    if (data)
     {
-        // GPU_aux<T>::cudaMemoryFree(data);
-    }
-    else
         delete[] data;
+        data = nullptr;
+        // std::cout << "freed data memory in destroy \n ";
+    }
 
-    delete[] dimension;
+    if (dimension)
+    {
+        delete[] dimension;
+        dimension = nullptr;
+        // std::cout << "freed dimension memory in destroy\n ";
+    }
+    if (arr_dim)
+    {
+        delete[] arr_dim;
+        arr_dim = nullptr;
+        // std::cout << "freed arr_dim memory in destroy\n ";
+    }
 }

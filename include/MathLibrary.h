@@ -6,65 +6,111 @@
 template <typename T, int typeFlag>
 class NDMath : public NDArray<T, typeFlag>
 {
+    struct arg_list
+    {
+        unsigned value;
+        struct arg_list *next;
+    };
+    struct arg_list *head, *ptr, *ptr_prev;
+    unsigned *arr_dims;
+
+    void recursive_sum(unsigned, unsigned, unsigned *, NDMath<T, typeFlag>, T *, NDMath<T, typeFlag>);
 
 public:
+    NDMath(const NDMath<T, typeFlag> &ndmath) : NDArray<T, typeFlag>(ndmath) {}
+
     template <typename... args>
-    NDMath(args... Args) : NDArray<T, typeFlag>(Args...) {}
-    NDMath() {};
+    NDMath(unsigned num, args... Args) : NDArray<T, typeFlag>(num, Args...) {}
 
-    NDMath<T, typeFlag> matrixMultiplication(NDMath<double, 0> input)
+    NDMath() {}
+
+    ~NDMath() {}
+
+    NDMath<T, typeFlag> &operator=(const NDMath<T, typeFlag> &ndmath)
     {
-        NDMath<T, typeFlag> output;
-        unsigned i, j, plane_dimension, no_of_dimensions, actual_index, flag = 1;
-        unsigned dim_x, dim_y, dim_z;
+        NDArray<T, typeFlag>::operator=(ndmath);
+        return *this;
+    }
 
-        no_of_dimensions = NDMath<T, typeFlag>::getNoOfDimensions();
-
-        dim_x = NDMath<T, typeFlag>::getDimensions()[1];
-        dim_y = NDMath<T, typeFlag>::getDimensions()[0];
-        dim_z = input.getDimensions()[0];
-
-        if (no_of_dimensions == input.getNoOfDimensions())
+    void recursive_iterator(unsigned index, unsigned *dimension_arr, NDArray<T, typeFlag> input, NDArray<T, typeFlag> &output)
+    {
+        if (index < 2)
         {
-            for (i = 2; i < no_of_dimensions; i++)
-                if (NDMath<T, typeFlag>::getDimensions()[i] != input.getDimensions()[i])
-                {
-                    flag = 0;
-                    break;
-                }
-            if (flag && this->getDimensions()[0] == input.getDimensions()[1])
-            {
-                // output = NDMath<T, typeFlag>(no_of_dimensions, NDMath<T, typeFlag>::getDimensions());
+            unsigned i, inpA_x, inpA_y, inpB_x, inpB_y, out_x, out_y;
+            unsigned a_plane_size, b_plane_size, c_plane_size, a_index, b_index, c_index;
 
-                output = NDMath<T, typeFlag>(dim_y, dim_z);
-                if (no_of_dimensions < 3)
+            inpA_x = NDMath<T, typeFlag>::getDimensions()[0];
+            inpA_y = NDMath<T, typeFlag>::getDimensions()[1];
+
+            inpB_x = input.getDimensions()[0];
+            inpB_y = input.getDimensions()[1];
+            
+            out_x = output.getDimensions()[0];
+            out_y = output.getDimensions()[1];
+
+            a_plane_size = inpA_x * inpA_y;
+            b_plane_size = inpB_x * inpB_y;
+            c_plane_size = out_x * out_y;
+
+            a_index = b_index = c_index = 0;
+            // std::cout << "a index: " << a_plane_size << " b index: " << b_plane_size << " c index: " << c_plane_size << "\n";
+            if (input.getNoOfDimensions() > 2)
+                for (i = 2; i < input.getNoOfDimensions(); i++)
                 {
-                    cpu::__mmul(NDMath<T, typeFlag>::getData(), input.getData(), output.getData(), dim_x, dim_z, dim_y);
+                    std::cout << dimension_arr[i] << " ";
+                    a_index += a_plane_size * dimension_arr[i];
+                    b_index += b_plane_size * dimension_arr[i];
+                    c_index += c_plane_size * dimension_arr[i];
+
+                    a_plane_size *= this->getDimensions()[i];
+                    b_plane_size *= input.getDimensions()[i];
+                    c_plane_size *= output.getDimensions()[i];
+                    std::cout << "a index: " << a_index << " b index: " << b_index << " c index: " << c_index << "\n";
                 }
-                else
-                {
-                    plane_dimension = dim_x * dim_y;
-                    actual_index = 0;
-                    for (i = 2; i < no_of_dimensions; i++)
-                    {
-                        for (j = 0; j < NDMath<T, typeFlag>::getDimensions()[i]; j++)
-                        {
-                            cpu::__mmul(NDMath<T, typeFlag>::getData() + actual_index, input.getData() + actual_index, output.getData() + actual_index, dim_x, dim_z, dim_y);
-                            actual_index += plane_dimension;
-                        }
-                    }
-                }
-            }
+
+            // std::cout << "a index: " << a_index << " b index: " << b_index << " c index: " << c_index << "\n";
+            // std::cout << "a ptr: " << this->getData()[0] << " b index: " << input.getData()[0] << " c index: " << output.getData()[0] << "\n";
+
+            // std::cout << "a index: " << inpA_x << " b index: " << inpA_y << " c index: " << inpB_x << "\n";
+            cpu::__mmul(NDMath<T, typeFlag>::getData() + a_index, input.getData() + b_index, output.getData() + c_index, inpB_x, inpB_y, inpA_y);
+
+            // cpu::__mmulconventional(NDMath<T, typeFlag>::getData() + a_index, input.getData() + b_index, output.getData() + c_index, inpB_x, inpB_y, inpA_y);
+
         }
         else
         {
-            return NULL;
+            for (unsigned i = 0; i < NDArray<T, typeFlag>::getDimensions()[index]; i++)
+            {
+                dimension_arr[index] = i;
+                recursive_iterator(index - 1, dimension_arr, input, output);
+            }
         }
-
-        return output;
     }
 
-    // NDArray<double, 0> multiplication(NDArray<double, 0>, NDArray<double, 0>, int );
+    NDMath<T, typeFlag> matrixMultiplication(const NDMath<double, 0>);
+
+    NDMath<T, typeFlag> matrixMultiplication(const double);
+
+    NDMath<T, typeFlag> matrixAddition(const NDMath<double, 0>);
+
+    NDMath<T, typeFlag> operator*(const NDMath<double, 0>);
+
+    NDMath<T, typeFlag> operator+(const NDMath<double, 0>);
+
+    NDMath<T, typeFlag> operator-(const NDMath<double, 0>);
+
+    NDMath<T, typeFlag> matrixVectorAddition(const NDMath<double, 0>);
+
+    void matrixTranspose();
+
+    void reducesum(NDMath<T, typeFlag> *);
+
+    template <typename first_dim, typename... Args>
+    void reducesum(NDMath<T, typeFlag> *, first_dim, Args...);
+
+    template <typename... Args>
+    NDMath<T, typeFlag> sum(Args... args);
+
     // void matrixDotMultiplication(NDArray<double, 0> input, NDArray<double, 0> weights, NDArray<double, 0> biases, NDArray<double, 0> output);
     // void matrixDotMultiplication(NDArray<double, 1> input, NDArray<double, 1> weights, NDArray<double, 1> biases, NDArray<double, 1> output, cudaStream_t stream);
     // void updateLearningRateWeightsAdagrad(NDArray<double, 1> epsalon, NDArray<double, 1> sum_delta_weights, NDArray<double, 1> delta_weights, NDArray<double, 1> learning_rate_weights, cudaStream_t stream);
@@ -101,4 +147,4 @@ public:
     // void accuracyValue(NDArray<double, 1> confusion_matrix, NDArray<double, 1> accuracy_value, unsigned no_of_classes, unsigned no_of_samples, cudaStream_t stream);
 };
 
-// #include "../lib/Math/MathLibrary.cu"
+#include "../lib/Math/MathLibrary.cpp"

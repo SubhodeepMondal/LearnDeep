@@ -5,6 +5,19 @@ namespace cpu
 
     void __mmul(double *, double *, double *, unsigned, unsigned, unsigned);
 
+    void __mmulconventional(double *, double *, double *, unsigned, unsigned, unsigned);
+
+    void __mscalermul(double*, double, double*, unsigned, unsigned);
+
+    void __madd(double *, double *, double *, unsigned, unsigned);
+
+    void __msub(double *, double *, double *, unsigned, unsigned);
+
+    void __mrollingsum(double *, double *, unsigned, unsigned, unsigned, unsigned);
+
+    void __mtranspose(double *, double *, unsigned, unsigned);
+
+
     // void initilizeData(double *data, int nElem)
     // {
     //     time_t t;
