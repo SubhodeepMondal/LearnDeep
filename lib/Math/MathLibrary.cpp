@@ -1,5 +1,5 @@
 template <typename T, int typeFlag>
-void NDMath<T, typeFlag>::recursive_sum(unsigned reduction_dim, unsigned index, unsigned *dimension_arr, NDMath<T, typeFlag> input, T *temp_input, NDMath<T, typeFlag> output)
+void NDMath<T, typeFlag>::recursive_sum(unsigned reduction_dim, unsigned index, unsigned *dimension_arr, NDMath<T, typeFlag> input, T *temp_input, NDMath<T, typeFlag> &output)
 {
 
     if (index < 3)
@@ -7,6 +7,9 @@ void NDMath<T, typeFlag>::recursive_sum(unsigned reduction_dim, unsigned index, 
         unsigned i, j, k, x_axis, y_axis, z_axis, stride, n_dim_size, input_index, output_index;
         T *input_ptr;
         T *output_ptr;
+        T *temp_inp;
+        double *ptr[3];
+        unsigned a[2];
 
         // T *input = this->getData();
 
@@ -47,13 +50,22 @@ void NDMath<T, typeFlag>::recursive_sum(unsigned reduction_dim, unsigned index, 
         {
         case 0:
         {
+
+            ptr[0] = output_ptr + output_index;
+            ptr[2] = output_ptr + output_index;
+            a[0] = x_axis;
+            a[1] = z_axis;
+
             for (k = 0; k < x_axis; k++)
             {
                 stride = 1;
                 for (j = 0; j < z_axis; j++)
                     for (i = 0; i < y_axis; i++)
                         temp_input[i + j * y_axis] = input_ptr[i * x_axis + j * x_axis * y_axis + stride * k + input_index];
-                cpu::__madd(output_ptr + output_index, temp_input, output_ptr + output_index, y_axis, z_axis);
+
+                ptr[1] = temp_input;
+                cpu::__madd(ptr, a);
+                // cpu::__madd(output_ptr + output_index, temp_input, output_ptr + output_index, y_axis, z_axis);
             }
             break;
         }
@@ -61,37 +73,82 @@ void NDMath<T, typeFlag>::recursive_sum(unsigned reduction_dim, unsigned index, 
         case 1:
         {
 
+            ptr[0] = output_ptr + output_index;
+            ptr[2] = output_ptr + output_index;
+            a[0] = x_axis;
+            a[1] = z_axis;
             for (k = 0; k < y_axis; k++)
             {
                 stride = x_axis;
                 for (j = 0; j < z_axis; j++)
                     for (i = 0; i < x_axis; i++)
                         temp_input[i + j * x_axis] = input_ptr[i + j * x_axis * y_axis + stride * k + input_index];
-                cpu::__madd(output_ptr + output_index, temp_input, output_ptr + output_index, x_axis, z_axis);
+
+                ptr[1] = temp_input;
+
+                for (int j = 0; j < y_axis; j++)
+                    for (int i = 0; i < x_axis; i++)
+                        std::cout << output_ptr[i + j * x_axis] << " ";
+
+                std::cout << "\n";
+
+                for (int j = 0; j < y_axis; j++)
+                    for (int i = 0; i < x_axis; i++)
+                        std::cout << temp_input[i + j * x_axis] << " ";
+                std::cout << "\n";
+                cpu::__madd(ptr, a);
+
+                for (int j = 0; j < y_axis; j++)
+                    for (int i = 0; i < x_axis; i++)
+                        std::cout << output_ptr[i + j * x_axis] << " ";
+                std::cout << "\n";
+
+                // cpu::__madd(output_ptr + output_index, temp_input, output_ptr + output_index, x_axis, z_axis);
             }
 
             break;
         }
         case 2:
         {
+
+            ptr[0] = output_ptr + output_index;
+            ptr[2] = output_ptr + output_index;
+            a[0] = x_axis;
+            a[1] = y_axis;
+
             for (k = 0; k < z_axis; k++)
             {
-                T *temp_inp;
                 stride = x_axis * y_axis;
-                temp_inp = input_ptr + (stride * k + input_index);
-                cpu::__madd(output_ptr + output_index, temp_inp, output_ptr + output_index, x_axis, y_axis);
+                temp_input = input_ptr + (stride * k + input_index);
+
+                ptr[1] = temp_input;
+
+                cpu::__madd(ptr, a);
+
+                for (int j = 0; j < y_axis; j++)
+                    for (int i = 0; i < x_axis; i++)
+                        std::cout << output_ptr[i + j * x_axis] << " ";
+
+                // cpu::__madd(output_ptr + output_index, temp_inp, output_ptr + output_index, x_axis, y_axis);
             }
             break;
         }
 
         default:
         {
+            a[0] = x_axis;
+            a[1] = y_axis;
             for (k = 0; k < z_axis; k++)
             {
-                T *temp_inp;
                 stride = x_axis * y_axis;
                 temp_inp = input_ptr + (stride * k + input_index);
-                cpu::__madd(output_ptr + (output_index + stride * k), temp_inp, output_ptr + (output_index + stride * k), x_axis, y_axis);
+
+                ptr[0] = output_ptr + (output_index + stride * k);
+                ptr[1] = temp_input;
+                ptr[2] = output_ptr + (output_index + stride * k);
+
+                cpu::__madd(ptr, a);
+                // cpu::__madd(output_ptr + (output_index + stride * k), temp_inp, output_ptr + (output_index + stride * k), x_axis, y_axis);
             }
             break;
         }
@@ -148,7 +205,7 @@ NDMath<T, typeFlag> NDMath<T, typeFlag>::matrixMultiplication(const NDMath<doubl
                 output = NDMath<T, typeFlag>(no_of_dimensions, output_dim);
                 unsigned *dimension_arr = new unsigned[this->getNoOfDimensions()];
 
-                recursive_iterator(this->getNoOfDimensions() - 1, dimension_arr, input, output);
+                recursive_iterator(this->getNoOfDimensions() - 1, dimension_arr, input, output, cpu::__mmul, "matrix_multiplication", NULL, NULL, NULL);
 
                 delete[] dimension_arr;
                 // output.printData();
@@ -303,20 +360,9 @@ NDMath<T, typeFlag> NDMath<T, typeFlag>::matrixAddition(const NDMath<double, 0> 
         plane_offset = 0;
 
         output = NDMath<T, typeFlag>(this->getNoOfDimensions(), this->getDimensions());
+        unsigned *arr = new unsigned[this->getNoOfDimensions()];
 
-        if (no_of_dimensions < 3)
-        {
-            cpu::__madd(this->getData(), input.getData(), output.getData(), dim_x, dim_y);
-        }
-        else
-        {
-            for (int i = 2; i < no_of_dimensions; i++)
-                for (int j = 0; j < this->getDimensions()[i]; j++)
-                {
-                    cpu::__madd(this->getData() + plane_offset, input.getData() + plane_offset, output.getData() + plane_offset, dim_x, dim_y);
-                    plane_offset += dim_x * dim_y;
-                }
-        }
+        recursive_iterator(this->getNoOfDimensions() - 1, arr, input, output, cpu::__madd, "matrix_addition", NULL, NULL, NULL);
         return output;
     }
     else
@@ -408,14 +454,14 @@ NDMath<T, typeFlag> NDMath<T, typeFlag>::operator+(const NDMath<double, 0> input
 
         if (no_of_dimensions < 3)
         {
-            cpu::__madd(this->getData(), input.getData(), output.getData(), dim_x, dim_y);
+            // cpu::__madd(this->getData(), input.getData(), output.getData(), dim_x, dim_y);
         }
         else
         {
             for (int i = 2; i < no_of_dimensions; i++)
                 for (int j = 0; j < this->getDimensions()[i]; j++)
                 {
-                    cpu::__madd(this->getData() + plane_offset, input.getData() + plane_offset, output.getData() + plane_offset, dim_x, dim_y);
+                    // cpu::__madd(this->getData() + plane_offset, input.getData() + plane_offset, output.getData() + plane_offset, dim_x, dim_y);
                     plane_offset += dim_x * dim_y;
                 }
         }
@@ -457,19 +503,24 @@ NDMath<T, typeFlag> NDMath<T, typeFlag>::operator-(const NDMath<double, 0> input
 
         output = NDMath<T, typeFlag>(this->getNoOfDimensions(), this->getDimensions());
 
-        if (no_of_dimensions < 3)
-        {
-            cpu::__madd(this->getData(), input.getData(), output.getData(), dim_x, dim_y);
-        }
-        else
-        {
-            for (int i = 2; i < no_of_dimensions; i++)
-                for (int j = 0; j < this->getDimensions()[i]; j++)
-                {
-                    cpu::__msub(this->getData() + plane_offset, input.getData() + plane_offset, output.getData() + plane_offset, dim_x, dim_y);
-                    plane_offset += dim_x * dim_y;
-                }
-        }
+        unsigned *dimension_arr = new unsigned[this->getNoOfDimensions()];
+
+        recursive_iterator(this->getNoOfDimensions() - 1, dimension_arr, input, output, cpu::__msub, "matrix_multiplication", NULL, NULL, NULL);
+
+        // if (no_of_dimensions < 3)
+        // {
+        //     cpu::__madd(this->getData(), input.getData(), output.getData(), dim_x, dim_y);
+        // }
+        // else
+        // {
+        //     for (int i = 2; i < no_of_dimensions; i++)
+        //         for (int j = 0; j < this->getDimensions()[i]; j++)
+        //         {
+        //             cpu::__msub(this->getData() + plane_offset, input.getData() + plane_offset, output.getData() + plane_offset, dim_x, dim_y);
+        //             plane_offset += dim_x * dim_y;
+        //         }
+        // }
+
         return output;
     }
     else
@@ -501,7 +552,7 @@ void NDMath<T, typeFlag>::matrixTranspose()
 }
 
 template <typename T, int typeFlag>
-void NDMath<T, typeFlag>::reducesum(NDMath<T, typeFlag> *output)
+void NDMath<T, typeFlag>::reducesum(NDMath<T, typeFlag> &output)
 {
 
     unsigned count = 0;
@@ -550,7 +601,6 @@ void NDMath<T, typeFlag>::reducesum(NDMath<T, typeFlag> *output)
     unsigned *resulting_dims;
 
     temp_output = NDMath<T, typeFlag>(this->getNoOfDimensions(), this->getDimensions());
-
     temp_input = NDMath<T, typeFlag>(this->getNoOfDimensions(), this->getDimensions());
 
     temp_input.initData(this->getData());
@@ -579,22 +629,31 @@ void NDMath<T, typeFlag>::reducesum(NDMath<T, typeFlag> *output)
 
         temp_output.destroy();
         temp_output = NDMath<T, typeFlag>(resulting_no_of_dims, resulting_dims);
+        temp_output.initData(0.0);
+
+        std::cout << reduction_dims[i] << "\n";
 
         recursive_sum(reduction_dims[i], temp_input.getNoOfDimensions() - 1, arr_dims, temp_input, intermediate_input, temp_output);
 
-        temp_input.destroy();
-        temp_input = NDMath<T, typeFlag>(temp_output.getNoOfDimensions(), temp_output.getDimensions());
+        // temp_input.destroy();
+        // temp_input = NDMath<T, typeFlag>(temp_output.getNoOfDimensions(), temp_output.getDimensions());
 
-        temp_input.initData(temp_output.getData());
+        temp_input = temp_output;
+        // temp_input.initData(temp_output.getData());
+
+        // temp_input.printData();
+        temp_output.printData();
     }
 
-    (*output) = NDMath<T, typeFlag>(temp_output.getNoOfDimensions(), temp_output.getDimensions());
-    (*output).initData(temp_output.getData());
+    // temp_output.printData();
+    output = temp_output;
+    // std::cout << "\n";
+    // output.printDimensions();
 }
 
 template <typename T, int typeFlag>
 template <typename first_dim, typename... Args>
-void NDMath<T, typeFlag>::reducesum(NDMath<T, typeFlag> *output, first_dim n, Args... args)
+void NDMath<T, typeFlag>::reducesum(NDMath<T, typeFlag> &output, first_dim n, Args... args)
 {
     if (n < this->getNoOfDimensions())
     {
@@ -629,6 +688,6 @@ NDMath<T, typeFlag> NDMath<T, typeFlag>::sum(Args... args)
 {
     head = NULL;
     NDMath<T, typeFlag> output;
-    reducesum(&output, args...);
+    reducesum(output, args...);
     return output;
 }

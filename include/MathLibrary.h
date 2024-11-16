@@ -1,7 +1,32 @@
 #pragma ONCE
-
+#include <map>
 #include "NDynamicArray.h"
 #include "CPULibrary.h"
+
+typedef struct struct_function_name
+{
+    enum function_names
+    {
+        matrix_multiplication,
+        matrix_scaler_multiplication,
+        matrix_addition,
+        matrix_subtraction,
+        matrix_rollingsum,
+        matrix_transpose,
+    };
+
+    std::map<std::string, function_names> function_name;
+
+    struct_function_name()
+    {
+        function_name["matrix_multiplication"] = matrix_multiplication;
+        function_name["matrix_scaler_multiplication"] = matrix_scaler_multiplication;
+        function_name["matrix_addition"] = matrix_addition;
+        function_name["matrix_subtraction"] = matrix_subtraction;
+        function_name["matrix_rollingsum"] = matrix_rollingsum;
+        function_name["matrix_transpose"] = matrix_transpose;
+    }
+} struct_function_name;
 
 template <typename T, int typeFlag>
 class NDMath : public NDArray<T, typeFlag>
@@ -12,9 +37,16 @@ class NDMath : public NDArray<T, typeFlag>
         struct arg_list *next;
     };
     struct arg_list *head, *ptr, *ptr_prev;
+
+    struct_function_name fx_name;
     unsigned *arr_dims;
 
-    void recursive_sum(unsigned, unsigned, unsigned *, NDMath<T, typeFlag>, T *, NDMath<T, typeFlag>);
+    void recursive_sum(unsigned, unsigned, unsigned *, NDMath<T, typeFlag>, T *, NDMath<T, typeFlag> &);
+
+    void reducesum(NDMath<T, typeFlag> &);
+
+    template <typename first_dim, typename... Args>
+    void reducesum(NDMath<T, typeFlag> &, first_dim, Args...);
 
 public:
     NDMath(const NDMath<T, typeFlag> &ndmath) : NDArray<T, typeFlag>(ndmath) {}
@@ -32,7 +64,24 @@ public:
         return *this;
     }
 
-    void recursive_iterator(unsigned index, unsigned *dimension_arr, NDArray<T, typeFlag> input, NDArray<T, typeFlag> &output)
+    /// @brief This function recursively iterates from (n-1)th dim to  2th dim and performs matrix operation for all higher dimensions.
+    /// @tparam None
+    /// @param index Unsigned, rank of the matrix n, value passed n-1,
+    /// @param dimension_arr Unsigend*, used to store internal higher dimention co-ordinate, expects unsigned pointer of size n(i.e dimension),
+    /// @param input NDMath class type, expects operend B.
+    /// @param output NDMath class type, expects output C.
+    /// @param kernel function pointer, expects pointer to the function for the matrix operation.
+    /// @param function_name String, expects the name of the matrix operation to be performed.
+    /// @return void, output (call by referance)
+    void recursive_iterator(unsigned index,
+                            unsigned *dimension_arr,
+                            NDArray<T, typeFlag> input,
+                            NDArray<T, typeFlag> &output,
+                            void (*__kernel)(double **, unsigned *),
+                            std::string function_name,
+                            unsigned *u_arr,
+                            double *d_arr,
+                            NDArray<T, typeFlag> misc_arr)
     {
         if (index < 2)
         {
@@ -44,7 +93,7 @@ public:
 
             inpB_x = input.getDimensions()[0];
             inpB_y = input.getDimensions()[1];
-            
+
             out_x = output.getDimensions()[0];
             out_y = output.getDimensions()[1];
 
@@ -68,21 +117,54 @@ public:
                     std::cout << "a index: " << a_index << " b index: " << b_index << " c index: " << c_index << "\n";
                 }
 
-            // std::cout << "a index: " << a_index << " b index: " << b_index << " c index: " << c_index << "\n";
-            // std::cout << "a ptr: " << this->getData()[0] << " b index: " << input.getData()[0] << " c index: " << output.getData()[0] << "\n";
+            switch (fx_name.function_name[function_name])
+            {
+            case this->fx_name.matrix_multiplication:
+            {
+                /* code */
+                unsigned a[3];
+                double *ptr[3];
 
-            // std::cout << "a index: " << inpA_x << " b index: " << inpA_y << " c index: " << inpB_x << "\n";
-            cpu::__mmul(NDMath<T, typeFlag>::getData() + a_index, input.getData() + b_index, output.getData() + c_index, inpB_x, inpB_y, inpA_y);
+                a[0] = inpB_x;
+                a[1] = inpB_y;
+                a[2] = inpA_y;
+
+                ptr[0] = NDMath<T, typeFlag>::getData() + a_index;
+                ptr[1] = input.getData() + b_index;
+                ptr[2] = output.getData() + c_index;
+                __kernel(ptr, a);
+
+                break;
+            }
+            case this->fx_name.matrix_addition:
+            {
+                /* code */
+                unsigned a[2];
+                double *ptr[3];
+
+                a[0] = inpA_x;
+                a[1] = inpA_y;
+
+                ptr[0] = NDMath<T, typeFlag>::getData() + a_index;
+                ptr[1] = input.getData() + b_index;
+                ptr[2] = output.getData() + c_index;
+                __kernel(ptr, a);
+
+                break;
+            }
+            default:
+                break;
+            }
+            // cpu::__mmul(NDMath<T, typeFlag>::getData() + a_index, input.getData() + b_index, output.getData() + c_index, inpB_x, inpB_y, inpA_y);
 
             // cpu::__mmulconventional(NDMath<T, typeFlag>::getData() + a_index, input.getData() + b_index, output.getData() + c_index, inpB_x, inpB_y, inpA_y);
-
         }
         else
         {
             for (unsigned i = 0; i < NDArray<T, typeFlag>::getDimensions()[index]; i++)
             {
                 dimension_arr[index] = i;
-                recursive_iterator(index - 1, dimension_arr, input, output);
+                recursive_iterator(index - 1, dimension_arr, input, output, __kernel, "matrix_multiplication", NULL, NULL, NULL);
             }
         }
     }
@@ -102,11 +184,6 @@ public:
     NDMath<T, typeFlag> matrixVectorAddition(const NDMath<double, 0>);
 
     void matrixTranspose();
-
-    void reducesum(NDMath<T, typeFlag> *);
-
-    template <typename first_dim, typename... Args>
-    void reducesum(NDMath<T, typeFlag> *, first_dim, Args...);
 
     template <typename... Args>
     NDMath<T, typeFlag> sum(Args... args);

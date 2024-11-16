@@ -107,7 +107,8 @@ public:
         std::memcpy(arr_dim, temp_arr, nDim * sizeof(unsigned));
         nElem = ndarray.getNoOfElem();
         data = new T[nElem];
-        this->initData(ndarray.getData());
+        if(ndarray.isInitilized)
+            this->initData(ndarray.getData());
 
         // std::cout << "assignment operator data: " << data << " dim ptr: " << dimension << " arr ptr: " << arr_dim << "\n";
         return *this;
