@@ -1,13 +1,136 @@
 template <typename T, int typeFlag>
-void NDMath<T, typeFlag>::recursive_sum(unsigned reduction_dim, unsigned index, unsigned *dimension_arr, NDMath<T, typeFlag> input, T *temp_input, NDMath<T, typeFlag> &output)
+void NDMath<T, typeFlag>::recursive_iterator(unsigned index,
+                                             unsigned *dimension_arr,
+                                             NDMath<T, typeFlag> input,
+                                             NDMath<T, typeFlag> &output,
+                                             void (*__kernel)(double **, unsigned *),
+                                             std::string function_name,
+                                             unsigned *ui_arr,
+                                             double *dl_arr,
+                                             NDMath<T, typeFlag> misc_arr)
+{
+    if (index < 2)
+    {
+        unsigned i, inpA_x, inpA_y, inpB_x, inpB_y, out_x, out_y;
+        unsigned a_plane_size, b_plane_size, c_plane_size, a_index, b_index, c_index;
+
+        inpA_x = (this->getNoOfDimensions() > 0) ? NDMath<T, typeFlag>::getDimensions()[0] : 1;
+        inpA_y = (this->getNoOfDimensions() > 1) ? NDMath<T, typeFlag>::getDimensions()[1] : 1;
+
+        inpB_x = (input.getNoOfDimensions() > 0) ? input.getDimensions()[0] : 1;
+        inpB_y = (input.getNoOfDimensions() > 1) ? input.getDimensions()[1] : 1;
+
+        out_x = (output.getNoOfDimensions() > 0) ? output.getDimensions()[0] : 1;
+        out_y = (output.getNoOfDimensions() > 1) ? output.getDimensions()[1] : 1;
+
+        a_plane_size = inpA_x * inpA_y;
+        b_plane_size = inpB_x * inpB_y;
+        c_plane_size = out_x * out_y;
+
+        a_index = b_index = c_index = 0;
+        // std::cout << "a index: " << a_plane_size << " b index: " << b_plane_size << " c index: " << c_plane_size << "\n";
+        if (input.getNoOfDimensions() > 2)
+            for (i = 2; i < input.getNoOfDimensions(); i++)
+            {
+                std::cout << dimension_arr[i] << " ";
+                a_index += a_plane_size * dimension_arr[i];
+                b_index += b_plane_size * dimension_arr[i];
+                c_index += c_plane_size * dimension_arr[i];
+
+                a_plane_size *= this->getDimensions()[i];
+                b_plane_size *= input.getDimensions()[i];
+                c_plane_size *= output.getDimensions()[i];
+                // std::cout << "a index: " << a_index << " b index: " << b_index << " c index: " << c_index << "\n";
+            }
+
+        // std::cout << "a index: " << a_index << " b index: " << b_index << " c index: " << c_index << "\n";
+        // std::cout << input.getData() << "  " << output.getData() << "\n";
+        switch (fx_name.function_name[function_name])
+        {
+        case this->fx_name.matrix_multiplication:
+        {
+            /* code */
+            unsigned a[3];
+            double *ptr[3];
+
+            a[0] = inpB_x;
+            a[1] = inpB_y;
+            a[2] = inpA_y;
+
+            ptr[0] = NDMath<T, typeFlag>::getData() + a_index;
+            ptr[1] = input.getData() + b_index;
+            ptr[2] = output.getData() + c_index;
+            __kernel(ptr, a);
+
+            break;
+        }
+        case this->fx_name.matrix_addition:
+        {
+            /* code */
+            unsigned a[2];
+            double *ptr[3];
+
+            a[0] = inpA_x;
+            a[1] = inpA_y;
+
+            ptr[0] = NDMath<T, typeFlag>::getData() + a_index;
+            ptr[1] = input.getData() + b_index;
+            ptr[2] = output.getData() + c_index;
+            __kernel(ptr, a);
+
+            break;
+        }
+        case this->fx_name.matrix_power:
+        {
+            int j;
+            // int exponent = ui_arr[0];
+            unsigned a[2];
+            double *ptr[3];
+
+
+            a[0] = inpA_x;
+            a[1] = inpA_y;
+
+            ptr[0] = this->getData() + a_index;
+            ptr[1] = input.getData() + b_index;
+            ptr[2] = output.getData() + c_index;
+
+
+            cpu::__melementwisemul(ptr, a);
+
+            break;
+        }
+
+        default:
+            break;
+        }
+    }
+    else
+    {
+        // std::cout << "inside else\n";
+        for (unsigned i = 0; i < NDMath<T, typeFlag>::getDimensions()[index]; i++)
+        {
+            dimension_arr[index] = i;
+            recursive_iterator(index - 1, dimension_arr, input, output, __kernel, function_name, NULL, NULL, NULL);
+        }
+    }
+}
+
+template <typename T, int typeFlag>
+void NDMath<T, typeFlag>::recursive_sum(unsigned index,
+                                        unsigned *dimension_arr,
+                                        NDMath<T, typeFlag> input,
+                                        NDMath<T, typeFlag> &output,
+                                        unsigned reduction_dim,
+                                        T *temp_input)
 {
 
     if (index < 3)
     {
-        unsigned i, j, k, x_axis, y_axis, z_axis, stride, n_dim_size, input_index, output_index;
-        T *input_ptr;
-        T *output_ptr;
-        T *temp_inp;
+        unsigned i, j, k;
+        unsigned x_axis, y_axis, z_axis, stride, n_dim_size;
+        unsigned input_index, output_index;
+        T *input_ptr, *output_ptr, *temp_inp;
         double *ptr[3];
         unsigned a[2];
 
@@ -51,8 +174,7 @@ void NDMath<T, typeFlag>::recursive_sum(unsigned reduction_dim, unsigned index, 
         case 0:
         {
 
-            ptr[0] = output_ptr + output_index;
-            ptr[2] = output_ptr + output_index;
+            ptr[0] = ptr[2] = output_ptr + output_index;
             a[0] = x_axis;
             a[1] = z_axis;
 
@@ -73,8 +195,7 @@ void NDMath<T, typeFlag>::recursive_sum(unsigned reduction_dim, unsigned index, 
         case 1:
         {
 
-            ptr[0] = output_ptr + output_index;
-            ptr[2] = output_ptr + output_index;
+            ptr[0] = ptr[2] = output_ptr + output_index;
             a[0] = x_axis;
             a[1] = z_axis;
             for (k = 0; k < y_axis; k++)
@@ -85,24 +206,7 @@ void NDMath<T, typeFlag>::recursive_sum(unsigned reduction_dim, unsigned index, 
                         temp_input[i + j * x_axis] = input_ptr[i + j * x_axis * y_axis + stride * k + input_index];
 
                 ptr[1] = temp_input;
-
-                for (int j = 0; j < y_axis; j++)
-                    for (int i = 0; i < x_axis; i++)
-                        std::cout << output_ptr[i + j * x_axis] << " ";
-
-                std::cout << "\n";
-
-                for (int j = 0; j < y_axis; j++)
-                    for (int i = 0; i < x_axis; i++)
-                        std::cout << temp_input[i + j * x_axis] << " ";
-                std::cout << "\n";
                 cpu::__madd(ptr, a);
-
-                for (int j = 0; j < y_axis; j++)
-                    for (int i = 0; i < x_axis; i++)
-                        std::cout << output_ptr[i + j * x_axis] << " ";
-                std::cout << "\n";
-
                 // cpu::__madd(output_ptr + output_index, temp_input, output_ptr + output_index, x_axis, z_axis);
             }
 
@@ -111,8 +215,7 @@ void NDMath<T, typeFlag>::recursive_sum(unsigned reduction_dim, unsigned index, 
         case 2:
         {
 
-            ptr[0] = output_ptr + output_index;
-            ptr[2] = output_ptr + output_index;
+            ptr[0] = ptr[2] = output_ptr + output_index;
             a[0] = x_axis;
             a[1] = y_axis;
 
@@ -120,14 +223,13 @@ void NDMath<T, typeFlag>::recursive_sum(unsigned reduction_dim, unsigned index, 
             {
                 stride = x_axis * y_axis;
                 temp_input = input_ptr + (stride * k + input_index);
-
                 ptr[1] = temp_input;
 
                 cpu::__madd(ptr, a);
 
-                for (int j = 0; j < y_axis; j++)
-                    for (int i = 0; i < x_axis; i++)
-                        std::cout << output_ptr[i + j * x_axis] << " ";
+                // for (int j = 0; j < y_axis; j++)
+                //     for (int i = 0; i < x_axis; i++)
+                //         std::cout << output_ptr[i + j * x_axis] << " ";
 
                 // cpu::__madd(output_ptr + output_index, temp_inp, output_ptr + output_index, x_axis, y_axis);
             }
@@ -141,11 +243,11 @@ void NDMath<T, typeFlag>::recursive_sum(unsigned reduction_dim, unsigned index, 
             for (k = 0; k < z_axis; k++)
             {
                 stride = x_axis * y_axis;
-                temp_inp = input_ptr + (stride * k + input_index);
 
-                ptr[0] = output_ptr + (output_index + stride * k);
-                ptr[1] = temp_input;
-                ptr[2] = output_ptr + (output_index + stride * k);
+                ptr[0] = ptr[2] = output_ptr + (output_index + stride * k);
+
+                temp_inp = input_ptr + (stride * k + input_index);
+                ptr[1] = temp_inp;
 
                 cpu::__madd(ptr, a);
                 // cpu::__madd(output_ptr + (output_index + stride * k), temp_inp, output_ptr + (output_index + stride * k), x_axis, y_axis);
@@ -159,7 +261,7 @@ void NDMath<T, typeFlag>::recursive_sum(unsigned reduction_dim, unsigned index, 
         for (unsigned i = 0; i < input.getDimensions()[index]; i++)
         {
             dimension_arr[index] = i;
-            recursive_sum(reduction_dim, index - 1, dimension_arr, input, temp_input, output);
+            recursive_sum(index - 1, dimension_arr, input, output, reduction_dim, temp_input);
         }
     }
 }
@@ -242,7 +344,7 @@ NDMath<T, typeFlag> NDMath<T, typeFlag>::matrixMultiplication(const double scale
     dim_x = NDMath<T, typeFlag>::getDimensions()[0];
     dim_y = NDMath<T, typeFlag>::getDimensions()[1];
 
-    output = NDArray<T, typeFlag>(no_of_dims, this->getDimensions);
+    output = NDMath<T, typeFlag>(no_of_dims, this->getDimensions);
     if (no_of_dims < 3 && no_of_dims > 0)
     {
         cpu::__mscalermul(this->getData(), scalerFactor, output->getData(), dim_x, dim_y);
@@ -535,6 +637,13 @@ NDMath<T, typeFlag> NDMath<T, typeFlag>::operator-(const NDMath<double, 0> input
 }
 
 template <typename T, int typeFlag>
+NDMath<T, typeFlag> NDMath<T, typeFlag>::matrixpow(const unsigned exponent)
+{
+    NDMath<T, typeFlag> output;
+    return output;
+}
+
+template <typename T, int typeFlag>
 void NDMath<T, typeFlag>::matrixTranspose()
 {
     unsigned x, y;
@@ -542,7 +651,7 @@ void NDMath<T, typeFlag>::matrixTranspose()
     x = NDMath<T, typeFlag>::getDimensions()[0];
     y = NDMath<T, typeFlag>::getDimensions()[1];
 
-    NDArray<T, typeFlag>::reshape(y, x);
+    NDMath<T, typeFlag>::reshape(y, x);
 
     x = x + y;
     y = x - y;
@@ -577,11 +686,8 @@ void NDMath<T, typeFlag>::reducesum(NDMath<T, typeFlag> &output)
     for (unsigned i = 0; i < count; i++)
     {
         reduction_dims[i] = this->getNoOfDimensions() - ptr->value - 1;
-
         ptr = ptr->next;
-
         delete[] ptr_prev;
-
         ptr_prev = ptr;
     }
 
@@ -602,6 +708,9 @@ void NDMath<T, typeFlag>::reducesum(NDMath<T, typeFlag> &output)
 
     temp_output = NDMath<T, typeFlag>(this->getNoOfDimensions(), this->getDimensions());
     temp_input = NDMath<T, typeFlag>(this->getNoOfDimensions(), this->getDimensions());
+
+    temp_output.setObjName("temp_output");
+    temp_input.setObjName("temp_input");
 
     temp_input.initData(this->getData());
 
@@ -627,28 +736,30 @@ void NDMath<T, typeFlag>::reducesum(NDMath<T, typeFlag> &output)
             resulting_dims[0] = 1;
         }
 
-        temp_output.destroy();
+        // temp_output.destroy();
         temp_output = NDMath<T, typeFlag>(resulting_no_of_dims, resulting_dims);
         temp_output.initData(0.0);
 
-        std::cout << reduction_dims[i] << "\n";
+        std::cout << "Reducing dimension:" << reduction_dims[i] << "\n";
 
-        recursive_sum(reduction_dims[i], temp_input.getNoOfDimensions() - 1, arr_dims, temp_input, intermediate_input, temp_output);
-
-        // temp_input.destroy();
-        // temp_input = NDMath<T, typeFlag>(temp_output.getNoOfDimensions(), temp_output.getDimensions());
+        recursive_sum(temp_input.getNoOfDimensions() - 1, arr_dims, temp_input, temp_output, reduction_dims[i], intermediate_input);
 
         temp_input = temp_output;
-        // temp_input.initData(temp_output.getData());
-
-        // temp_input.printData();
-        temp_output.printData();
     }
 
-    // temp_output.printData();
     output = temp_output;
-    // std::cout << "\n";
-    // output.printDimensions();
+
+    /*
+
+    This destroy is not necessary, but it is here to fix a bug.
+    when we're setting A tensor of dim 3 and each dimension as (4, 3, 4) (last dimension >3)
+    and doing a reduction sum on all dimensions its destroyer throwing an error!
+    Error: free(): invalid next size (fast):
+    */
+    temp_output.destroy();
+
+    delete[] resulting_dims;
+    delete[] intermediate_input;
 }
 
 template <typename T, int typeFlag>
@@ -684,10 +795,33 @@ void NDMath<T, typeFlag>::reducesum(NDMath<T, typeFlag> &output, first_dim n, Ar
 
 template <typename T, int typeFlag>
 template <typename... Args>
-NDMath<T, typeFlag> NDMath<T, typeFlag>::sum(Args... args)
+NDMath<T, typeFlag> NDMath<T, typeFlag>::reducesum(Args... args)
 {
     head = NULL;
     NDMath<T, typeFlag> output;
     reducesum(output, args...);
+    return output;
+}
+
+template <typename T, int typeFlag>
+NDMath<T, typeFlag> NDMath<T, typeFlag>::power(const unsigned exponent)
+{
+    unsigned i, *arr;
+
+    NDMath<T, typeFlag> output(this->getNoOfDimensions(), this->getDimensions());
+
+    if (exponent == 0)
+        output.initData(1);
+    else if (exponent > 0)
+    {
+        output.initData(this->getData());
+        arr = new unsigned[this->getNoOfDimensions()];
+
+        // std::cout << output.getData() << "\n";
+        for (i = 1; i < exponent; i++)
+            recursive_iterator(this->getNoOfDimensions() - 1, arr, output, output, cpu::__melementwisemul, "matrix_power", NULL, NULL, NULL);
+        delete[] arr;
+    }
+
     return output;
 }

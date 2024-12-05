@@ -30,7 +30,7 @@ int main()
     unsigned n = 1 << 2;
     unsigned k = 1 << 2;
     std::cout << m << " " << n << " " << k << "\n";
-    A = NDMath<double, 0>(2, 2, 2);
+    A = NDMath<double, 0>(2,4, 3, 6);
     B = NDMath<double, 0>(2, m, n); // 3, 2, 2, 3
     C = NDMath<double, 0>(2, 4, 3);
     D = NDMath<double, 0>(2, m, k);
@@ -39,13 +39,27 @@ int main()
     // A = returnNDMath();
     // A=A;
 
-    A.initRandData(-1, 1);
+    A.initRandData(1, 2);
     A.printDimensions();
     std::cout << "\n";
     A.printData();
 
-    B = A.sum(1);
+    std::cout << "\n";
+    B = A.reducesum(0, 2);
+    std::cout << "\n";
+    B.printDimensions();
+    std::cout << "\n";
     B.printData();
+
+    C = B.reducesum(0);
+    C.printDimensions();
+    std::cout << "\n";
+    C.printData();
+
+    D = B.power(2);
+    D.printDimensions();
+    std::cout << "\n";
+    D.printData();
 
     // std::cout << std::endl;
     // B.initRandData(-1, 1);
