@@ -30,7 +30,7 @@ int main()
     unsigned n = 1 << 2;
     unsigned k = 1 << 2;
     std::cout << m << " " << n << " " << k << "\n";
-    A = NDMath<double, 0>(2,4, 3, 6);
+    A = NDMath<double, 0>(2, 4, 3, 6);
     B = NDMath<double, 0>(2, m, n); // 3, 2, 2, 3
     C = NDMath<double, 0>(2, 4, 3);
     D = NDMath<double, 0>(2, m, k);
