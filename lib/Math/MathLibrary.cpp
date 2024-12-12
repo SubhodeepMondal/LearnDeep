@@ -267,7 +267,7 @@ void NDMath<T, typeFlag>::recursive_sum(unsigned index,
 }
 
 template <typename T, int typeFlag>
-NDMath<T, typeFlag> NDMath<T, typeFlag>::matrixMultiplication(const NDMath<double, 0> input)
+NDMath<T, typeFlag> NDMath<T, typeFlag>::matmul(const NDMath<double, 0> input)
 {
     NDMath<T, typeFlag> output;
     unsigned i, j, no_of_dimensions, flag = 1;
@@ -334,7 +334,7 @@ NDMath<T, typeFlag> NDMath<T, typeFlag>::matrixMultiplication(const NDMath<doubl
 }
 
 template <typename T, int typeFlag>
-NDMath<T, typeFlag> NDMath<T, typeFlag>::matrixMultiplication(const double scalerFactor)
+NDMath<T, typeFlag> NDMath<T, typeFlag>::scalermul(const double scalerFactor)
 {
     NDMath<T, typeFlag> output;
 
@@ -439,7 +439,7 @@ NDMath<T, typeFlag> NDMath<T, typeFlag>::operator*(const NDMath<double, 0> input
 }
 
 template <typename T, int typeFlag>
-NDMath<T, typeFlag> NDMath<T, typeFlag>::matrixAddition(const NDMath<double, 0> input)
+NDMath<T, typeFlag> NDMath<T, typeFlag>::add(const NDMath<double, 0> input)
 {
     NDMath<T, typeFlag> output;
 
@@ -479,7 +479,7 @@ NDMath<T, typeFlag> NDMath<T, typeFlag>::matrixAddition(const NDMath<double, 0> 
 }
 
 template <typename T, int typeFlag>
-NDMath<T, typeFlag> NDMath<T, typeFlag>::matrixVectorAddition(const NDMath<double, 0> input)
+NDMath<T, typeFlag> NDMath<T, typeFlag>::vectoradd(const NDMath<double, 0> input)
 {
     NDMath<T, typeFlag> output, temp_input;
 
@@ -637,14 +637,7 @@ NDMath<T, typeFlag> NDMath<T, typeFlag>::operator-(const NDMath<double, 0> input
 }
 
 template <typename T, int typeFlag>
-NDMath<T, typeFlag> NDMath<T, typeFlag>::matrixpow(const unsigned exponent)
-{
-    NDMath<T, typeFlag> output;
-    return output;
-}
-
-template <typename T, int typeFlag>
-void NDMath<T, typeFlag>::matrixTranspose()
+void NDMath<T, typeFlag>::transpose()
 {
     unsigned x, y;
 
@@ -804,7 +797,7 @@ NDMath<T, typeFlag> NDMath<T, typeFlag>::reducesum(Args... args)
 }
 
 template <typename T, int typeFlag>
-NDMath<T, typeFlag> NDMath<T, typeFlag>::power(const unsigned exponent)
+NDMath<T, typeFlag> NDMath<T, typeFlag>::pow(const unsigned exponent)
 {
     unsigned i, *arr;
 
