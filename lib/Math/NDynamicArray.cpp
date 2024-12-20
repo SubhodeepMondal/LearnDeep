@@ -392,14 +392,6 @@ void NDArray<T, typeFlag>::reshape(first_dim n, Args... args)
 template <typename T, int typeFlag>
 void NDArray<T, typeFlag>::destroy()
 {
-    // std::cout << "destroying data for obj:" << obj_name << "!\n";
-    if (data)
-    {
-        delete[] data;
-        data = nullptr;
-        // std::cout << "freed data memory in destroy \n ";
-    }
-
     if (dimension)
     {
         delete[] dimension;

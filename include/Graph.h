@@ -4,6 +4,9 @@ template <typename T, int typeFlag>
 class NDMath;
 
 template <typename T, int typeFlag>
+class Ops;
+
+template <typename T, int typeFlag>
 class Graph
 {
 
@@ -50,10 +53,11 @@ class Graph
     } node;
 
     node *head, *current_node;
+    bool isValidGraph;
 
 public:
-    Graph() : head(NULL), current_node(NULL) {}
-    void addcomputenode(NDMath<T, typeFlag> *oper_a, NDMath<T, typeFlag> *oper_b, Ops<T, typeFlag> *ops)
+    Graph() : head(NULL), current_node(NULL), isValidGraph(true) {}
+    void addcomputenode(Ops<T, typeFlag> *ops)
     {
         node *ptr = new node;
 
@@ -83,6 +87,9 @@ public:
         // std::cout << prev_ptr << "\n";
 
         // Pass 1: to get input and output count for each node
+        if (!isValidGraph)
+            return;
+
         while (ptr)
         {
             for (i = 0; i < ptr->input_node_count; i++)
@@ -137,7 +144,10 @@ public:
     void outputnode(NDMath<T, typeFlag> *output)
     {
         // current_node->output = output;
-         return current_node->ops->initilizeoutput(output);
+        if (isValidGraph)
+            current_node->ops->initilizeoutput(output);
+        else
+            std::cout << "Graph is invalid! check input sequence.\n";
     }
     static void printnode(node *ptr)
     {
@@ -157,16 +167,26 @@ public:
 
     void dfs(node *ptr, void (*func)(node *))
     {
-        func(ptr);
-
-        for (unsigned i = 0; i < ptr->output_node_count; i++)
+        if (isValidGraph)
         {
-            dfs(ptr->output_nodes[i], func);
+            func(ptr);
+
+            for (unsigned i = 0; i < ptr->output_node_count; i++)
+            {
+                dfs(ptr->output_nodes[i], func);
+            }
         }
+        else
+            std::cout << "Graph is invalid! check input sequence.\n";
     }
 
     void execute()
     {
         dfs(head, executionwrapper);
+    }
+
+    void setGraphInvalid()
+    {
+        this->isValidGraph = false;
     }
 };
