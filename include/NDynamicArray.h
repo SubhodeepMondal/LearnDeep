@@ -120,4 +120,4 @@ public:
     NDArray<T, typeFlag> &operator=(const NDArray<T, typeFlag> &ndarray);
 };
 
-#include "../lib/Math/NDynamicArray.cpp"
+#include "../core/Math/NDynamicArray.cpp"

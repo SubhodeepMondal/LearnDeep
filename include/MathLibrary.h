@@ -1,7 +1,8 @@
 #pragma ONCE
 
-#include <map>
 #include <iostream>
+#include <map>
+
 #include "CPULibrary.h"
 #include "Graph.h"
 #include "NDynamicArray.h"
@@ -37,11 +38,8 @@
 //     }
 // } struct_function_name;
 
-template <typename T, int typeFlag>
-class NDMath : public NDArray<T, typeFlag>
-{
-  struct arg_list
-  {
+template <typename T, int typeFlag> class NDMath : public NDArray<T, typeFlag> {
+  struct arg_list {
     unsigned value;
     struct arg_list *next;
   };
@@ -103,8 +101,7 @@ public:
 
   ~NDMath() {}
 
-  NDMath<T, typeFlag> &operator=(const NDMath<T, typeFlag> &ndmath)
-  {
+  NDMath<T, typeFlag> &operator=(const NDMath<T, typeFlag> &ndmath) {
     NDArray<T, typeFlag>::operator=(ndmath);
     return *this;
   }
@@ -123,7 +120,7 @@ public:
   /// @tparam None
   /// @param const value double
   /// @return returns NDMath class type.
-  NDMath<T, typeFlag> scalermul(const double);
+  NDMath<T, typeFlag> scale(const double);
 
   /// @brief This function calculates matrix addition A + B
   /// @tparam None
@@ -166,8 +163,7 @@ public:
   /// @param reduction_dimension Unsigned, Along which dimension the tensor
   /// needs to be reduced
   /// @return returns NDMath class type.
-  template <typename... Args>
-  NDMath<T, typeFlag> reducesum(Args... args);
+  template <typename... Args> NDMath<T, typeFlag> reducesum(Args... args);
 
   /// @brief This function calculates matrix addition A + B
   /// @tparam None
@@ -176,31 +172,25 @@ public:
   /// @return returns NDMath class type.
   NDMath<T, typeFlag> pow(unsigned);
 
-  Graph<T, typeFlag> mul(NDMath<T, typeFlag> &input, Graph<T, typeFlag> &g)
-  {
+  Graph<T, typeFlag> mul(Graph<T, typeFlag> &g, NDMath<T, typeFlag> &input) {
 
     unsigned i, no_of_dimensions;
     bool flag = true;
 
     no_of_dimensions = NDMath<T, typeFlag>::getNoOfDimensions();
 
-    if (no_of_dimensions == input.getNoOfDimensions())
-    {
+    if (no_of_dimensions == input.getNoOfDimensions()) {
 
-      if (this->getDimensions()[0] == input.getDimensions()[1])
-      {
+      if (this->getDimensions()[0] == input.getDimensions()[1]) {
 
-        for (i = 2; i < no_of_dimensions; i++)
-        {
+        for (i = 2; i < no_of_dimensions; i++) {
           if (NDMath<T, typeFlag>::getDimensions()[i] !=
-              input.getDimensions()[i])
-          {
+              input.getDimensions()[i]) {
             flag = 0;
             break;
           }
         }
-        if (flag)
-        {
+        if (flag) {
 
           Ops<T, typeFlag> *ops = new Opsmul<T, typeFlag>;
           NDMath<T, typeFlag> *inputs[2];
@@ -208,23 +198,17 @@ public:
           inputs[1] = &input;
           ops->initilizeinputs(inputs, 2);
           g.addcomputenode(ops);
-        }
-        else
-        {
+        } else {
           std::cout << "Error!" << i
                     << "th Dimension does not match with second matrix.\n";
           g.setGraphInvalid();
         }
-      }
-      else
-      {
+      } else {
         std::cout << "Error! First matrix's row length does not match with "
                      "second matrix column length.\n";
         g.setGraphInvalid();
       }
-    }
-    else
-    {
+    } else {
       std::cout << "Dimension mismatch, First matrix doesn't have same no of "
                    "dimension of second matrix.\n";
       g.setGraphInvalid();
@@ -233,98 +217,78 @@ public:
     return g;
   }
 
-  Graph<T, typeFlag> add(NDMath<T, typeFlag> &input, Graph<T, typeFlag> &g)
-  {
+  Graph<T, typeFlag> add(Graph<T, typeFlag> &g, NDMath<T, typeFlag> &input) {
 
     unsigned i, no_of_dimensions;
     bool flag = true;
 
     no_of_dimensions = NDMath<T, typeFlag>::getNoOfDimensions();
 
-    if (no_of_dimensions == input.getNoOfDimensions())
-    {
-      for (i = 2; i < no_of_dimensions; i++)
-      {
+    if (no_of_dimensions == input.getNoOfDimensions()) {
+      for (i = 2; i < no_of_dimensions; i++) {
         if (NDMath<T, typeFlag>::getDimensions()[i] !=
-            input.getDimensions()[i])
-        {
+            input.getDimensions()[i]) {
           flag = 0;
           break;
         }
       }
-      if (flag)
-      {
+      if (flag) {
 
         Ops<T, typeFlag> *ops = new Opsadd<T, typeFlag>;
         NDMath<T, typeFlag> *inputs[2];
         inputs[0] = this;
         inputs[1] = &input;
-        ops->initilizeinputs(inputs, 2);
+        ops->initilizeinputs(inputs, (unsigned)2);
         g.addcomputenode(ops);
-      }
-      else
-      {
+      } else {
         std::cout << "Error!" << i
                   << "th Dimension does not match with second matrix.\n";
         g.setGraphInvalid();
       }
-    }
-    else
-    {
-      std::cout << "Dimension mismatch, First matrix and second matrix has different rank.\n";
+    } else {
+      std::cout << "Dimension mismatch, First matrix and second matrix has "
+                   "different rank.\n";
       g.setGraphInvalid();
     }
     return g;
   }
 
-  Graph<T, typeFlag> matmul(NDMath<T, typeFlag> &input, Graph<T, typeFlag> &g)
-  {
+  Graph<T, typeFlag> matmul(Graph<T, typeFlag> &g, NDMath<T, typeFlag> &input) {
 
     unsigned i, no_of_dimensions;
     bool flag = true;
 
     no_of_dimensions = NDMath<T, typeFlag>::getNoOfDimensions();
 
-    if (no_of_dimensions == input.getNoOfDimensions())
-    {
+    if (no_of_dimensions == input.getNoOfDimensions()) {
 
-      if (this->getDimensions()[0] == input.getDimensions()[1])
-      {
+      if (this->getDimensions()[0] == input.getDimensions()[1]) {
 
-        for (i = 2; i < no_of_dimensions; i++)
-        {
+        for (i = 2; i < no_of_dimensions; i++) {
           if (NDMath<T, typeFlag>::getDimensions()[i] !=
-              input.getDimensions()[i])
-          {
+              input.getDimensions()[i]) {
             flag = false;
             break;
           }
         }
-        if (flag)
-        {
+        if (flag) {
           Ops<T, typeFlag> *ops = new Opsmatmul<T, typeFlag>;
           NDMath<T, typeFlag> *inputs[2];
           inputs[0] = this;
           inputs[1] = &input;
-          ops->initilizeinputs(inputs, 2);
+          ops->initilizeinputs(inputs, (unsigned)2);
           g.addcomputenode(ops);
-        }
-        else
-        {
+        } else {
           std::cout << "Error!" << i
                     << "th Dimension does not match with second matrix.\n";
           g.setGraphInvalid();
         }
-      }
-      else
-      {
+      } else {
         std::cout << "Error! First matrix's row length does not match with "
                      "second matrix column length.\n";
         g.setGraphInvalid();
       }
-    }
-    else
-    {
+    } else {
       std::cout << "Dimension mismatch, First matrix doesn't have same no of "
                    "dimension of second matrix.\n";
       g.setGraphInvalid();
@@ -333,8 +297,7 @@ public:
     return g;
   }
 
-  Graph<T, typeFlag> pow(unsigned power, Graph<T, typeFlag> &g)
-  {
+  Graph<T, typeFlag> pow(Graph<T, typeFlag> &g, unsigned power) {
 
     Ops<T, typeFlag> *ops = new Opspower<T, typeFlag>;
     NDMath<T, typeFlag> *inputs[1];
@@ -344,8 +307,7 @@ public:
     return g;
   }
 
-  void reducesum(Graph<T, typeFlag> &g, Ops<T, typeFlag> *ops)
-  {
+  void reducesum(Graph<T, typeFlag> &g, Ops<T, typeFlag> *ops) {
 
     unsigned count = 0;
     unsigned *reduction_dims;
@@ -355,10 +317,7 @@ public:
 
     ptr = ptr_prev = head;
 
-    std::cout << "in graph reducesum third func.\n";
-
-    while (ptr)
-    {
+    while (ptr) {
       count++;
       ptr = ptr->next;
     }
@@ -366,19 +325,16 @@ public:
     reduction_dims = new unsigned[count];
     ptr = head;
 
-    for (unsigned i = 0; i < count; i++)
-    {
+    for (unsigned i = 0; i < count; i++) {
       reduction_dims[i] = this->getNoOfDimensions() - ptr->value - 1;
       ptr = ptr->next;
       delete[] ptr_prev;
       ptr_prev = ptr;
     }
-
     // shorting dimensions using bubble short
     for (unsigned j = 0; j < count; j++)
       for (unsigned i = 0; i < count - j - 1; i++)
-        if (reduction_dims[i] < reduction_dims[i + 1])
-        {
+        if (reduction_dims[i] < reduction_dims[i + 1]) {
           unsigned temp = reduction_dims[i];
           reduction_dims[i] = reduction_dims[i + 1];
           reduction_dims[i + 1] = temp;
@@ -394,43 +350,55 @@ public:
 
   template <typename first_dim, typename... Args>
   void reducesum(Graph<T, typeFlag> &g, Ops<T, typeFlag> *ops, first_dim n,
-                 Args... args)
-  {
-    std::cout << "In graph reducesum sec func.\n";
-    if (n < this->getNoOfDimensions())
-    {
+                 Args... args) {
+    if (n < this->getNoOfDimensions()) {
 
       ptr = new struct arg_list;
       ptr->value = n;
 
-      if (!head)
-      {
+      if (!head) {
 
         head = ptr_prev = ptr;
         head->next = NULL;
-      }
-      else
-      {
+      } else {
         ptr->next = NULL;
         ptr_prev->next = ptr;
         ptr_prev = ptr;
       }
       reducesum(g, ops, args...);
-    }
-    else
+    } else
       std::cout
           << "Fatal error! reduction axis does not belong for the tensor\n";
   }
 
   template <typename... Args>
-  Graph<T, typeFlag> reducesum(Graph<T, typeFlag> &g, Args... args)
-  {
+  Graph<T, typeFlag> reducesum(Graph<T, typeFlag> &g, Args... args) {
     head = NULL;
     Ops<T, typeFlag> *ops = new Opsreducesum<T, typeFlag>;
-    std::cout << "in graph reducesum!.\n";
     reducesum(g, ops, args...);
     return g;
   }
+
+  Graph<T, typeFlag> scale(Graph<T, typeFlag> &g, const double scale_factor) {
+    Ops<T, typeFlag> *ops = new Opsscale<T, typeFlag>;
+    NDMath<T, typeFlag> *inputs[1];
+    inputs[0] = this;
+    ops->initilizeinputs(inputs, (double)scale_factor);
+    g.addcomputenode(ops);
+    return g;
+  }
+
+  Graph<T, typeFlag> mean(Graph<T, typeFlag> &g, const unsigned n) {
+    static NDMath<T, typeFlag> temp_reduction;
+
+    if (n < this->getNoOfDimensions()) {
+      temp_reduction = this->reducesum(g, n);
+      return temp_reduction.scale(g, 1.0f / this->getDimensions()[n]);
+    } else {
+      g.setGraphInvalid();
+      return g;
+    }
+  }
 };
 
-#include "../lib/Math/MathLibrary.cpp"
+#include "../core/Math/MathLibrary.cpp"
