@@ -5,12 +5,12 @@
 
 template <typename T> class tensor;
 
-template <typename T> class Ops;
+class Ops;
 
-template <typename T> class Graph {
+class graph {
 
   typedef struct node {
-    Ops<T> *ops;
+    Ops *ops;
 
     node *next_node;
     node **output_nodes;
@@ -52,20 +52,17 @@ template <typename T> class Graph {
   bool isValidGraph;
 
 public:
-  Graph() : head(NULL), current_node(NULL), isValidGraph(true) {}
+  graph() : head(NULL), current_node(NULL), isValidGraph(true) {}
 
-  void addcomputenode(Ops<T> *ops);
+  void addcomputenode(Ops *ops);
 
   void optimize();
 
-  void outputnode(tensor<T> *output);
+  void outputnode(tensor<double> *output);
 
-  static void printnode(node *ptr) {
-    ptr->ops->printinputs();
-    ptr->ops->printoutput();
-  }
+  static void printnode(node *ptr);
 
-  static void executionwrapper(node *ptr) { ptr->ops->compute(); }
+  static void executionwrapper(node *ptr);
 
   void traversenode() { dfs(head, printnode); }
 
@@ -76,4 +73,4 @@ public:
   void setGraphInvalid() { this->isValidGraph = false; }
 };
 
-#endif //GRAPH_H
+#endif // GRAPH_H

@@ -1,7 +1,11 @@
-#pragma ONCE
-#include "CPU_aux.h"
-#include "GPU_aux.h"
+#ifndef NDYNAMIC_ARRAY
+#define NDYNAMIC_ARRAY
+
 #include <cstring>
+#include <iostream>
+#include <random>
+#include <cstdarg>
+
 /*
 ...............Dynamically allocated memories................
 
@@ -15,21 +19,20 @@ data(template)
 ............................End..............................
 
 */
+
 typedef struct dim_node
 {
     unsigned value;
     struct dim_node *next;
 } dim_node;
 
-template <typename T, int typeFlag>
-class NDArray : protected CPU_aux<T>,
-                protected GPU_aux<T>
-{
+template <typename T>
+class ndarray{
     std::string obj_name;
     dim_node *head = NULL;
     dim_node *ptr = NULL;
     dim_node *prev = NULL;
-    int type = typeFlag;
+    // int type = typeFlag;
     unsigned nDim, nElem;
     unsigned no_of_gpu;
     unsigned *dimension, *arr_dim;
@@ -44,19 +47,21 @@ class NDArray : protected CPU_aux<T>,
 
     void addDimensions(const unsigned *);
 
-    template <typename... args>
-    void addDimensions(unsigned, args...);
+    // template <typename... args>
+    // void addDimensions(unsigned, args...);
 
 public:
-    NDArray();
+    ndarray();
 
-    template <typename... Args>
-    NDArray(unsigned num, Args... args);
+    // template <typename... Args>
+    // ndarray(unsigned num, Args... args);
+
+    ndarray(unsigned n, const unsigned *arr);
 
     // copy constructor.
-    NDArray(const NDArray<T, typeFlag> &ndarray);
+    ndarray(const ndarray<T> &ndarray);
 
-    ~NDArray();
+    ~ndarray();
 
     /// @brief returns unsigned array of dimension vector
     /// @tparam None
@@ -82,7 +87,7 @@ public:
 
     void initData(T *data);
 
-    void initData(NDArray<double, 0> incData);
+    void initData(ndarray<double>incData);
 
     void initPartialData(unsigned index, unsigned n, T *data_source);
 
@@ -104,8 +109,8 @@ public:
 
     void reshape() {}
 
-    template <typename first_dim, typename... Args>
-    void reshape(first_dim n, Args... args);
+    // template <typename first_dim, typename... Args>
+    // void reshape(first_dim n, Args... args);
 
     void resetDimensions(unsigned, unsigned *);
 
@@ -115,9 +120,11 @@ public:
 
     T operator()(unsigned);
 
-    NDArray<T, typeFlag> &operator[](unsigned);
+    ndarray<T>&operator[](unsigned);
 
-    NDArray<T, typeFlag> &operator=(const NDArray<T, typeFlag> &ndarray);
+    ndarray<T>&operator=(const ndarray<T>&ndarray);
 };
 
-#include "../core/Math/NDynamicArray.cpp"
+// #include "NDynamicArray.tpp"
+
+#endif // NDYNAMIC_ARRAY

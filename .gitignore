@@ -2,4 +2,11 @@
 *.out
 *.exe
 *.o
+*.so
 .vscode
+
+**/build/*
+!**/build/.gitkeep
+
+**/lib/*
+!**/lib/.gitkeep
