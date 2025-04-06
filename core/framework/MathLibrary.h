@@ -8,7 +8,7 @@
 #include "../kernel/opskernel.h"
 #include "NDynamicArray.h"
 
-template <typename T> class tensor : public ndarray<T> {
+template <typename T> class Tensor : public ndarray<T> {
   struct arg_list {
     unsigned value;
     struct arg_list *next;
@@ -25,16 +25,16 @@ template <typename T> class tensor : public ndarray<T> {
   /// @param index Unsigned, rank of the matrix n, value passed n-1,
   /// @param dimension_arr Unsigend*, used to store internal higher dimention
   /// co-ordinate, expects unsigned pointer of size n(i.e dimension),
-  /// @param input tensor class type, expects operend B.
-  /// @param output reference of tensor class type, expects output C.
+  /// @param input Tensor class type, expects operend B.
+  /// @param output reference of Tensor class type, expects output C.
   /// @param kernel function pointer, expects pointer to the function for the
   /// matrix operation.
   /// @param function_name String, expects the name of the matrix operation to
   /// be performed.
   /// @return void, output (call by referance)
-  void recursive_iterator(unsigned, unsigned *, tensor<T>, tensor<T> &,
-                          void (*)(double **, unsigned *), std::string,
-                          unsigned *, double *, tensor<T>);
+  void recursive_iterator(unsigned, unsigned *, Tensor<T>, Tensor<T> &,
+                          void (*)(T**, unsigned *), std::string,
+                          unsigned *, T*, Tensor<T>);
 
   /// @brief This function recursively iterates from (n-1)th dim to  3th
   /// dimension and performs reduction sum operation along the reduction
@@ -43,87 +43,87 @@ template <typename T> class tensor : public ndarray<T> {
   /// @param index Unsigned, rank of the matrix n, value passed n-1,
   /// @param dimension_arr Unsigend*, used to store internal higher dimention
   /// co-ordinate, expects unsigned pointer of size n(i.e dimension),
-  /// @param input tensor class type, expects operend B.
-  /// @param output reference of tensor class type, expects output C.
-  /// @param reduction_dimension Unsigned, Along which dimension the tensor
+  /// @param input Tensor class type, expects operend B.
+  /// @param output reference of Tensor class type, expects output C.
+  /// @param reduction_dimension Unsigned, Along which dimension the Tensor
   /// needs to be reduced,
   /// @param data_pointer data pointer, expects pointer to the array, which
   /// holds .
   /// @param output unsigned pointer* optional parameter.
-  /// @param dl_arr double pointer*, optional parameter,
-  /// @param misc_arr tensor obj, optional parameter.
+  /// @param dl_arr Tpointer*, optional parameter,
+  /// @param misc_arr Tensor obj, optional parameter.
   /// @return void, output (call by referance)
-  void recursive_sum(unsigned, unsigned *, tensor<T>, tensor<T> &, unsigned,
+  void recursive_sum(unsigned, unsigned *, Tensor<T>, Tensor<T> &, unsigned,
                      T *);
 
-  void reducesum(tensor<T> &);
+  void reducesum(Tensor<T> &);
 
   template <typename first_dim, typename... Args>
-  void reducesum(tensor<T> &, first_dim, Args...);
+  void reducesum(Tensor<T> &, first_dim, Args...);
 
 public:
-  tensor(const tensor<T> &ndmath) : ndarray<T>(ndmath) {}
+  Tensor(const Tensor<T> &ndmath) : ndarray<T>(ndmath) {}
 
   // template <typename... args>
-  // tensor(unsigned num, args... Args) : ndarray<T>(num, Args...) {}
-  tensor(unsigned n, const unsigned *arr) : ndarray<T>(n,arr){}
+  // Tensor(unsigned num, args... Args) : ndarray<T>(num, Args...) {}
+  Tensor(unsigned n, const unsigned *arr, DataType data_type) : ndarray<T>(n,arr,data_type){}
 
-  tensor() {}
+  Tensor() {}
 
-  ~tensor() {}
+  ~Tensor() {}
 
-  tensor<T> &operator=(const tensor<T> &ndmath) {
+  Tensor<T> &operator=(const Tensor<T> &ndmath) {
     ndarray<T>::operator=(ndmath);
     return *this;
   }
 
-  void operator=(graph g) { g.outputnode(this); }
+  void assign(Graph g) { g.outputnode(this); }
 
   /// @brief This function calculates matrix multiplication A X B
   /// @tparam None
-  /// @param input_B_matrix tensor class, expects tensor or similar y dimension
-  /// that of current tensor.
-  /// @return returns tensor class type.
-  tensor<T> matmul(const tensor<double>);
+  /// @param input_B_matrix Tensor class, expects Tensor or similar y dimension
+  /// that of current Tensor.
+  /// @return returns Tensor class type.
+  Tensor<T> matmul(const Tensor<T>);
 
   /// @brief This function does element wise multiplication with pass costant
   /// value
   /// @tparam None
-  /// @param const value double
-  /// @return returns tensor class type.
-  tensor<T> scale(const double);
+  /// @param const value std::float64_t
+  /// @return returns Tensor class type.
+  Tensor<T> scale(const std::float64_t);
 
   /// @brief This function calculates matrix addition A + B
   /// @tparam None
-  /// @param input_B_matrix tensor class, expects tensor or similar rank and
-  /// dimension that of current tensor.
-  /// @return returns tensor class type.
-  tensor<T> add(const tensor<double>);
+  /// @param input_B_matrix Tensor class, expects Tensor or similar rank and
+  /// dimension that of current Tensor.
+  /// @return returns Tensor class type.
+  Tensor<T> add(const Tensor<T>);
 
   /// @brief This function calculates matrix multiplication A X B
   /// @tparam None
-  /// @param input_B_matrix tensor class, expects tensor or similar y dimension
-  /// that of current tensor.
-  /// @return returns tensor class type.
-  tensor<T> operator*(const tensor<double>);
+  /// @param input_B_matrix Tensor class, expects Tensor or similar y dimension
+  /// that of current Tensor.
+  /// @return returns Tensor class type.
+  Tensor<T> operator*(const Tensor<T>);
 
   /// @brief This function calculates matrix addition A + B
   /// @tparam None
-  /// @param input_B_matrix tensor class, expects tensor or similar rank and
-  /// dimension that of current tensor.
-  /// @return returns tensor class type.
-  tensor<T> operator+(const tensor<double>);
+  /// @param input_B_matrix Tensor class, expects Tensor or similar rank and
+  /// dimension that of current Tensor.
+  /// @return returns Tensor class type.
+  Tensor<T> operator+(const Tensor<T>);
 
   /// @brief This function calculates matrix addition A + B
   /// @tparam None
-  /// @param input_B_matrix tensor class, expects tensor or similar rank and
-  /// dimension that of current tensor.
-  /// @return returns tensor class type.
-  tensor<T> operator-(const tensor<double>);
+  /// @param input_B_matrix Tensor class, expects Tensor or similar rank and
+  /// dimension that of current Tensor.
+  /// @return returns Tensor class type.
+  Tensor<T> operator-(const Tensor<T>);
 
-  tensor<T> vectoradd(const tensor<double>);
+  Tensor<T> vectoradd(const Tensor<T>);
 
-  /// @brief This function transposes current tensor
+  /// @brief This function transposes current Tensor
   /// @tparam None
   /// @return void, output (call by referance)
   void transpose();
@@ -131,38 +131,38 @@ public:
   /// @brief This function reduction sum operation along the reduction
   /// dimension.
   /// @tparam None
-  /// @param reduction_dimension Unsigned, Along which dimension the tensor
+  /// @param reduction_dimension Unsigned, Along which dimension the Tensor
   /// needs to be reduced
-  /// @return returns tensor class type.
-  template <typename... Args> tensor<T> reducesum(Args... args);
+  /// @return returns Tensor class type.
+  template <typename... Args> Tensor<T> reducesum(Args... args);
 
   /// @brief This function calculates matrix addition A + B
   /// @tparam None
-  /// @param input_B_matrix tensor class, expects tensor or similar rank and
-  /// dimension that of current tensor.
-  /// @return returns tensor class type.
-  tensor<T> pow(unsigned);
+  /// @param input_B_matrix Tensor class, expects Tensor or similar rank and
+  /// dimension that of current Tensor.
+  /// @return returns Tensor class type.
+  Tensor<T> pow(unsigned);
 
-  graph mul(graph &g, tensor<T> &input);
+  Graph mul(Graph &g, Tensor<T> &input);
 
-  graph add(graph &g, tensor<T> &input);
+  Graph add(Graph &g, Tensor<T> &input);
 
-  graph matmul(graph &g, tensor<T> &input);
+  Graph matmul(Graph &g, Tensor<T> &input);
 
-  graph pow(graph &g, unsigned power);
+  Graph pow(Graph &g, unsigned power);
 
-  graph reducesum(graph &, unsigned,  unsigned*);
+  Graph reducesum(Graph &, unsigned,  unsigned*);
 
-  void reducesum(graph &g, Ops *ops);
+  void reducesum(Graph &g, Ops *ops);
 
   template <typename first_dim, typename... Args>
-  void reducesum(graph &g, Ops *ops, first_dim n, Args... args);
+  void reducesum(Graph &g, Ops *ops, first_dim n, Args... args);
 
-  template <typename... Args> graph reducesum(graph &g, Args... args);
+  template <typename... Args> Graph reducesum(Graph &g, Args... args);
 
-  graph scale(graph &g, const double scale_factor);
+  Graph scale(Graph &g, const std::float64_t scale_factor);
 
-  graph mean(graph &g, const unsigned n);
+  Graph mean(Graph &g, const unsigned n);
 };
 
 #endif // MATH_LIBRARY

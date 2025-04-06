@@ -1,14 +1,14 @@
 #include "graph.h"
 #include "../framework/MathLibrary.h"
 #include "../kernel/opskernel.h"
-void graph::printnode(node *ptr) {
+void Graph::printnode(node *ptr) {
   ptr->ops->printinputs();
   ptr->ops->printoutput();
 }
 
-void graph::executionwrapper(node *ptr) { ptr->ops->compute(); }
+void Graph::executionwrapper(node *ptr) { ptr->ops->compute(); }
 
-void graph::addcomputenode(Ops *ops) {
+void Graph::addcomputenode(Ops *ops) {
   node *ptr = new node;
 
   // ptr->operand_a = oper_a;
@@ -24,7 +24,7 @@ void graph::addcomputenode(Ops *ops) {
   }
 }
 
-void graph::optimize() {
+void Graph::optimize() {
   node *ptr = head->next_node;
   node *prev_ptr = head;
   unsigned i;
@@ -78,15 +78,15 @@ void graph::optimize() {
   }
 }
 
-void graph::outputnode(tensor<double> *output) {
+void Graph::outputnode(Tensor<std::float64_t> *output) {
   // current_node->output = output;
   if (isValidGraph) {
     current_node->ops->initilizeoutput(output);
   } else
-    std::cout << "graph is invalid! check input sequence.\n";
+    std::cout << "Graph is invalid! check input sequence.\n";
 }
 
-void graph::dfs(node *ptr, void (*func)(node *)) {
+void Graph::dfs(node *ptr, void (*func)(node *)) {
   if (isValidGraph) {
     func(ptr);
 
@@ -94,5 +94,5 @@ void graph::dfs(node *ptr, void (*func)(node *)) {
       dfs(ptr->output_nodes[i], func);
     }
   } else
-    std::cout << "graph is invalid! check input sequence.\n";
+    std::cout << "Graph is invalid! check input sequence.\n";
 }

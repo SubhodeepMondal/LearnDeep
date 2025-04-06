@@ -2,24 +2,24 @@
 #include "../framework/MathLibrary.h"
 
 void Ops::recursive_iterator(unsigned index, unsigned *dimension_arr,
-                             // tensor<double> input_a,
-                             tensor<double> input_b, tensor<double> &output,
+                             // Tensor<std::float64_t> input_a,
+                             Tensor<std::float64_t> input_b, Tensor<std::float64_t> &output,
                              std::string function_name, unsigned *ui_arr,
-                             double *dl_arr, tensor<double> *misc_arr) {}
+                             std::float64_t *dl_arr, Tensor<std::float64_t> *misc_arr) {}
 
 void Ops::recursive_sum(unsigned index, unsigned *dimension_arr,
-                        tensor<double> input_b, tensor<double> &output,
-                        unsigned reduction_dim, double *temp_input) {
+                        Tensor<std::float64_t> input_b, Tensor<std::float64_t> &output,
+                        unsigned reduction_dim, std::float64_t *temp_input) {
 
   if (index < 3) {
     unsigned i, j, k;
     unsigned x_axis, y_axis, z_axis, stride, n_dim_size;
     unsigned input_index, output_index;
-    double *input_ptr, *output_ptr, *temp_inp;
-    double *ptr[3];
+    std::float64_t *input_ptr, *output_ptr, *temp_inp;
+    std::float64_t *ptr[3];
     unsigned a[2];
 
-    // double *input_b = input_a.getData();
+    // std::float64_t *input_b = input_a.getData();
 
     x_axis = input_b.getDimensions()[0];
     y_axis = (input_b.getNoOfDimensions() > 1) ? input_b.getDimensions()[1] : 1;

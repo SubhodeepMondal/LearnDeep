@@ -2,12 +2,13 @@
 #define GRAPH_H
 
 #include <iostream>
+#include <stdfloat>
 
-template <typename T> class tensor;
+template <typename T> class Tensor;
 
 class Ops;
 
-class graph {
+class Graph {
 
   typedef struct node {
     Ops *ops;
@@ -52,13 +53,13 @@ class graph {
   bool isValidGraph;
 
 public:
-  graph() : head(NULL), current_node(NULL), isValidGraph(true) {}
+  Graph() : head(NULL), current_node(NULL), isValidGraph(true) {}
 
   void addcomputenode(Ops *ops);
 
   void optimize();
 
-  void outputnode(tensor<double> *output);
+  void outputnode(Tensor<std::float64_t> *output);
 
   static void printnode(node *ptr);
 

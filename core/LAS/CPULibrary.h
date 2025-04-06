@@ -1,21 +1,23 @@
 #pragma ONCE
 
+#include <stdfloat>
+
 namespace cpu
 {
 
-    void __mmul(double **, unsigned *);
+    void __mmul(std::float64_t **, unsigned *);
 
-    void __melementwisemul(double **, unsigned *);
+    void __melementwisemul(std::float64_t **, unsigned *);
 
-    void __mmulconventional(double **, unsigned *);
+    void __mmulconventional(std::float64_t **, unsigned *);
 
-    void __mscalermul(double **, unsigned *);
+    void __mscalermul(std::float64_t **, unsigned *);
 
-    void __madd(double **, unsigned *);
+    void __madd(std::float64_t **, unsigned *);
 
-    void __msub(double **, unsigned *);
+    void __msub(std::float64_t **, unsigned *);
 
-    void __mrollingsum(double **, unsigned *);
+    void __mrollingsum(std::float64_t **, unsigned *);
 
-    void __mtranspose(double **, unsigned*);
+    void __mtranspose(std::float64_t **, unsigned*);
 }

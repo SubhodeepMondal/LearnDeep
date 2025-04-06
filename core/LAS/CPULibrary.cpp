@@ -3,13 +3,12 @@
 #include <iostream>
 #include <omp.h>
 
-
-void cpu::__mmul(double **ptr, unsigned *arr) {
+void cpu::__mmul(std::float64_t **ptr, unsigned *arr) {
   // x output row size
   // y k row
   // z output column size
   // omp_set_num_threads(12);
-  double *A, *B, *C;
+  std::float64_t *A, *B, *C;
 
   A = ptr[0];
   B = ptr[1];
@@ -19,23 +18,23 @@ void cpu::__mmul(double **ptr, unsigned *arr) {
   y = arr[1];
   z = arr[2];
   // std::cout << omp_get_max_threads() << "\n";
-  memset(C, 0, sizeof(double) * x * z);
+  memset(C, 0, sizeof(std::float64_t) * x * z);
 #pragma omp parallel proc_bind(close)
   {
 #pragma omp for
-    for (int k = 0; k < z; k++)
-
+    for (int k = 0; k < z; k++) {
       for (int j = 0; j < y; j++) {
         for (int i = 0; i < x; i++) {
           C[i + k * x] += A[j + k * y] * B[i + j * x];
         }
       }
+    }
   }
 }
 
-void cpu::__mmulconventional(double **ptr, unsigned *arr) {
+void cpu::__mmulconventional(std::float64_t **ptr, unsigned *arr) {
 
-  double sum, *A, *B, *C;
+  std::float64_t sum, *A, *B, *C;
   unsigned x, y, z;
 
   A = ptr[0];
@@ -50,7 +49,7 @@ void cpu::__mmulconventional(double **ptr, unsigned *arr) {
   // z output column size
   // omp_set_num_threads(12);
 
-  memset(C, 0, sizeof(double) * x * z);
+  memset(C, 0, sizeof(std::float64_t) * x * z);
 #pragma omp parallel for private(sum)
   for (int j = 0; j < z; j++)
     for (int i = 0; i < x; i++) {
@@ -61,8 +60,8 @@ void cpu::__mmulconventional(double **ptr, unsigned *arr) {
     }
 }
 
-void cpu::__melementwisemul(double **ptr, unsigned *arr) {
-  double *A, *B, *C;
+void cpu::__melementwisemul(std::float64_t **ptr, unsigned *arr) {
+  std::float64_t *A, *B, *C;
   unsigned i, j, x, y, idx;
 
   A = ptr[0];
@@ -82,8 +81,8 @@ void cpu::__melementwisemul(double **ptr, unsigned *arr) {
     }
 }
 
-void cpu::__mscalermul(double **ptr, unsigned *arr) {
-  double *A, B, *C;
+void cpu::__mscalermul(std::float64_t **ptr, unsigned *arr) {
+  std::float64_t *A, B, *C;
   unsigned x, y;
 
   A = ptr[0];
@@ -99,8 +98,8 @@ void cpu::__mscalermul(double **ptr, unsigned *arr) {
       C[i + j * x] = B * A[i + j * x];
 }
 
-void cpu::__madd(double **ptr, unsigned *a) {
-  double *inp_a, *inp_b, *out;
+void cpu::__madd(std::float64_t **ptr, unsigned *a) {
+  std::float64_t *inp_a, *inp_b, *out;
   unsigned x, y;
 
   inp_a = ptr[0];
@@ -116,8 +115,8 @@ void cpu::__madd(double **ptr, unsigned *a) {
       out[i + j * x] = inp_a[i + j * x] + inp_b[i + j * x];
 }
 
-void cpu::__msub(double **ptr, unsigned *a) {
-  double *inp_a, *inp_b, *out;
+void cpu::__msub(std::float64_t **ptr, unsigned *a) {
+  std::float64_t *inp_a, *inp_b, *out;
   unsigned x, y;
   inp_a = ptr[0];
   inp_b = ptr[1];
@@ -132,8 +131,8 @@ void cpu::__msub(double **ptr, unsigned *a) {
       out[j + i * x] = inp_a[j + i * x] - inp_b[j + i * x];
 }
 
-void cpu::__mrollingsum(double **ptr, unsigned *arr) {
-  double *inp, *output;
+void cpu::__mrollingsum(std::float64_t **ptr, unsigned *arr) {
+  std::float64_t *inp, *output;
   unsigned axis, x, y, z;
   unsigned i, j, k, sum = 0;
 
@@ -161,10 +160,10 @@ void cpu::__mrollingsum(double **ptr, unsigned *arr) {
   }
 }
 
-void cpu::__mtranspose(double **ptr, unsigned *arr) {
-  double *A, *B;
+void cpu::__mtranspose(std::float64_t **ptr, unsigned *arr) {
+  std::float64_t *A, *B;
   unsigned x, y;
-  double **temp;
+  std::float64_t **temp;
 
   A = ptr[0];
   B = ptr[1];
@@ -172,9 +171,9 @@ void cpu::__mtranspose(double **ptr, unsigned *arr) {
   x = arr[0];
   y = arr[1];
 
-  temp = new double *[y];
+  temp = new std::float64_t *[y];
   for (int j = 0; j < y; j++) {
-    temp[j] = new double[x];
+    temp[j] = new std::float64_t[x];
     for (int i = 0; i < x; i++)
 
       temp[j][i] = A[j + i * y];

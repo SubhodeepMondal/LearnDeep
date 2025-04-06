@@ -67,19 +67,23 @@ template <typename T> ndarray<T>::ndarray(const ndarray<T> &ndarray) {
 //     std::memset(data, 0, nElem * sizeof(T));
 // }
 
-template <typename T> ndarray<T>::ndarray(unsigned n, const unsigned *arr) {
+template <typename T>
+ndarray<T>::ndarray(unsigned n, const unsigned *arr, DataType d_type) {
 
   this->nDim = n;
   this->nElem = 1;
   this->dimension = new unsigned[this->nDim];
   this->arr_dim = new unsigned[this->nDim];
   this->isDimInitilized = true;
-
+  this->tensor_type = d_type;
+  #undef data_type
+  
   for (int i = 0; i < this->nDim; i++) {
     this->dimension[i] = arr[i];
     nElem *= dimension[i];
   }
-
+  data_ptr = new EnumToDataType<tf_bfloat16>::type[nElem];
+  
   data = new T[nElem];
   std::memset(data, 0, nElem * sizeof(T));
 }
@@ -247,7 +251,7 @@ template <typename T> void ndarray<T>::initData(T *data) {
   std::memcpy(this->data, data, nElem * sizeof(T));
 };
 
-template <typename T> void ndarray<T>::initData(ndarray<double> incData) {
+template <typename T> void ndarray<T>::initData(ndarray<T> incData) {
 
   nDim = incData.getNoOfDimensions();
   nElem = 1;
@@ -288,13 +292,14 @@ void ndarray<T>::initPartialData(unsigned index, unsigned n, T *data_source) {
 }
 
 template <typename T>
-void ndarray<T>::initRandData(int lower_limit, int upper_limit) {
+void ndarray<T>::initRandData(double lower_limit, double upper_limit) {
   std::default_random_engine generator;
-  std::uniform_real_distribution<double> distribution((0 + lower_limit),
+  std::uniform_real_distribution<T> distribution((0 + lower_limit),
                                                       (1 * upper_limit));
 
-  for (int i = 0; i < nElem; i++)
+  for (int i = 0; i < nElem; i++) {
     data[i] = distribution(generator);
+  }
 }
 
 template <typename T> void ndarray<T>::initPreinitilizedData(T *Data) {
@@ -321,31 +326,7 @@ void ndarray<T>::resetDimensions(unsigned n, unsigned *arr) {
   data = new T[nElem];
 }
 
-// template <typename T>
-// template <typename first_dim, typename... Args>
-// void ndarray<T>::reshape(first_dim n, Args... args) {
-//   if (dim_iterator == nDim - 1) {
-//     arr_dim[dim_iterator] = n;
-//     dim_iterator = 0;
-//     unsigned product_a, product_b;
-//     product_a = product_b = 1;
-//     for (unsigned i = 0; i < nDim; i++) {
-//       product_a *= dimension[i];
-//       product_b *= arr_dim[i];
-//     }
-//     if (product_a == product_b) {
-//       for (unsigned i = 0; i < nDim; i++)
-//         dimension[i] = arr_dim[i];
-//     } else {
-//       std::cout << "reshape is not possible!\n";
-//     }
-//     // delete[] arr_dim;
-//   } else {
-//     arr_dim[dim_iterator++] = n;
-//     reshape(args...);
-//   }
-//   // delete [] arr_dim;
-// }
+template <typename T> DataType ndarray<T>::getType() { return tensor_type; }
 
 template <typename T> void ndarray<T>::destroy() {
   if (dimension) {
@@ -417,4 +398,15 @@ ndarray<T> &ndarray<T>::operator=(const ndarray<T> &ndarray) {
   return *this;
 }
 
-template class ndarray<double>;
+// template class ndarray<std::bfloat16_t>;
+// template class ndarray<std::float16_t>;
+// template class ndarray<std::float32_t>;
+template class ndarray<std::float64_t>;
+// template class ndarray<int8_t>;
+// template class ndarray<int16_t>;
+// template class ndarray<int32_t>;
+// template class ndarray<int64_t>;
+// template class ndarray<uint8_t>;
+// template class ndarray<uint16_t>;
+// template class ndarray<uint32_t>;
+// template class ndarray<uint64_t>;

@@ -2,18 +2,18 @@
 #include "../framework/MathLibrary.h"
 
 void Opsreducesum::recursive_sum(
-    unsigned index, unsigned *dimension_arr, tensor<double> input,
-    tensor<double> &output, unsigned reduction_dim, double *temp_input) {
+    unsigned index, unsigned *dimension_arr, Tensor<std::float64_t> input,
+    Tensor<std::float64_t> &output, unsigned reduction_dim, std::float64_t *temp_input) {
 
   if (index < 3) {
     unsigned i, j, k;
     unsigned x_axis, y_axis, z_axis, stride, n_dim_size;
     unsigned input_index, output_index;
-    double *input_ptr, *output_ptr, *temp_inp;
-    double *ptr[3];
+    std::float64_t *input_ptr, *output_ptr, *temp_inp;
+    std::float64_t *ptr[3];
     unsigned a[2];
 
-    // double *input = this->getData();
+    // std::float64_t *input = this->getData();
 
     x_axis = input.getDimensions()[0];
     y_axis = (input.getNoOfDimensions() > 1) ? input.getDimensions()[1] : 1;
@@ -142,11 +142,11 @@ void Opsreducesum::compute()  {
   unsigned i, k, resulting_no_of_dims;
 
   unsigned *resulting_dims, *arr_dims;
-  double *intermediate_input;
-  tensor<double> temp_output, temp_input;
+  std::float64_t *intermediate_input;
+  Tensor<std::float64_t> temp_output, temp_input;
 
   intermediate_input =
-      new double[inputs[0]->getDimensions()[0] * inputs[0]->getDimensions()[1] *
+      new std::float64_t[inputs[0]->getDimensions()[0] * inputs[0]->getDimensions()[1] *
             inputs[0]->getDimensions()[2]];
 
   resulting_dims = new unsigned(inputs[0]->getNoOfDimensions());
@@ -168,7 +168,7 @@ void Opsreducesum::compute()  {
       resulting_dims[0] = 1;
     }
 
-    temp_output = tensor<double>(resulting_no_of_dims, resulting_dims);
+    temp_output = Tensor<std::float64_t>(resulting_no_of_dims, resulting_dims, inputs[0]->getType());
     temp_output.initData(0.0);
 
     recursive_sum(temp_input.getNoOfDimensions() - 1, arr_dims, temp_input,
@@ -180,7 +180,7 @@ void Opsreducesum::compute()  {
 }
 
 
-void Opsreducesum::initilizeinputs(tensor<double> **inputs,
+void Opsreducesum::initilizeinputs(Tensor<std::float64_t> **inputs,
                                                 unsigned n,
                                                 unsigned *arr)  {
   unsigned i;
@@ -194,14 +194,14 @@ void Opsreducesum::initilizeinputs(tensor<double> **inputs,
     std::cout << reduction_dims[i] << ", ";
   std::cout << "\n";
 
-  this->inputs = new tensor<double> *[1];
+  this->inputs = new Tensor<std::float64_t> *[1];
 
   this->inputs[0] = inputs[0];
 }
 
 
 void Opsreducesum::initilizeoutput(
-    tensor<double> *output)  {
+    Tensor<std::float64_t> *output)  {
   unsigned no_of_resultent_dims, *resultent_dims;
   unsigned i, j;
   this->output = output;
@@ -215,7 +215,7 @@ void Opsreducesum::initilizeoutput(
     if (i != reduction_dims[j])
       resultent_dims[j++] = inputs[0]->getDimensions()[i];
 
-  *(this->output) = tensor<double>(no_of_resultent_dims, resultent_dims);
+  *(this->output) = Tensor<std::float64_t>(no_of_resultent_dims, resultent_dims, inputs[0]->getType());
 }
 
 

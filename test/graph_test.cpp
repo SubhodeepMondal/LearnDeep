@@ -1,58 +1,43 @@
-/* g++ -c core/Math/CPULibrary.cpp  -I include -o build/obj/CPULibrary.o && g++
- * test/graph_test.cpp build/obj/CPULibrary.o -lcpu -obuild/exe/graph_test.out
- * -I include -L build/archieve -fopenmp && sudo perf stat
- * ./build/exe/graph_test.out */
-
-// #include "../core/framework/MathLibrary.h"
-// #include "../core/graph/Graph.h"
-#include "../api/C_API.h"
+#include "../api/tensor.h"
 #include <iostream>
 
 int main() {
-  tensor<double> A, B, C, D, E, F, G, H, I, J;
+  tf::tensor A, B, C, D, E, F, G, H, I, J;
+  tf::tf_create(A, tf_float64, 3, 3, 3);
+  tf::tf_create(B, tf_float64, 3, 3, 3);
+  tf::tf_create(C, tf_float64, 3, 4, 3);
+  tf::tf_create(D, tf_float64, 3, 4, 3);
+  tf::tf_create(E, tf_float64, 3, 3, 2);
+  tf::tf_create(F, tf_float64, 3, 3, 2);
+  tf::tf_create(G, tf_float64, 3, 3, 2);
+  tf::tf_create(H, tf_float64, 3, 3, 2);
+  tf::tf_create(I, tf_float64, 3, 3, 2);
+  tf::tf_create(J, tf_float64, 3, 3, 2);
 
-  unsigned arr[] = {2, 3, 3};
-  A = tf::tf_create(3, 4, 3);
-  B = tf::tf_create(3, 3, 3);
-  C = tf::tf_create(3, 4, 3);
-  // D = tensor<double>(3, 3, 3);
-  // E = tensor<double>(3, 4, 3);
-  // F = tensor<double>(2, 3, 3);
+  tf::tensor_of(A, 5, 10);
+  tf::tensor_of(B, 2, 7.5);
+  tf::tensor_of(C, -100, 50);
 
-  // bool flag;
+  tf::graph g;
+  tf::tf_create_graph(g);
 
-  A.initRandData(5, 10);
-  B.initRandData(2, 7.5);
-  C.initRandData(-100, -50);
-  // D.initRandData(2, 3);
-  // E.initRandData(5, 10);
+  tf::matmul(g, C, A, B);
+  tf::add(g, D, C, A);
+  tf::mul(g, E, B, C);
+  tf::add(g, F, D, E);
+  tf::scale(g, G, F, 0.15);
+  tf::pow(g, H, G, 2);
+  tf::reducesum(g, I, H, 1);
+  tf::mean(g, J, I, 0);
 
-  graph g;
-  // std::cout << "printing A:\n";
-  // A.printData();
 
-  // std::cout << "printing B:\n";
-  // B.printData();
-  // E = D.matmul(g, C);
-  // F = B.add(g, E);
-  // H = F.scale(g, 0.1);
-  // I = H.pow(g, 3);
-  // J = I.mean(g, 1);
-  // tf::reducesum(g, D, A, 0,1);
-  tf::matmul(g, D, A, B);
-  tf::add(g, E, D, C);
-  tf::pow(g, F, E, 2);
-  tf::reducesum(g, G, F, 0);
-  tf::mean(g, H, G, 0);
-  tf::scale(g, I, G, -1.75);
+  // g.optimize();
+  // g.execute();
+  // g.traversenode();
 
-  // D = A.matmul(g, B);
-  // E = D.add(g, C);
-  // F = E.pow(g, 2);
-  // G = F.reducesum(g, 1);
-
-  g.optimize();
-  g.execute();
-  g.traversenode();
-  D.printDimensions();
+  tf::graph_optimize(g);
+  tf::graph_execute(g);
+  tf::graph_travarse_node(g);
+  // std::cout << "\n";
+  // A.printDimensions();
 }
