@@ -165,4 +165,5 @@ public:
   Graph mean(Graph &g, const unsigned n);
 };
 
+// template class Tensor<std::float64_t>;
 #endif // MATH_LIBRARY

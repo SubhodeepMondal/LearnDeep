@@ -20,7 +20,6 @@ typedef enum function_names {
 } function_names;
 
 class Ops {
-
 public:
   virtual void compute() = 0;
   virtual void initilizeoutput(Tensor<std::float64_t> *) = 0;
@@ -162,13 +161,12 @@ public:
 
 class Opsreducesum : public Ops {
   unsigned no_of_reduction_dim, *reduction_dims;
-
   Tensor<std::float64_t> **inputs;
+  Tensor<std::float64_t> *temp_output;
+  Tensor<std::float64_t> *temp_input;
   Tensor<std::float64_t> *output;
   void recursive_sum(unsigned index, unsigned *dimension_arr,
-                     Tensor<std::float64_t> input,
-                     Tensor<std::float64_t> &output, unsigned reduction_dim,
-                     std::float64_t *temp_input);
+                     unsigned reduction_dim, std::float64_t *temp_arr);
 
 public:
   void compute();

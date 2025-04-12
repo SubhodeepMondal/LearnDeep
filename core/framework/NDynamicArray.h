@@ -105,7 +105,7 @@ public:
 
   void printNoOfElements();
 
-  void reshape() {}
+  void reshape(unsigned n, unsigned *arr);
 
   // template <typename first_dim, typename... Args>
   // void reshape(first_dim n, Args... args);

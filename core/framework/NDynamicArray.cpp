@@ -76,14 +76,14 @@ ndarray<T>::ndarray(unsigned n, const unsigned *arr, DataType d_type) {
   this->arr_dim = new unsigned[this->nDim];
   this->isDimInitilized = true;
   this->tensor_type = d_type;
-  #undef data_type
-  
+#undef data_type
+
   for (int i = 0; i < this->nDim; i++) {
     this->dimension[i] = arr[i];
     nElem *= dimension[i];
   }
   data_ptr = new EnumToDataType<tf_bfloat16>::type[nElem];
-  
+
   data = new T[nElem];
   std::memset(data, 0, nElem * sizeof(T));
 }
@@ -295,7 +295,7 @@ template <typename T>
 void ndarray<T>::initRandData(double lower_limit, double upper_limit) {
   std::default_random_engine generator;
   std::uniform_real_distribution<T> distribution((0 + lower_limit),
-                                                      (1 * upper_limit));
+                                                 (1 * upper_limit));
 
   for (int i = 0; i < nElem; i++) {
     data[i] = distribution(generator);
@@ -368,6 +368,23 @@ template <typename T> void ndarray<T>::setObjName(std::string str) {
 
 template <typename T> void ndarray<T>::printNoOfElements() {
   std::cout << nElem << "\n";
+}
+
+template <typename T> void ndarray<T>::reshape(unsigned n, unsigned *arr) {
+  this->nDim = n;
+
+  delete [] arr;
+  delete [] arr_dim;
+
+  this->dimension = new unsigned[this->nDim];
+  this->arr_dim = new unsigned[this->nDim];
+  this->nElem = 1;
+
+  for (int i = 0; i < this->nDim; i++) {
+    this->dimension[i] = arr[i];
+    nElem *= dimension[i];
+  }
+  printDimensions();
 }
 
 template <typename T>

@@ -21,15 +21,16 @@ int main() {
   tf::graph g;
   tf::tf_create_graph(g);
 
-  tf::matmul(g, C, A, B);
-  tf::add(g, D, C, A);
-  tf::mul(g, E, B, C);
-  tf::add(g, F, D, E);
-  tf::scale(g, G, F, 0.15);
-  tf::pow(g, H, G, 2);
-  tf::reducesum(g, I, H, 1);
-  tf::mean(g, J, I, 0);
+  // tf::matmul(g, C, A, B);
+  // tf::add(g, D, C, A);
+  // tf::mul(g, E, B, C);
+  // tf::add(g, F, D, E);
+  // tf::scale(g, G, F, 0.15);
+  // tf::pow(g, H, G, 2);
+  tf::reducesum(g, B, A, 1);
+  tf::mean(g, C, B, 0);
 
+  
 
   // g.optimize();
   // g.execute();
