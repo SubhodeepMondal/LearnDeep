@@ -44,20 +44,19 @@ void Opspower::recursive_iterator(unsigned index, unsigned *dimension_arr,
       }
 
     int j;
-    unsigned a[2];
+    unsigned a[2];  
     std::float64_t *ptr[3];
 
     a[0] = inpA_x;
     a[1] = inpA_y;
 
     ptr[0] = inputs[0]->getData() + a_index;
-    ptr[1] = inputs[0]->getData() + b_index;
+    ptr[1] = output->getData() + c_index;
     ptr[2] = output->getData() + c_index;
 
-    cpu::__melementwisemul(ptr, a);
+    kernel_dispatch(ptr, a);
 
   } else {
-    std::cout << "inside else\n";
     for (unsigned i = 0; i < inputs[0]->getDimensions()[index]; i++) {
       dimension_arr[index] = i;
       recursive_iterator(index - 1, dimension_arr, function_name, NULL, NULL,
@@ -74,8 +73,6 @@ void Opspower::compute() {
   else if (exponent > 0) {
     output->initData(inputs[0]->getData());
     arr = new unsigned[inputs[0]->getNoOfDimensions()];
-
-    // std::cout << output->getData() << "\n";
     for (i = 1; i < exponent; i++)
       recursive_iterator(inputs[0]->getNoOfDimensions() - 1, arr,
                          "matrix_power", NULL, NULL, NULL);
@@ -110,8 +107,15 @@ void Opspower::printinputs() {
 }
 
 void Opspower::printoutput() {
-  // std::cout << output->getData() << "\n";
   std::cout << "output:\n";
   output->printData();
   std::cout << "\n";
+}
+
+void Opspower::kernel_dispatch(std::float64_t **ptr, unsigned *arr) {
+  if (__builtin_cpu_supports("avx2")) {
+    avx2::avx2_mul_f64(ptr, arr);
+  } else {
+    cpu::__melementwisemul(ptr, arr);
+  }
 }

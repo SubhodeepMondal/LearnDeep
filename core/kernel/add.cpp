@@ -52,10 +52,10 @@ void Opsadd::recursive_iterator(unsigned index, unsigned *dimension_arr,
     ptr[0] = inputs[0]->getData() + a_index;
     ptr[1] = inputs[1]->getData() + b_index;
     ptr[2] = output->getData() + c_index;
-    cpu::__madd(ptr, a);
+
+    kernel_dispatch(ptr, a);
 
   } else {
-    // std::cout << "inside else\n";
     for (unsigned i = 0; i < inputs[0]->getDimensions()[index]; i++) {
       dimension_arr[index] = i;
       recursive_iterator(index - 1, dimension_arr, function_name, NULL, NULL,
@@ -65,7 +65,6 @@ void Opsadd::recursive_iterator(unsigned index, unsigned *dimension_arr,
 };
 
 void Opsadd::compute() {
-  // std::cout << "inside compute\n";
   unsigned dim_x, dim_y;
   dim_x = inputs[0]->getDimensions()[0];
   dim_y = inputs[1]->getDimensions()[1];
@@ -105,8 +104,15 @@ void Opsadd::printinputs() {
 }
 
 void Opsadd::printoutput() {
-  // std::cout << output->getData() << "\n";
   std::cout << "output:\n";
   output->printData();
   std::cout << "\n";
+}
+
+void Opsadd::kernel_dispatch(std::float64_t **ptr, unsigned *arr) {
+  if (__builtin_cpu_supports("avx2")) {
+    avx2::avx2_add_f64(ptr, arr);
+  } else {
+    cpu::__madd(ptr, arr);
+  }
 }

@@ -54,7 +54,9 @@ void Opsmatmul::recursive_iterator(unsigned index, unsigned *dimension_arr,
     ptr[0] = inputs[0]->getData() + a_index;
     ptr[1] = inputs[1]->getData() + b_index;
     ptr[2] = output->getData() + c_index;
-    cpu::__mmul(ptr, a);
+
+    // cpu::__mmul(ptr, a);
+    kernel_dispatch(ptr, a);
   } else {
     for (unsigned i = 0; i < inputs[0]->getDimensions()[index]; i++) {
       dimension_arr[index] = i;
@@ -122,8 +124,16 @@ void Opsmatmul::printinputs() {
 }
 
 void Opsmatmul::printoutput() {
-  // std::cout << output->getData() << "\n";
   std::cout << "output:\n";
   output->printData();
   std::cout << "\n";
+}
+
+void Opsmatmul::kernel_dispatch(std::float64_t **ptr, unsigned *arr) {
+  if (__builtin_cpu_supports("avx2")) {
+    // avx2::avx2_matmul_conventional_f64(ptr, arr);
+    avx2::avx2_matmul_f64(ptr, arr);
+  } else {
+    cpu::__matmul(ptr, arr);
+  }
 }

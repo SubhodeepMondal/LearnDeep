@@ -2,6 +2,7 @@
 #define OPS_KERNEL
 
 #include "../LAS/CPULibrary.h"
+#include "../LAS/avx2_micro_kernels.h"
 #include <cstdint>
 #include <iostream>
 #include <stdfloat>
@@ -60,6 +61,8 @@ class Opsmul : public Ops {
                           std::float64_t *dl_arr,
                           Tensor<std::float64_t> *misc_arr);
 
+  void kernel_dispatch(std::float64_t **, unsigned *);
+
 public:
   Opsmul() {}
   void compute();
@@ -88,6 +91,8 @@ class Opsadd : public Ops {
                           std::float64_t *dl_arr,
                           Tensor<std::float64_t> *misc_arr);
 
+  void kernel_dispatch(std::float64_t **, unsigned *);
+
 public:
   Opsadd() {}
   void compute();
@@ -111,6 +116,7 @@ class Opsmatmul : public Ops {
   Tensor<std::float64_t> *output;
   void recursive_iterator(unsigned index, unsigned *, std::string, unsigned *,
                           std::float64_t *, Tensor<std::float64_t> *);
+  void kernel_dispatch(std::float64_t **, unsigned *);
 
 public:
   Opsmatmul() {}
@@ -141,6 +147,8 @@ class Opspower : public Ops {
                           std::string function_name, unsigned *ui_arr,
                           std::float64_t *dl_arr,
                           Tensor<std::float64_t> *misc_arr);
+
+  void kernel_dispatch(std::float64_t **, unsigned *);
 
 public:
   void compute();
@@ -194,6 +202,7 @@ class Opsscale : public Ops {
                           std::string function_name, unsigned *ui_arr,
                           std::float64_t *dl_arr,
                           Tensor<std::float64_t> *misc_arr);
+  void kernel_dispatch(std::float64_t **, unsigned *);
 
 public:
   void compute();

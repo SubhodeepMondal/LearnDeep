@@ -105,13 +105,6 @@ void Ops::recursive_sum(unsigned index, unsigned *dimension_arr,
         ptr[1] = temp_input;
 
         cpu::__madd(ptr, a);
-
-        // for (int j = 0; j < y_axis; j++)
-        //     for (int i = 0; i < x_axis; i++)
-        //         std::cout << output_ptr[i + j * x_axis] << " ";
-
-        // cpu::__madd(output_ptr + output_index, temp_inp, output_ptr +
-        // output_index, x_axis, y_axis);
       }
       break;
     }

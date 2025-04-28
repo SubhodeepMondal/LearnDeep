@@ -1,9 +1,8 @@
 #include "CPULibrary.h"
 #include <cstring>
-#include <iostream>
 #include <omp.h>
 
-void cpu::__mmul(std::float64_t **ptr, unsigned *arr) {
+void cpu::__matmul(std::float64_t **ptr, unsigned *arr) {
   // x output row size
   // y k row
   // z output column size
@@ -32,7 +31,7 @@ void cpu::__mmul(std::float64_t **ptr, unsigned *arr) {
   }
 }
 
-void cpu::__mmulconventional(std::float64_t **ptr, unsigned *arr) {
+void cpu::__matmul_conventional(std::float64_t **ptr, unsigned *arr) {
 
   std::float64_t sum, *A, *B, *C;
   unsigned x, y, z;

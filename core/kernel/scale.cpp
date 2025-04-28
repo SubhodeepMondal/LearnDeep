@@ -42,9 +42,8 @@ void Opsscale::recursive_iterator(unsigned index, unsigned *dimension_arr,
     ptr[1] = dl_arr;
     ptr[2] = output->getData() + c_index;
 
-    cpu::__mscalermul(ptr, a);
+    kernel_dispatch(ptr,a);
   } else {
-    // std::cout << "inside else\n";
     for (unsigned i = 0; i < inputs[0]->getDimensions()[index]; i++) {
       dimension_arr[index] = i;
       recursive_iterator(index - 1, dimension_arr, function_name, ui_arr,
@@ -84,8 +83,15 @@ void Opsscale::printinputs() {
 }
 
 void Opsscale::printoutput() {
-  // std::cout << output->getData() << "\n";
   std::cout << "output:\n";
   output->printData();
   std::cout << "\n";
+}
+
+void Opsscale::kernel_dispatch(std::float64_t **ptr, unsigned *arr) {
+  if (__builtin_cpu_supports("avx2")) {
+    avx2::avx2_scale_f64(ptr, arr);
+  } else {
+    cpu::__mscalermul(ptr, arr);
+  }
 }

@@ -128,7 +128,6 @@ void Opsreducesum::compute() {
   Tensor<std::float64_t> temp_inp = Tensor<std::float64_t>(*inputs[0]);
   temp_inp.initData(inputs[0]->getData());
   temp_inp.printData();
-  // inputs[0]->printData();
 
   intermediate_input = new std::float64_t[inputs[0]->getDimensions()[0] *
                                           inputs[0]->getDimensions()[1] *
@@ -174,12 +173,7 @@ void Opsreducesum::initilizeinputs(Tensor<std::float64_t> **inputs, unsigned n,
   for (i = 0; i < n; i++)
     reduction_dims[i] = arr[i];
 
-  for (i = 0; i < n; i++)
-    std::cout << reduction_dims[i] << ", ";
-  std::cout << "\n";
-
   this->inputs = new Tensor<std::float64_t> *[1];
-
   this->inputs[0] = inputs[0];
 }
 
@@ -209,7 +203,6 @@ void Opsreducesum::printinputs() {
 }
 
 void Opsreducesum::printoutput() {
-  // std::cout << output->getData() << "\n";
   std::cout << "output:\n";
   output->printData();
   std::cout << "\n";
