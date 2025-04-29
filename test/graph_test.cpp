@@ -25,7 +25,7 @@ int main() {
   tf::tf_create_graph(g);
 
   tf::matmul(g, C, A, B);
-  // tf::add(g, E, D, C);
+  tf::add(g, E, D, C);
   // tf::scale(g, C, B, 0.15);
   // tf::add(g, F, D, E);
   // tf::scale(g, G, F, 0.15);

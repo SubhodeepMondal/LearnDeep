@@ -131,7 +131,6 @@ void Opsmatmul::printoutput() {
 
 void Opsmatmul::kernel_dispatch(std::float64_t **ptr, unsigned *arr) {
   if (__builtin_cpu_supports("avx2")) {
-    // avx2::avx2_matmul_conventional_f64(ptr, arr);
     avx2::avx2_matmul_f64(ptr, arr);
   } else {
     cpu::__matmul(ptr, arr);

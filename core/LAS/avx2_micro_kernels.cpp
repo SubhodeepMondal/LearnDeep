@@ -23,8 +23,8 @@ void avx2::avx2_matmul_conventional_f64(std::float64_t **ptr, unsigned *arr) {
   y = arr[1];
   z = arr[2];
   std::cout << "avx256 kernel for conventional matmul is running....\n";
-  // std::cout << omp_get_max_threads() << "\n";
-
+// std::cout << omp_get_max_threads() << "\n";
+#pragma omp parallel for
   for (int j = 0; j < z; j++) {
     for (int i = 0; i < x; i++) {
       for (int k = 0; k <= y - 4; k += 4) {
