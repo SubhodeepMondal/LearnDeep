@@ -2,6 +2,7 @@
 #include <cstring>
 #include <immintrin.h>
 #include <iostream>
+#include <math.h>
 #include <omp.h>
 #include <thread>
 
@@ -201,4 +202,53 @@ void avx2::avx2_scale_f64(std::float64_t **ptr, unsigned *arr) {
 
   for (i = n_elements - (n_elements % 4); i < n_elements; i++)
     c[i] = a[i] * b;
+}
+
+// incomplete
+void avx2::avx2_relu_f64(std::float64_t **ptr, unsigned *arr) {
+  std::float64_t *a, *b, *c;
+  unsigned i, m_size, n_size, n_elements;
+  a = ptr[0];
+  b = ptr[1];
+
+  m_size = arr[0];
+  n_size = arr[1];
+}
+
+// sigmoid = 1 / (1 + e^(-x))
+void avx2::avx2_sigmoid_f64(std::float64_t **ptr, unsigned *arr) {
+  std::float64_t *a, *b;
+  unsigned i, m_size, n_size, n_elements;
+  a = ptr[0];
+  b = ptr[1];
+
+  m_size = arr[0];
+  n_size = arr[1];
+  n_elements = m_size * n_size;
+
+#pragma omp parallel for
+  for (i = 0; i <= n_elements - 4; i += 4) {
+    __m256d vec_ones = _mm256_set1_pd(1.0);
+
+    __m256d numerator =
+        _mm256_add_pd(vec_ones, exp256_pd(_mm256_loadu_pd(
+                                    reinterpret_cast<const double *>(a + i))));
+    __m256d temp_res = _mm256_exp_pd(vec_ones, numerator);
+
+    _mm256_storeu_pd(reinterpret_cast<double *>(b), temp_res);
+  }
+
+  for (i = n_elements - n_elements % 4; i < n_elements; i++) {
+    b[i] = 1 / (1 + exp(a[i]));
+  }
+}
+
+void avx2::avx2_softmax_f64(std::float64_t **ptr, unsigned *arr) {
+  std::float64_t *a, *b, *c;
+  unsigned i, m_size, n_size;
+  a = ptr[0];
+  b = ptr[1];
+
+  m_size = arr[0];
+  n_size = arr[1];
 }

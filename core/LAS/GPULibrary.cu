@@ -354,7 +354,6 @@ __global__ void gpu::matrixRelu(double *a, double *d_a, int x, int y)
         }
         else
         {
-
             a[lin_idx] = 0;
             d_a[lin_idx] = 0;
         }

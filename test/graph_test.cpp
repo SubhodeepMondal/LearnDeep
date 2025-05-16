@@ -24,8 +24,10 @@ int main() {
   tf::graph g;
   tf::tf_create_graph(g);
 
-  tf::matmul(g, C, A, B);
-  tf::add(g, E, D, C);
+  C = matmul(A, B);
+
+  // tf::matmul(g, C, A, B);
+  // tf::add(g, E, D, C);
   // tf::scale(g, C, B, 0.15);
   // tf::add(g, F, D, E);
   // tf::scale(g, G, F, 0.15);
@@ -37,9 +39,9 @@ int main() {
   // g.execute();
   // g.traversenode();
 
-  tf::graph_optimize(g);
-  tf::graph_execute(g);
-  tf::graph_travarse_node(g);
+  // tf::graph_optimize(g);
+  // tf::graph_execute(g);
+  // tf::graph_travarse_node(g);
   // std::cout << "\n";
   // A.printDimensions();
 }

@@ -108,6 +108,17 @@ void print_dimension(tensor &input) {
   }
 }
 
+tensor matmul(tensor &input_a, tensor &input_b) {
+  tensor t;
+  Tensor result =
+      static_cast<Tensor<std::float64_t> *>(input_a.ptr)
+          ->matmul(*(static_cast<Tensor<std::float64_t> *>(input_b.ptr)));
+
+  t.ptr = (void *)&result;
+  t.dt_type = tf_float64;
+  return t;
+}
+
 void matmul(graph &g, tensor &output, tensor &input_a, tensor &input_b) {
   if ((input_a.dt_type == input_b.dt_type) &&
       (input_a.dt_type == output.dt_type)) {
@@ -231,16 +242,15 @@ void reducesum(graph &g, tensor &output, tensor &input, Args... args) {
   reducesum(g, output, input, args...);
 }
 
-void mean(graph &g, tensor &output, tensor &input,
-  const unsigned n) {
-    if ((input.dt_type == output.dt_type)) {
-      switch (output.dt_type) {
-      case tf_float64:
-        static_cast<Tensor<std::float64_t> *>(output.ptr)
-            ->assign(static_cast<Tensor<std::float64_t> *>(input.ptr)->mean(
-                *(static_cast<Graph *>(g)), n));
-      }
+void mean(graph &g, tensor &output, tensor &input, const unsigned n) {
+  if ((input.dt_type == output.dt_type)) {
+    switch (output.dt_type) {
+    case tf_float64:
+      static_cast<Tensor<std::float64_t> *>(output.ptr)
+          ->assign(static_cast<Tensor<std::float64_t> *>(input.ptr)->mean(
+              *(static_cast<Graph *>(g)), n));
     }
+  }
 }
 
 void graph_optimize(graph &g) { static_cast<Graph *>(g)->optimize(); }
