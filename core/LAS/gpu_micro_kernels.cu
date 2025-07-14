@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <cuda_runtime.h>
-#include "GPU_aux.h"
-#include "GPULibrary.h"
+#include "gpu_micro_kernels.cuh"
 
 __global__ void gpu::printData(double *a, unsigned x, unsigned y, unsigned z)
 {
@@ -186,6 +185,16 @@ __global__ void gpu::cudaMatrixMul(double *a, double *b, double *d, int a_m, int
 
         d[Bi + (threadIdx.y + blockDim.y * blockIdx.y) * b_n] += val;
     }
+}
+
+__global__ void gpu::matrixSum(double *a, double *b, double *c, unsigned x, unsigned y){
+    unsigned id_x, id_y, lin_idx;
+    id_x = threadIdx.x + (blockDim.x * blockIdx.x);
+    id_y = threadIdx.y + (blockDim.y * blockIdx.y);
+    lin_idx = id_x + id_y * x;
+
+    if (id_x < x && id_y < y)
+        c[lin_idx] = a[lin_idx] + b[lin_idx];
 }
 
 __global__ void gpu::matrixScalerMul(double *input, double scaler_value, double *output, unsigned x, unsigned y, unsigned z)
@@ -745,6 +754,7 @@ __global__ void gpu::matrixUpdateLearningRateAdadelta(double epsalon, double sig
     }
 }
 
+/*
 template <typename T>
 void GPU_aux<T>::allocateGPUMemory(T *data, unsigned n)
 {
@@ -787,3 +797,4 @@ void GPU_aux<T>::cudaMemoryCopyDeviceToHost(T *data)
 {
     cudaFree(data);
 }
+    */

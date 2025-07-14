@@ -1,5 +1,8 @@
-#include "../framework/MathLibrary.h"
-#include "opskernel.h"
+#include <LAS/CPULibrary.h>
+#include <LAS/avx2_micro_kernels.h>
+#include <framework/MathLibrary.h>
+#include <kernel/opskernel.h>
+
 
 void Opsmatmul::recursive_iterator(unsigned index, unsigned *dimension_arr,
                                    std::string function_name, unsigned *ui_arr,

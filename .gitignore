@@ -10,3 +10,6 @@
 
 **/lib/*
 !**/lib/.gitkeep
+
+thirdparty/*
+!thirdparty/.gitkeep

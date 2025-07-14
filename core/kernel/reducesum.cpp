@@ -1,5 +1,8 @@
-#include "../framework/MathLibrary.h"
-#include "opskernel.h"
+#include <LAS/CPULibrary.h>
+#include <LAS/avx2_micro_kernels.h>
+#include <framework/MathLibrary.h>
+#include <kernel/opskernel.h>
+
 
 void Opsreducesum::recursive_sum(unsigned index, unsigned *dimension_arr,
                                  unsigned reduction_dim,

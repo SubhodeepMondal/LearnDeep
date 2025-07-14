@@ -1,8 +1,6 @@
 #ifndef OPS_KERNEL
 #define OPS_KERNEL
 
-#include "../LAS/CPULibrary.h"
-#include "../LAS/avx2_micro_kernels.h"
 #include <cstdint>
 #include <iostream>
 #include <stdfloat>

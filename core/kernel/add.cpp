@@ -1,5 +1,12 @@
-#include "../framework/MathLibrary.h"
-#include "opskernel.h"
+#ifdef CUDA_ENABLED
+#include <LAS/gpu_interface.h>
+#endif
+
+#include <LAS/CPULibrary.h>
+#include <LAS/avx2_micro_kernels.h>
+
+#include <framework/MathLibrary.h>
+#include <kernel/opskernel.h>
 
 void Opsadd::recursive_iterator(unsigned index, unsigned *dimension_arr,
                                 std::string function_name, unsigned *ui_arr,
@@ -54,6 +61,7 @@ void Opsadd::recursive_iterator(unsigned index, unsigned *dimension_arr,
     ptr[2] = output->getData() + c_index;
 
     kernel_dispatch(ptr, a);
+
 
   } else {
     for (unsigned i = 0; i < inputs[0]->getDimensions()[index]; i++) {
@@ -110,9 +118,15 @@ void Opsadd::printoutput() {
 }
 
 void Opsadd::kernel_dispatch(std::float64_t **ptr, unsigned *arr) {
+
+#ifdef CUDA_ENABLED
+  double **d_ptr = reinterpret_cast<double **>(ptr);
+  gpu::gpu_mat_add_f64(d_ptr, arr);
+#else
   if (__builtin_cpu_supports("avx2")) {
     avx2::avx2_add_f64(ptr, arr);
   } else {
     cpu::__madd(ptr, arr);
   }
+  #endif
 }
