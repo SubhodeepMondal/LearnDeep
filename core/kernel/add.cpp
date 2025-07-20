@@ -1,5 +1,5 @@
 #ifdef CUDA_ENABLED
-#include <LAS/gpu_interface.h>
+#include <LAS/gpu_interface.cuh>
 #endif
 
 #include <LAS/CPULibrary.h>
@@ -62,7 +62,6 @@ void Opsadd::recursive_iterator(unsigned index, unsigned *dimension_arr,
 
     kernel_dispatch(ptr, a);
 
-
   } else {
     for (unsigned i = 0; i < inputs[0]->getDimensions()[index]; i++) {
       dimension_arr[index] = i;
@@ -120,13 +119,17 @@ void Opsadd::printoutput() {
 void Opsadd::kernel_dispatch(std::float64_t **ptr, unsigned *arr) {
 
 #ifdef CUDA_ENABLED
-  double **d_ptr = reinterpret_cast<double **>(ptr);
-  gpu::gpu_mat_add_f64(d_ptr, arr);
+  double *d_arr[3];
+  d_arr[0] = reinterpret_cast<double *>(ptr[0]);
+  d_arr[1] = reinterpret_cast<double *>(ptr[1]);
+  d_arr[2] = reinterpret_cast<double *>(ptr[2]);
+
+  gpu::gpu_mat_add_f64(d_arr, arr);
 #else
   if (__builtin_cpu_supports("avx2")) {
     avx2::avx2_add_f64(ptr, arr);
   } else {
     cpu::__madd(ptr, arr);
   }
-  #endif
+#endif
 }

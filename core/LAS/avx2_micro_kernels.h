@@ -18,4 +18,4 @@ void avx2_scale_f64(std::float64_t **, unsigned *);
 
 } // namespace avx2
 
-#endif
+#endif //

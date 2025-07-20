@@ -1,4 +1,5 @@
-#pragma ONCE
+#ifndef OPSNAME_H
+#define OPSNAME_H
 #include<map>
 template <typename T> class tensor;
 
@@ -29,3 +30,4 @@ typedef struct struct_function_name {
     function_name["matrix_transpose"] = matrix_transpose;
   }
 } struct_function_name;
+#endif // OPSNAME_H

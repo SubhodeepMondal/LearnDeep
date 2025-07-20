@@ -1,45 +1,37 @@
 #include <tensor.h>
-#include <iostream>
 
-int main() {
-  tf::tensor A, B, C, D, E, F, G, H, I, J;
-  unsigned n = 1 << 2;
-  std::cout << n << "\n";
-  tf::tf_create(A, tf_float64, n, n);
-  tf::tf_create(B, tf_float64, n, n);
-  tf::tf_create(C, tf_float64, 3, 4, 3);
-  tf::tf_create(D, tf_float64, n, n);
-  tf::tf_create(E, tf_float64, 3, 3, 2);
-  tf::tf_create(F, tf_float64, 3, 3, 2);
-  tf::tf_create(G, tf_float64, 3, 3, 2);
-  tf::tf_create(H, tf_float64, 3, 3, 2);
-  tf::tf_create(I, tf_float64, 3, 3, 2);
-  tf::tf_create(J, tf_float64, 3, 3, 2);
+int main(int argc, char** argv) {
+  tf::tensor A, B, C;
+  std::float64_t a[] = {0.00805433, 0.71604533, 0.53269858, 0.34661127,
+                      0.56137041, 0.14270995, 0.62471964, 0.31898735,
+                      0.32166846, 0.11043887, 0.43579798, 0.68246876,
+                      0.91418964, 0.23475763, 0.45345491, 0.52145146};
 
-  tf::tensor_of(A, 5, 10);
-  tf::tensor_of(B, 2, 7.5);
-  tf::tensor_of(C, -100, 50);
-  tf::tensor_of(D, -100, -50);
+  std::float64_t b[] = {0.49704563, 0.07919775, 0.28764169, 0.48468005,
+                      0.55964598, 0.51628139, 0.81488106, 0.51503196,
+                      0.2614797,  0.78048695, 0.91069071, 0.08636421,
+                      0.19244527, 0.8450769,  0.84808829, 0.6912999};
+
+  std::float64_t c[] = {0.50509996, 0.79524308, 0.82034027, 0.83129132,
+                      1.12101639, 0.65899134, 1.4396007,  0.83401931,
+                      0.58314816, 0.89092581, 1.34648869, 0.76883297,
+                      1.1066349,  1.07983453, 1.3015432,  1.21275137};
+
+  tf::tf_create(A, tf_float64, 4, 4);
+  tf::tf_create(B, tf_float64, 4, 4);
+  tf::tf_create(C, tf_float64, 4, 4);
+  tf::tensor_of(A, a);
+  tf::tensor_of(B, b);
+  tf::print_data(A);
+  tf::print_data(B);
 
   tf::graph g;
   tf::tf_create_graph(g);
 
-  tf::matmul(g, C, A, B);
-  tf::add(g, E, D, C);
-  // tf::scale(g, C, B, 0.15);
-  // tf::add(g, F, D, E);
-  // tf::scale(g, G, F, 0.15);
-  // tf::pow(g, H, G, 2);
-  // tf::reducesum(g, B, A, 0);
-  // tf::mean(g, C, B, 0);
 
-  // g.optimize();
-  // g.execute();
-  // g.traversenode();
+  tf::add(g, C, A, B);
 
   tf::graph_optimize(g);
   tf::graph_execute(g);
   tf::graph_travarse_node(g);
-  // std::cout << "\n";
-  // A.printDimensions();
 }

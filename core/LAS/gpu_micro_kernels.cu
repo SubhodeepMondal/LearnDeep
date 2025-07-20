@@ -2,7 +2,7 @@
 #include <cuda_runtime.h>
 #include "gpu_micro_kernels.cuh"
 
-__global__ void gpu::printData(double *a, unsigned x, unsigned y, unsigned z)
+__global__ void gpu_kernel::printData(double *a, unsigned x, unsigned y, unsigned z)
 {
     int i, j, k;
     for (i = 0; i < z; i++)
@@ -19,12 +19,12 @@ __global__ void gpu::printData(double *a, unsigned x, unsigned y, unsigned z)
             }
 }
 
-__global__ void gpu::print(double *a)
+__global__ void gpu_kernel::print(double *a)
 {
     printf("%.6lf", *(a));
 }
 
-__global__ void gpu::cudaTranspose(unsigned int *a, unsigned int *b, int xsize, int ysize)
+__global__ void gpu_kernel::cudaTranspose(unsigned int *a, unsigned int *b, int xsize, int ysize)
 {
     int ix, iy, mat_in, mat_tra;
 
@@ -47,7 +47,7 @@ __global__ void gpu::cudaTranspose(unsigned int *a, unsigned int *b, int xsize, 
     b[mat_tra] = smallblock[icol][irow];
 }
 
-__global__ void gpu::cudaDotMul(double *a, double *b, double *c, int x, int y, int a_m, int a_n, int b_m, int b_n)
+__global__ void gpu_kernel::cudaDotMul(double *a, double *b, double *c, int x, int y, int a_m, int a_n, int b_m, int b_n)
 {
     int n = b_m;
     int ind, i;
@@ -75,7 +75,7 @@ __global__ void gpu::cudaDotMul(double *a, double *b, double *c, int x, int y, i
     }
 }
 
-__global__ void gpu::cudaMatrixMulMultiParallesied(double *a, double *b, double *c, double *d, int a_m, int a_n, int b_m, int b_n)
+__global__ void gpu_kernel::cudaMatrixMulMultiParallesied(double *a, double *b, double *c, double *d, int a_m, int a_n, int b_m, int b_n)
 {
     int ix, iy, rowDim;
     ix = threadIdx.x + blockIdx.x * blockDim.x;
@@ -89,7 +89,7 @@ __global__ void gpu::cudaMatrixMulMultiParallesied(double *a, double *b, double 
     }
 }
 
-__global__ void gpu::cudaRollingSum(double *a)
+__global__ void gpu_kernel::cudaRollingSum(double *a)
 {
     int n = blockDim.x;
     int ind, i, k;
@@ -110,7 +110,7 @@ __global__ void gpu::cudaRollingSum(double *a)
     }
 }
 
-__device__ double gpu::cudaSubDotMul(double *a, double *b, int a_m, int a_n, int b_m, int b_n, int n)
+__device__ double gpu_kernel::cudaSubDotMul(double *a, double *b, int a_m, int a_n, int b_m, int b_n, int n)
 {
     double sum = 0;
 
@@ -122,7 +122,7 @@ __device__ double gpu::cudaSubDotMul(double *a, double *b, int a_m, int a_n, int
     return sum;
 }
 
-__global__ void gpu::cudaSubMul(double *a, double *b, double *d, int a_m, int a_n, int b_m, int b_n, int i, int j)
+__global__ void gpu_kernel::cudaSubMul(double *a, double *b, double *d, int a_m, int a_n, int b_m, int b_n, int i, int j)
 {
     __shared__ double Y_shared[32][33];
 
@@ -151,7 +151,7 @@ __global__ void gpu::cudaSubMul(double *a, double *b, double *d, int a_m, int a_
     }
 }
 
-__global__ void gpu::cudaMatrixMul(double *a, double *b, double *d, int a_m, int a_n, int b_m, int b_n, int i, int j)
+__global__ void gpu_kernel::cudaMatrixMul(double *a, double *b, double *d, int a_m, int a_n, int b_m, int b_n, int i, int j)
 {
     __shared__ double Y_shared[32][33];
     __shared__ double X_shared[32][32];
@@ -187,7 +187,8 @@ __global__ void gpu::cudaMatrixMul(double *a, double *b, double *d, int a_m, int
     }
 }
 
-__global__ void gpu::matrixSum(double *a, double *b, double *c, unsigned x, unsigned y){
+__global__ void gpu_kernel::matrixSum(double *a, double *b, double *c, unsigned x, unsigned y)
+{
     unsigned id_x, id_y, lin_idx;
     id_x = threadIdx.x + (blockDim.x * blockIdx.x);
     id_y = threadIdx.y + (blockDim.y * blockIdx.y);
@@ -197,7 +198,17 @@ __global__ void gpu::matrixSum(double *a, double *b, double *c, unsigned x, unsi
         c[lin_idx] = a[lin_idx] + b[lin_idx];
 }
 
-__global__ void gpu::matrixScalerMul(double *input, double scaler_value, double *output, unsigned x, unsigned y, unsigned z)
+__global__ void gpu_kernel::matrixMul(double *a, double *b, double *c, unsigned x, unsigned y){
+    unsigned id_x, id_y, lin_idx;
+    id_x = threadIdx.x + (blockDim.x * blockIdx.x);
+    id_y = threadIdx.y + (blockDim.y * blockIdx.y);
+    lin_idx = id_x + id_y * x;
+
+    if (id_x < x && id_y < y)
+        c[lin_idx] = a[lin_idx] * b[lin_idx];
+}
+
+__global__ void gpu_kernel::matrixScalerMul(double *input, double scaler_value, double *output, unsigned x, unsigned y, unsigned z)
 {
 
     unsigned id_x, id_y, id_z, lin_idx;
@@ -210,7 +221,7 @@ __global__ void gpu::matrixScalerMul(double *input, double scaler_value, double 
         output[lin_idx] = scaler_value * input[lin_idx];
 }
 
-__global__ void gpu::matrixAccuracyValue(double *confusion_matrix, double *accuracy, unsigned x, unsigned y)
+__global__ void gpu_kernel::matrixAccuracyValue(double *confusion_matrix, double *accuracy, unsigned x, unsigned y)
 {
     unsigned i, true_values = 0;
 
@@ -220,7 +231,7 @@ __global__ void gpu::matrixAccuracyValue(double *confusion_matrix, double *accur
     *accuracy = (double)true_values / y;
 }
 
-__global__ void gpu::matrixArgMax(double *a, double *b, unsigned x, unsigned y)
+__global__ void gpu_kernel::matrixArgMax(double *a, double *b, unsigned x, unsigned y)
 {
     unsigned i, intr_y, index;
     double large = -1.0;
@@ -242,7 +253,7 @@ __global__ void gpu::matrixArgMax(double *a, double *b, unsigned x, unsigned y)
     }
 }
 
-__global__ void gpu::matrixDotMul(double *input_A, double *input_B, double *input_C, double *output, unsigned x, unsigned y, unsigned z)
+__global__ void gpu_kernel::matrixDotMul(double *input_A, double *input_B, double *input_C, double *output, unsigned x, unsigned y, unsigned z)
 {
     // m : features, n : neurons;
     // x : max feature, y : max neuron;
@@ -267,7 +278,7 @@ __global__ void gpu::matrixDotMul(double *input_A, double *input_B, double *inpu
     }
 }
 
-__global__ void gpu::matrixDifferentialParameters(double *input, double *delta_output, double *difference, double *d_parameters, unsigned x, unsigned y, unsigned z)
+__global__ void gpu_kernel::matrixDifferentialParameters(double *input, double *delta_output, double *difference, double *d_parameters, unsigned x, unsigned y, unsigned z)
 {
     unsigned indx_x, indx_y, indx_z, out_lin, inp_lin, diff_lin;
 
@@ -287,7 +298,7 @@ __global__ void gpu::matrixDifferentialParameters(double *input, double *delta_o
     }
 }
 
-__global__ void gpu::matrixDifferentialBiases(double *delta_output, double *difference, double *delta_biases, unsigned x, unsigned y)
+__global__ void gpu_kernel::matrixDifferentialBiases(double *delta_output, double *difference, double *delta_biases, unsigned x, unsigned y)
 {
     unsigned indx_x, indx_y, out_lin, diff_lin;
 
@@ -303,7 +314,7 @@ __global__ void gpu::matrixDifferentialBiases(double *delta_output, double *diff
     }
 }
 
-__global__ void gpu::matrixDifferentialInput(double *weights, double *delta_output, double *difference, double *delta_input, unsigned x, unsigned y, unsigned z)
+__global__ void gpu_kernel::matrixDifferentialInput(double *weights, double *delta_output, double *difference, double *delta_input, unsigned x, unsigned y, unsigned z)
 {
     unsigned indx_x, indx_y, indx_z, out_lin, inp_lin, diff_lin;
 
@@ -322,7 +333,7 @@ __global__ void gpu::matrixDifferentialInput(double *weights, double *delta_outp
     }
 }
 
-__global__ void gpu::matrixRollingSum(double *input, double *output, unsigned x, unsigned y, unsigned z)
+__global__ void gpu_kernel::matrixRollingSum(double *input, double *output, unsigned x, unsigned y, unsigned z)
 {
     // input dimension: xyz, (z is adding axis, xy is bubble up axises).
     // output dimension: xy
@@ -347,7 +358,7 @@ __global__ void gpu::matrixRollingSum(double *input, double *output, unsigned x,
     }
 }
 
-__global__ void gpu::matrixRelu(double *a, double *d_a, int x, int y)
+__global__ void gpu_kernel::matrixRelu(double *a, double *d_a, int x, int y)
 {
     // x: neuron, y: feature. m: max_neuron.
     unsigned id_x, id_y, lin_idx;
@@ -370,7 +381,7 @@ __global__ void gpu::matrixRelu(double *a, double *d_a, int x, int y)
     }
 }
 
-__global__ void gpu::matrixSigmoid(double *a, double *d_a, int x, int y)
+__global__ void gpu_kernel::matrixSigmoid(double *a, double *d_a, int x, int y)
 {
     // x: neuron, y: feature. m: max_neuron.
     unsigned id_x, id_y, lin_idx;
@@ -386,7 +397,7 @@ __global__ void gpu::matrixSigmoid(double *a, double *d_a, int x, int y)
     }
 }
 
-__global__ void gpu::matrixLinear(double *a, double *d_a, int x, int y)
+__global__ void gpu_kernel::matrixLinear(double *a, double *d_a, int x, int y)
 {
     // x: neuron, y: batch.
     unsigned id_x, id_y, lin_idx;
@@ -400,7 +411,7 @@ __global__ void gpu::matrixLinear(double *a, double *d_a, int x, int y)
     }
 }
 
-__global__ void gpu::matrixSoftmax(double *a, double *softmax_sum, double *d_a, unsigned x, unsigned y)
+__global__ void gpu_kernel::matrixSoftmax(double *a, double *softmax_sum, double *d_a, unsigned x, unsigned y)
 {
     unsigned i, id_x, id_y, lin_idx;
     id_x = threadIdx.x + (blockDim.x * blockIdx.x);
@@ -437,7 +448,7 @@ __global__ void gpu::matrixSoftmax(double *a, double *softmax_sum, double *d_a, 
     // }
 }
 
-__global__ void gpu::matrixSquaredError(double *a, double *b, unsigned x, unsigned y)
+__global__ void gpu_kernel::matrixSquaredError(double *a, double *b, unsigned x, unsigned y)
 {
     unsigned id_x, id_y, lin_idx;
     id_x = threadIdx.x + (blockDim.x * blockIdx.x);
@@ -448,7 +459,7 @@ __global__ void gpu::matrixSquaredError(double *a, double *b, unsigned x, unsign
         b[lin_idx] = pow((a[lin_idx]), 2);
 }
 
-__global__ void gpu::matrixSqrt(double *a, double *b, unsigned x, unsigned y)
+__global__ void gpu_kernel::matrixSqrt(double *a, double *b, unsigned x, unsigned y)
 {
     // input dimension xy
     // output dimension xy
@@ -461,7 +472,7 @@ __global__ void gpu::matrixSqrt(double *a, double *b, unsigned x, unsigned y)
         b[lin_idx] = sqrt(a[lin_idx]);
 }
 
-__global__ void gpu::matrixFindMean(double *a, unsigned x, unsigned y, unsigned mean)
+__global__ void gpu_kernel::matrixFindMean(double *a, unsigned x, unsigned y, unsigned mean)
 {
     unsigned indx_x, indx_y, inp_lin;
 
@@ -473,7 +484,7 @@ __global__ void gpu::matrixFindMean(double *a, unsigned x, unsigned y, unsigned 
         a[inp_lin] /= mean;
 }
 
-__global__ void gpu::matrixDifference(double *input_A, double *input_B, double *output_C, unsigned x, unsigned y)
+__global__ void gpu_kernel::matrixDifference(double *input_A, double *input_B, double *output_C, unsigned x, unsigned y)
 {
     unsigned id_x, id_y, lin_idx;
     id_x = threadIdx.x + (blockDim.x * blockIdx.x);
@@ -487,7 +498,7 @@ __global__ void gpu::matrixDifference(double *input_A, double *input_B, double *
     }
 }
 
-__global__ void gpu::matrixCrossEntropy(double *input_A, double *input_B, double *output_C, unsigned x, unsigned y, unsigned z)
+__global__ void gpu_kernel::matrixCrossEntropy(double *input_A, double *input_B, double *output_C, unsigned x, unsigned y, unsigned z)
 {
     unsigned id_y, i;
     extern __shared__ double cost[];
@@ -512,7 +523,7 @@ __global__ void gpu::matrixCrossEntropy(double *input_A, double *input_B, double
     }
 }
 
-__global__ void gpu::matrixCrossEntropyDifference(double *input_A, double *input_B, double *output_C, unsigned x, unsigned y, unsigned z)
+__global__ void gpu_kernel::matrixCrossEntropyDifference(double *input_A, double *input_B, double *output_C, unsigned x, unsigned y, unsigned z)
 {
     unsigned id_x, id_y, id_z, lin_idx;
     id_x = threadIdx.x + (blockDim.x * blockIdx.x);
@@ -529,7 +540,7 @@ __global__ void gpu::matrixCrossEntropyDifference(double *input_A, double *input
     }
 }
 
-__global__ void gpu::matrixConfusionMatrix(double *input_A, double *input_B, double *output_C, unsigned x, unsigned y)
+__global__ void gpu_kernel::matrixConfusionMatrix(double *input_A, double *input_B, double *output_C, unsigned x, unsigned y)
 {
     unsigned j, intr_x, intr_y, lin_idx_inpA, lin_idx_inpB, lin_idx_out;
 
@@ -549,7 +560,7 @@ __global__ void gpu::matrixConfusionMatrix(double *input_A, double *input_B, dou
     }
 }
 
-__global__ void gpu::matrixBinaryCrossEntropy(double *input_A, double *input_B, double *output_C, unsigned x, unsigned y)
+__global__ void gpu_kernel::matrixBinaryCrossEntropy(double *input_A, double *input_B, double *output_C, unsigned x, unsigned y)
 {
 
     unsigned id_x, id_y, lin_idx;
@@ -570,7 +581,7 @@ __global__ void gpu::matrixBinaryCrossEntropy(double *input_A, double *input_B, 
     }
 }
 
-__global__ void gpu::matrixUpdateParameters(double *weights_biases, double *learning_rate, double *d_weights_biases, unsigned a_m, unsigned a_n, unsigned a_o)
+__global__ void gpu_kernel::matrixUpdateParameters(double *weights_biases, double *learning_rate, double *d_weights_biases, unsigned a_m, unsigned a_n, unsigned a_o)
 {
     unsigned indx_x, indx_y, indx_z, index;
 
@@ -593,7 +604,7 @@ __global__ void gpu::matrixUpdateParameters(double *weights_biases, double *lear
 /// @param y size of y dimension
 /// @param alpha is weighted sum parameter
 /// @return output (call by referance)
-__global__ void gpu::maritrxWeightedSum(double *input, double *output, unsigned x, unsigned y, double alpha)
+__global__ void gpu_kernel::maritrxWeightedSum(double *input, double *output, unsigned x, unsigned y, double alpha)
 {
     unsigned id_x, id_y, index;
 
@@ -616,7 +627,7 @@ __global__ void gpu::maritrxWeightedSum(double *input, double *output, unsigned 
 /// @param x size of x dimension
 /// @param y size of y dimension
 /// @return output (call by referance)
-__global__ void gpu::matrixNormalize(double *input, double *std_div, double *mean, double *output, unsigned x, unsigned y)
+__global__ void gpu_kernel::matrixNormalize(double *input, double *std_div, double *mean, double *output, unsigned x, unsigned y)
 {
     unsigned id_x, id_y, lin_idx;
     double denominator;
@@ -643,7 +654,7 @@ __global__ void gpu::matrixNormalize(double *input, double *std_div, double *mea
 /// @param x size of x dimension
 /// @param y size of y dimension
 /// @return output (call by referance)
-__global__ void gpu::matrixNormalScaling(double *input, double *gamma, double *beta, double *output, unsigned x, unsigned y)
+__global__ void gpu_kernel::matrixNormalScaling(double *input, double *gamma, double *beta, double *output, unsigned x, unsigned y)
 {
     unsigned id_x, id_y, lin_idx;
 
@@ -658,7 +669,7 @@ __global__ void gpu::matrixNormalScaling(double *input, double *gamma, double *b
     }
 }
 
-__global__ void gpu::matrixExponentiallyWeightedMovingAvg(double sigma, double *sum_d_weights_biases, double *d_weights_biases, unsigned a_m, unsigned a_n, unsigned a_o)
+__global__ void gpu_kernel::matrixExponentiallyWeightedMovingAvg(double sigma, double *sum_d_weights_biases, double *d_weights_biases, unsigned a_m, unsigned a_n, unsigned a_o)
 {
     unsigned indx_x, indx_y, indx_z, index;
     // double weighted_delta_weights_biases;
@@ -675,7 +686,7 @@ __global__ void gpu::matrixExponentiallyWeightedMovingAvg(double sigma, double *
     }
 }
 
-__global__ void gpu::matrixUpdateWeightsBiasesRMSprop(double sigma, double epsalon, double *sum_d_weights_biases, double *d_weights_biases, unsigned a_m, unsigned a_n, unsigned a_o)
+__global__ void gpu_kernel::matrixUpdateWeightsBiasesRMSprop(double sigma, double epsalon, double *sum_d_weights_biases, double *d_weights_biases, unsigned a_m, unsigned a_n, unsigned a_o)
 {
     unsigned indx_x, indx_y, indx_z, index;
     double squared_delta_weights_biases;
@@ -694,7 +705,7 @@ __global__ void gpu::matrixUpdateWeightsBiasesRMSprop(double sigma, double epsal
     }
 }
 
-__global__ void gpu::matrixUpdateWeightsBiasesADAM(double *sigma, double *epsalon, double *learning_rate, double *sum_d_weights_biases, double *sum_d_weights_biases_squared, double *d_weights_biases, double *weights_biases, unsigned a_m, unsigned a_n)
+__global__ void gpu_kernel::matrixUpdateWeightsBiasesADAM(double *sigma, double *epsalon, double *learning_rate, double *sum_d_weights_biases, double *sum_d_weights_biases_squared, double *d_weights_biases, double *weights_biases, unsigned a_m, unsigned a_n)
 {
     unsigned indx_x, indx_y, index;
     double squared_delta_weights_biases;
@@ -715,7 +726,7 @@ __global__ void gpu::matrixUpdateWeightsBiasesADAM(double *sigma, double *epsalo
     }
 }
 
-__global__ void gpu::matrixUpdateLearningRateAdagrad(double epsalon, double learning_rate, double *learning_rate_eta, double *delta_weights_biases, double *sum_delta_weights, unsigned a_m, unsigned a_n, unsigned a_o)
+__global__ void gpu_kernel::matrixUpdateLearningRateAdagrad(double epsalon, double learning_rate, double *learning_rate_eta, double *delta_weights_biases, double *sum_delta_weights, unsigned a_m, unsigned a_n, unsigned a_o)
 {
     unsigned indx_x, indx_y, indx_z, index;
     double squared_delta_weights_biases;
@@ -735,7 +746,7 @@ __global__ void gpu::matrixUpdateLearningRateAdagrad(double epsalon, double lear
     }
 }
 
-__global__ void gpu::matrixUpdateLearningRateAdadelta(double epsalon, double sigma, double *delta_weights_biases, double *sum_delta_weights, double *learning_rate, double *eta_learning_rate, unsigned a_m, unsigned a_n, unsigned a_o)
+__global__ void gpu_kernel::matrixUpdateLearningRateAdadelta(double epsalon, double sigma, double *delta_weights_biases, double *sum_delta_weights, double *learning_rate, double *eta_learning_rate, unsigned a_m, unsigned a_n, unsigned a_o)
 {
     unsigned indx_x, indx_y, indx_z, index;
     double squared_delta_weights_biases;
@@ -770,7 +781,7 @@ void GPU_aux<T>::getCUDADeviceCount(unsigned *no_of_gpu)
 template <typename T>
 void GPU_aux<T>::printCUDAElement(T *data)
 {
-    gpu::print<<<1, 1>>>(data);
+    gpu_kernel::print<<<1, 1>>>(data);
     cudaDeviceSynchronize();
 }
 

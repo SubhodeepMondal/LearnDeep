@@ -1,4 +1,5 @@
-#pragma ONCE
+#ifndef CPULIBRARY_H
+#define CPULIBRARY_H
 
 #include <stdfloat>
 
@@ -21,3 +22,4 @@ namespace cpu
 
     void __mtranspose(std::float64_t **, unsigned*);
 }
+#endif // CPULIBRARY_H

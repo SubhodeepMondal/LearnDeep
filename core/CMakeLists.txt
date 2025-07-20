@@ -35,31 +35,29 @@ if(CUDA_FOUND)
     message(STATUS "CUDA found: enabling CUDA support")
     enable_language(CUDA)
     set(CMAKE_CUDA_COMPILER "/usr/local/cuda/bin/nvcc")
-    # add_compile_definitions(-DCUDA_ENABLED)
+    add_compile_definitions(-DCUDA_ENABLED)
     add_library(gpu SHARED LAS/gpu_interface.cu LAS/gpu_micro_kernels.cu)
 
     # Enable separate compilation for nested kernel launches
     set(CMAKE_CUDA_SEPARABLE_COMPILATION ON)
 
+    set_target_properties(gpu PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
+
     # Suppress deprecated arch warning
     target_compile_options(gpu PRIVATE "$<$<COMPILE_LANGUAGE:CUDA>:--relocatable-device-code=true>")
-    # add_compile_options("$<$<COMPILE_LANGUAGE:CUDA>:-Wno-deprecated-gpu-targets>")
+    add_compile_options("$<$<COMPILE_LANGUAGE:CUDA>:-Wno-deprecated-gpu-targets>")
 
     target_include_directories(gpu PRIVATE ${CMAKE_SOURCE_DIR}/core/
         /usr/local/cuda/include)
 
     # Or set architecture explicitly
-    set(CMAKE_CUDA_ARCHITECTURES 75;89) # or 80, 86, etc.
+    set(CMAKE_CUDA_ARCHITECTURES 90 ) # or 80, 86, etc.
 
 else()
     message(WARNING "CUDA not found: building CPU-only fallback")
 endif()
 
 
-if(OpenMP_CXX_FOUND)
-    target_link_libraries(las PRIVATE OpenMP::OpenMP_CXX)
-    target_compile_options(las PRIVATE ${OpenMP_CXX_FLAGS})
-endif()
 
 
 target_include_directories(kernel PUBLIC ${CMAKE_SOURCE_DIR}/core/)

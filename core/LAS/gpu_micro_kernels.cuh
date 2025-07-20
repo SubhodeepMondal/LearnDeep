@@ -1,6 +1,8 @@
+#ifndef GPU_MICRO_KERNELS_CUH
+#define GPU_MICRO_kERNELS_CUH
 #include <cuda_runtime.h>
 
-namespace gpu {
+namespace gpu_kernel {
 
     __global__ void printData(double *a, unsigned x, unsigned y, unsigned z);
 
@@ -21,6 +23,8 @@ namespace gpu {
     __global__ void cudaMatrixMul(double *a, double *b, double *d, int a_m, int a_n, int b_m, int b_n, int i, int j);
 
     __global__ void matrixSum(double *a, double *b, double *c, unsigned x, unsigned y);
+
+    __global__ void matrixMul(double *a, double *b, double *c, unsigned x, unsigned y);
 
     __global__ void matrixScalerMul(double *input, double scaler_value, double *output, unsigned x, unsigned y, unsigned z);
 
@@ -79,7 +83,5 @@ namespace gpu {
     __global__ void matrixUpdateLearningRateAdagrad(double epsalon, double learning_rate, double *learning_rate_eta, double *delta_weights_biases, double *sum_delta_weights, unsigned a_m, unsigned a_n, unsigned a_o);
 
     __global__ void matrixUpdateLearningRateAdadelta(double epsalon, double sigma, double *delta_weights_biases, double *sum_delta_weights, double *learning_rate, double *eta_learning_rate, unsigned a_m, unsigned a_n, unsigned a_o);
-
-
 }
-
+#endif
