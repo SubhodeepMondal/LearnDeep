@@ -1,7 +1,9 @@
 # CMakeLists.txt for the core library
 
 #creating library for kernel operations
-add_library(kernel SHARED
+
+set(COMBINED_RESORCES
+    kernel/opskernel.h
     kernel/opskernel.cpp
     kernel/add.cpp
     kernel/matmul.cpp
@@ -9,24 +11,59 @@ add_library(kernel SHARED
     kernel/power.cpp
     kernel/reducesum.cpp
     kernel/scale.cpp
-)
 
-#creating library for graphs
-add_library(graph SHARED
-    graph/graph.cpp
-)
 
-#creating library for framework operations
-add_library(framework SHARED
+    graph/graph_framework.hpp
+    graph/graph_framework.cpp
+    graph/graph_node.hpp
+    graph/graph_node.cpp
+
+
+    framework/MathLibrary.h
     framework/MathLibrary.cpp
+    framework/NDynamicArray.h
     framework/NDynamicArray.cpp
-)
 
-# creating library Linear Algebra Subroutines(LAS)
-add_library(las SHARED
+
+    LAS/CPULibrary.h
     LAS/CPULibrary.cpp
+    LAS/avx2_micro_kernels.h
     LAS/avx2_micro_kernels.cpp
 )
+# add_library(kernel SHARED
+#     kernel/opskernel.h
+#     kernel/opskernel.cpp
+#     kernel/add.cpp
+#     kernel/matmul.cpp
+#     kernel/mul.cpp
+#     kernel/power.cpp
+#     kernel/reducesum.cpp
+#     kernel/scale.cpp
+# )
+
+# #creating library for graphs
+# add_library(graph SHARED
+#     graph/graph_framework.hpp
+#     graph/graph_framework.cpp
+#     graph/graph_node.hpp
+#     graph/graph_node.cpp
+# )
+
+# #creating library for framework operations
+# add_library(framework SHARED
+#     framework/MathLibrary.h
+#     framework/MathLibrary.cpp
+#     framework/NDynamicArray.h
+#     framework/NDynamicArray.cpp
+# )
+
+# # creating library Linear Algebra Subroutines(LAS)
+# add_library(las SHARED
+#     LAS/CPULibrary.h
+#     LAS/CPULibrary.cpp
+#     LAS/avx2_micro_kernels.h
+#     LAS/avx2_micro_kernels.cpp
+# )
 
 find_package(CUDA QUIET)
 if(CUDA_FOUND)
@@ -36,6 +73,13 @@ if(CUDA_FOUND)
     enable_language(CUDA)
     set(CMAKE_CUDA_COMPILER "/usr/local/cuda/bin/nvcc")
     add_compile_definitions(-DCUDA_ENABLED)
+
+    list(APPEND COMBINED_RESORCES
+        LAS/gpu_interface.cuh
+        LAS/gpu_interface.cu
+        LAS/gpu_micro_kernels.cuh
+        LAS/gpu_micro_kernels.cu
+    )
     add_library(gpu SHARED LAS/gpu_interface.cu LAS/gpu_micro_kernels.cu)
 
     # Enable separate compilation for nested kernel launches
@@ -51,13 +95,18 @@ if(CUDA_FOUND)
         /usr/local/cuda/include)
 
     # Or set architecture explicitly
-    set(CMAKE_CUDA_ARCHITECTURES 90 ) # or 80, 86, etc.
+    set(CMAKE_CUDA_ARCHITECTURES 90) # or 80, 86, etc.
 
 else()
     message(WARNING "CUDA not found: building CPU-only fallback")
 endif()
 
+add_library(core SHARED ${COMBINED_RESORCES})
+target_include_directories(core PUBLIC ${CMAKE_SOURCE_DIR}/core)
 
 
 
-target_include_directories(kernel PUBLIC ${CMAKE_SOURCE_DIR}/core/)
+
+# target_include_directories(framework PUBLIC ${CMAKE_SOURCE_DIR}/core/)
+# target_include_directories(graph PUBLIC ${CMAKE_SOURCE_DIR}/core/)
+# target_include_directories(kernel PUBLIC ${CMAKE_SOURCE_DIR}/core/)

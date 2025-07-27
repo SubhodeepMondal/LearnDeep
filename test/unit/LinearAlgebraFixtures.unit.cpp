@@ -12,12 +12,11 @@ std::float64_t b[] = {0.49704563, 0.07919775, 0.28764169, 0.48468005,
 
 void MathTest::SetUp() {
 
-  tf::tf_create(A, tf_float64, 4, 4);
-  tf::tf_create(B, tf_float64, 4, 4);
-  tf::tf_create(C, tf_float64, 4, 4);
+  // A.tf_create(tf_float64, 4, 4);
+  // B.tf_create(tf_float64, 4, 4);
 
-  tf::tensor_of(A, a);
-  tf::tensor_of(B, b);
+  // tf::tensor_of(A, a);
+  // tf::tensor_of(B, b);
 
-  tf::tf_create_graph(g);
+  // tf::tf_create_graph(g);
 }

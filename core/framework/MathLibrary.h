@@ -3,10 +3,10 @@
 
 #include <iostream>
 
-#include "../LAS/CPULibrary.h"
-#include "../graph/graph.h"
-#include "../kernel/opskernel.h"
 #include "NDynamicArray.h"
+#include <LAS/CPULibrary.h>
+#include <graph/graph_framework.hpp>
+#include <kernel/opskernel.h>
 
 template <typename T> class Tensor : public ndarray<T> {
   struct arg_list {
@@ -33,8 +33,8 @@ template <typename T> class Tensor : public ndarray<T> {
   /// be performed.
   /// @return void, output (call by referance)
   void recursive_iterator(unsigned, unsigned *, Tensor<T>, Tensor<T> &,
-                          void (*)(T**, unsigned *), std::string,
-                          unsigned *, T*, Tensor<T>);
+                          void (*)(T **, unsigned *), std::string, unsigned *,
+                          T *, Tensor<T>);
 
   /// @brief This function recursively iterates from (n-1)th dim to  3th
   /// dimension and performs reduction sum operation along the reduction
@@ -66,7 +66,8 @@ public:
 
   // template <typename... args>
   // Tensor(unsigned num, args... Args) : ndarray<T>(num, Args...) {}
-  Tensor(unsigned n, const unsigned *arr, DataType data_type) : ndarray<T>(n,arr,data_type){}
+  Tensor(unsigned n, const unsigned *arr, DataType data_type)
+      : ndarray<T>(n, arr, data_type) {}
 
   Tensor() {}
 
@@ -77,7 +78,7 @@ public:
     return *this;
   }
 
-  void assign(Graph g) { g.outputnode(this); }
+  void assign(Ops *ops) { ops->initilizeoutput(this); }
 
   /// @brief This function calculates matrix multiplication A X B
   /// @tparam None
@@ -143,26 +144,26 @@ public:
   /// @return returns Tensor class type.
   Tensor<T> pow(unsigned);
 
-  Graph mul(Graph &g, Tensor<T> &input);
+  Ops *add(Tensor<T> &input, bool &flag);
 
-  Graph add(Graph &g, Tensor<T> &input);
+  // Graph mul(Graph &g, Tensor<T> &input);
 
-  Graph matmul(Graph &g, Tensor<T> &input);
+  // Graph matmul(Graph &g, Tensor<T> &input);
 
-  Graph pow(Graph &g, unsigned power);
+  // Graph pow(Graph &g, unsigned power);
 
-  Graph reducesum(Graph &, unsigned,  unsigned*);
+  // Graph reducesum(Graph &, unsigned, unsigned *);
 
-  void reducesum(Graph &g, Ops *ops);
+  // void reducesum(Graph &g, Ops *ops);
 
-  template <typename first_dim, typename... Args>
-  void reducesum(Graph &g, Ops *ops, first_dim n, Args... args);
+  // template <typename first_dim, typename... Args>
+  // void reducesum(Graph &g, Ops *ops, first_dim n, Args... args);
 
-  template <typename... Args> Graph reducesum(Graph &g, Args... args);
+  // template <typename... Args> Graph reducesum(Graph &g, Args... args);
 
-  Graph scale(Graph &g, const std::float64_t scale_factor);
+  // Graph scale(Graph &g, const std::float64_t scale_factor);
 
-  Graph mean(Graph &g, const unsigned n);
+  // Graph mean(Graph &g, const unsigned n);
 };
 
 // template class Tensor<std::float64_t>;

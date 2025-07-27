@@ -8,7 +8,6 @@ find_package(OpenMP REQUIRED) # Find OpenMP package
 
 add_subdirectory(thirdparty/googletest)
 
-
 add_subdirectory(core)
 
 add_subdirectory(api)
@@ -17,19 +16,15 @@ add_subdirectory(test)
 
 add_custom_target(
     src
-    DEPENDS kernel graph framework las gpu
+    DEPENDS core tensor_api
 )
 
 add_custom_target(
     test
-    DEPENDS kernel graph framework las gpu tensor_api
+    DEPENDS core tensor_api
 )
 
 set(CMAKE_INSTALL_PREFIX ${CMAKE_SOURCE_DIR}/build/)
-install(TARGETS kernel
-    graph
-    framework
-    las
-    gpu
+install(TARGETS core
     tensor_api
     LIBRARY DESTINATION lib)

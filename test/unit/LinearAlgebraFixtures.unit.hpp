@@ -16,7 +16,7 @@
 class MathTest : public testing::Test {
   public:
   tf::tensor A, B, C;
-  tf::graph g;  
+  // tf::graph g;  
 
   protected:
 

@@ -18,4 +18,25 @@ TEST_F(MathTest, MatrixAddition_2D) {
   for (int i = 0; i < 16; i++) {
     EXPECT_NEAR(tensorC_add->getData()[i], c_add[i], 0.0001);
   }
+
+  /* mock code
+
+  tf::tensor A, B, C, D;
+  tf::tf_create(A, tf_float64, 4, 4);
+  tf::tf_create(B, tf_float64, 4, 4);
+  tf::tf_create(C, tf_float64, 4, 4);
+  tf::tf_create(D, tf_float64, 4, 4);
+  tf::graph g;
+  tf::graph_create(g);
+  tf::graph_start_record_session(g);
+
+  C = A.add(B);
+  D = C.add(B);
+
+  tf::graph_end_record_session(g);
+
+  tf::graph_optimize(g);
+  tf::graph_execute(g);
+  tf::graph_print(g);
+  */
 }
