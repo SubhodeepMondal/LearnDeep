@@ -3,19 +3,6 @@
 #include <framework/MathLibrary.h>
 #include <iostream>
 #include <kernel/opskernel.h>
-// void node::addRootNode() {
-//   node_type = type::root; // This is a root node
-// }
-
-// void node::addInputNode(Tensor<std::float64_t> *input) {
-//   this->input_node = input;
-//   node_type = type::data; // This is a data node
-// }
-
-// void node::addInputNode(Ops *ops) {
-//   this->ops = ops;
-//   node_type = type::compute; // This is a compute node
-// }
 
 void node::setInputNode(node *input_node) {
   if (input_node) {

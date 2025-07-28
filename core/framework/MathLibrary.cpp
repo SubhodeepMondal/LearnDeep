@@ -817,48 +817,76 @@ template <typename T> Ops *Tensor<T>::add(Tensor<T> &input, bool &flag) {
   return ops;
 }
 
-// template <typename T> Graph Tensor<T>::matmul(Graph &g, Tensor<T> &input) {
+template <typename T> Ops *Tensor<T>::mul(Tensor<T> &input, bool &flag) {
 
-//   unsigned i, no_of_dimensions;
-//   bool flag = true;
+  Ops *ops = NULL;
+  unsigned i, no_of_dimensions;
 
-//   no_of_dimensions = Tensor<T>::getNoOfDimensions();
+  no_of_dimensions = Tensor<T>::getNoOfDimensions();
 
-//   if (no_of_dimensions == input.getNoOfDimensions()) {
+  if (no_of_dimensions == input.getNoOfDimensions()) {
+    for (i = 0; i < no_of_dimensions; i++) {
+      if (Tensor<T>::getDimensions()[i] != input.getDimensions()[i]) {
+        flag = 0;
+        break;
+      }
+    }
+    if (flag) {
+      ops = new Opsmul;
+      Tensor<T> *inputs[2];
+      inputs[0] = this;
+      inputs[1] = &input;
+      ops->initilizeinputs(inputs, (unsigned)2);
+    } else {
+      std::cout << "Error! " << i
+                << "th Dimension does not match with second matrix.\n";
+    }
+  } else {
+    std::cout << "Dimension mismatch, First matrix doesn't have same no of "
+                 "dimension of second matrix.\n";
+  }
 
-//     if (this->getDimensions()[0] == input.getDimensions()[1]) {
+  return ops;
+}
 
-//       for (i = 2; i < no_of_dimensions; i++) {
-//         if (Tensor<T>::getDimensions()[i] != input.getDimensions()[i]) {
-//           flag = false;
-//           break;
-//         }
-//       }
-//       if (flag) {
-//         Ops *ops = new Opsmatmul;
-//         Tensor<T> *inputs[2];
-//         inputs[0] = this;
-//         inputs[1] = &input;
-//         ops->initilizeinputs(inputs, (unsigned)2);
-//         g.addcomputenode(ops);
-//       } else {
-//         std::cout << "Error!" << i
-//                   << "th Dimension does not match with second matrix.\n";
-//         g.setGraphInvalid();
-//       }
-//     } else {
-//       std::cout << "Error! First matrix's row length does not match with "
-//                    "second matrix column length.\n";
-//       g.setGraphInvalid();
-//     }
-//   } else {
-//     std::cout << "Dimension mismatch, First matrix doesn't have same no of "
-//                  "dimension of second matrix.\n";
-//     g.setGraphInvalid();
-//   }
+template <typename T> Ops *Tensor<T>::matmul(Tensor<T> &input, bool &flag) {
 
-//   return g;
-// }
+  Ops *ops = NULL;
+  unsigned i, no_of_dimensions;
+
+  no_of_dimensions = Tensor<T>::getNoOfDimensions();
+
+  if (no_of_dimensions == input.getNoOfDimensions()) {
+
+    if (this->getDimensions()[0] == input.getDimensions()[1]) {
+
+      for (i = 2; i < no_of_dimensions; i++) {
+        if (Tensor<T>::getDimensions()[i] != input.getDimensions()[i]) {
+          flag = false;
+          break;
+        }
+      }
+      if (flag) {
+        ops = new Opsmatmul;
+        Tensor<T> *inputs[2];
+        inputs[0] = this;
+        inputs[1] = &input;
+        ops->initilizeinputs(inputs, (unsigned)2);
+      } else {
+        std::cout << "Error!" << i
+                  << "th Dimension does not match with second matrix.\n";
+      }
+    } else {
+      std::cout << "Error! First matrix's row length does not match with "
+                   "second matrix column length.\n";
+    }
+  } else {
+    std::cout << "Dimension mismatch, First matrix doesn't have same no of "
+                 "dimension of second matrix.\n";
+  }
+
+  return ops;
+}
 
 // template <typename T> Graph Tensor<T>::pow(Graph &g, unsigned power) {
 
@@ -867,41 +895,6 @@ template <typename T> Ops *Tensor<T>::add(Tensor<T> &input, bool &flag) {
 //   inputs[0] = this;
 //   ops->initilizeinputs(inputs, power);
 //   g.addcomputenode(ops);
-//   return g;
-// }
-
-// template <typename T> Graph Tensor<T>::mul(Graph &g, Tensor<T> &input) {
-
-//   unsigned i, no_of_dimensions;
-//   bool flag = true;
-
-//   no_of_dimensions = Tensor<T>::getNoOfDimensions();
-
-//   if (no_of_dimensions == input.getNoOfDimensions()) {
-//     for (i = 0; i < no_of_dimensions; i++) {
-//       if (Tensor<T>::getDimensions()[i] != input.getDimensions()[i]) {
-//         flag = 0;
-//         break;
-//       }
-//     }
-//     if (flag) {
-//       Ops *ops = new Opsmul;
-//       Tensor<T> *inputs[2];
-//       inputs[0] = this;
-//       inputs[1] = &input;
-//       ops->initilizeinputs(inputs, (unsigned)2);
-//       g.addcomputenode(ops);
-//     } else {
-//       std::cout << "Error! " << i
-//                 << "th Dimension does not match with second matrix.\n";
-//       g.setGraphInvalid();
-//     }
-//   } else {
-//     std::cout << "Dimension mismatch, First matrix doesn't have same no of "
-//                  "dimension of second matrix.\n";
-//     g.setGraphInvalid();
-//   }
-
 //   return g;
 // }
 
@@ -988,7 +981,8 @@ template <typename T> Ops *Tensor<T>::add(Tensor<T> &input, bool &flag) {
 //     }
 //     reducesum(g, ops, args...);
 //   } else
-//     std::cout << "Fatal error! reduction axis does not belong for the Tensor\n";
+//     std::cout << "Fatal error! reduction axis does not belong for the
+//     Tensor\n";
 // }
 
 // template <typename T>

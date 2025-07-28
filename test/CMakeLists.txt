@@ -2,10 +2,11 @@
 add_executable(deeplearingLA_test unit/main.cpp
     unit/LinearAlgebraFixtures.unit.hpp
     unit/LinearAlgebraFixtures.unit.cpp
-    # unit/tensor.unit.cpp
+    unit/tensor.unit.cpp
     unit/graph.unit.cpp
-    # unit/addition.unit.cpp
-    # unit/multiplication.unit.cpp
+    unit/addition.unit.cpp
+    unit/multiplication.unit.cpp
+    unit/matmul.unit.cpp
 )
 # set(LIBS fcore tensor_api)
 target_include_directories(deeplearingLA_test PRIVATE ${CMAKE_SOURCE_DIR}/api

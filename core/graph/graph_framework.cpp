@@ -37,6 +37,38 @@ void Graph::addEdge(Ops *src, Tensor<std::float64_t> *dst) {
   }
 }
 
+void Graph::bfs(node *start_node, std::unordered_set<node *> &visited,
+           Functions func) {
+  std::queue<node *> queue;
+  queue.push(start_node);
+  visited.insert(start_node);
+
+  while (!queue.empty()) {
+    node *current = queue.front();
+    queue.pop();
+
+    switch (func) {
+    case Functions::compute:
+      if (current->node_type == type::compute) {
+        current->execute();
+      }
+      break;
+    case Functions::travarse:
+      current->print_data();
+      break;
+    default:
+      break;
+    }
+
+    for (auto &input : current->output_nodes) {
+      if (visited.count(input) == 0) {
+        visited.insert(input);
+        queue.push(input);
+      }
+    }
+  }
+}
+
 void Graph::dfs(node *start_node, std::unordered_set<node *> &visited,
                 Functions func) {
   if (visited.count(start_node) == 0) {
@@ -90,5 +122,5 @@ void Graph::traverse() {
   }
 
   std::unordered_set<node *> visited;
-  dfs(graph[root_node_id], visited, Functions::travarse);
+  bfs(graph[root_node_id], visited, Functions::travarse);
 }

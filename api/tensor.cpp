@@ -119,50 +119,89 @@ tf::graph &tf::tensor::add(tensor &input_b) {
   return *g;
 }
 
-// void tf::tensor::matmul(graph &g, tensor &output, tensor &input_a,
-//                         tensor &input_b) {
-//   if ((input_a.dt_type == input_b.dt_type) &&
-//       (input_a.dt_type == output.dt_type)) {
-//     switch (output.dt_type) {
-//     case tf_float64:
-//       static_cast<Tensor<std::float64_t> *>(output.ptr)
-//           ->assign(static_cast<Tensor<std::float64_t> *>(input_a.ptr)
-//                        ->matmul(*(static_cast<Graph *>(g)),
-//                                 *(static_cast<Tensor<std::float64_t> *>(
-//                                     input_b.ptr))));
-//       break;
-//     }
-//   }
-// }
+tf::graph &tf::tensor::mul(tensor &input_b) {
+  graph *g = nullptr;
+  if (this->dt_type == input_b.dt_type) {
+    switch (dt_type) {
+    case tf_float64: {
+      bool flag = true;
 
-// void tf::tensor::mul(graph &g, tensor &output, tensor &input_a,
-//                      tensor &input_b) {
-//   if ((input_a.dt_type == input_b.dt_type) &&
-//       (input_a.dt_type == output.dt_type)) {
-//     switch (output.dt_type) {
-//     case tf_float64:
-//       static_cast<Tensor<std::float64_t> *>(output.ptr)
-//           ->assign(
-//               static_cast<Tensor<std::float64_t> *>(input_a.ptr)
-//                   ->mul(*(static_cast<Graph *>(g)),
-//                         *(static_cast<Tensor<std::float64_t>
-//                         *>(input_b.ptr))));
-//     }
-//   }
-// }
+      if (g_manager.isThereActiveSession()) { // search for any activated graph
+                                              // session
+        g = g_manager.findActivateSession();
+        g->input_a = *this;
+        g->input_b = input_b;
+        if (g) {
+          std::cout << "Adding tensor::addition to the active graph session.\n";
+          Ops *ops = static_cast<Tensor<std::float64_t> *>(this->ptr)->mul(
+              *(static_cast<Tensor<std::float64_t> *>(input_b.ptr)), flag);
 
-// void tf::tensor::pow(graph &g, tensor &output, tensor &input, unsigned power)
-// {
-//   if ((input.dt_type == output.dt_type)) {
-//     switch (output.dt_type) {
-//     case tf_float64:
-//       static_cast<Tensor<std::float64_t> *>(output.ptr)
-//           ->assign(static_cast<Tensor<std::float64_t> *>(input.ptr)->pow(
-//               *(static_cast<Graph *>(g)), power));
-//       break;
-//     }
-//   }
-// }
+          g->ops = ops;
+
+          static_cast<Graph *>(g->ptr)->addNode(
+              static_cast<Tensor<std::float64_t> *>(this->ptr));
+          static_cast<Graph *>(g->ptr)->addNode(
+              static_cast<Tensor<std::float64_t> *>(input_b.ptr));
+          static_cast<Graph *>(g->ptr)->addNode(ops);
+
+          static_cast<Graph *>(g->ptr)->addEdge(
+              static_cast<Tensor<std::float64_t> *>(this->ptr), ops);
+          static_cast<Graph *>(g->ptr)->addEdge(
+              static_cast<Tensor<std::float64_t> *>(input_b.ptr), ops);
+        } else {
+          std::cerr << "No active graph session found.\n";
+        }
+      } else {
+        std::cerr << "No active graph session found.\n";
+      }
+      break;
+    }
+    }
+  }
+  return *g;
+}
+
+tf::graph &tf::tensor::matmul(tensor &input_b) {
+  graph *g = nullptr;
+  if (this->dt_type == input_b.dt_type) {
+    switch (dt_type) {
+    case tf_float64: {
+      bool flag = true;
+
+      if (g_manager.isThereActiveSession()) { // search for any activated graph
+                                              // session
+        g = g_manager.findActivateSession();
+        g->input_a = *this;
+        g->input_b = input_b;
+        if (g) {
+          std::cout << "Adding tensor::addition to the active graph session.\n";
+          Ops *ops = static_cast<Tensor<std::float64_t> *>(this->ptr)->matmul(
+              *(static_cast<Tensor<std::float64_t> *>(input_b.ptr)), flag);
+
+          g->ops = ops;
+
+          static_cast<Graph *>(g->ptr)->addNode(
+              static_cast<Tensor<std::float64_t> *>(this->ptr));
+          static_cast<Graph *>(g->ptr)->addNode(
+              static_cast<Tensor<std::float64_t> *>(input_b.ptr));
+          static_cast<Graph *>(g->ptr)->addNode(ops);
+
+          static_cast<Graph *>(g->ptr)->addEdge(
+              static_cast<Tensor<std::float64_t> *>(this->ptr), ops);
+          static_cast<Graph *>(g->ptr)->addEdge(
+              static_cast<Tensor<std::float64_t> *>(input_b.ptr), ops);
+        } else {
+          std::cerr << "No active graph session found.\n";
+        }
+      } else {
+        std::cerr << "No active graph session found.\n";
+      }
+      break;
+    }
+    }
+  }
+  return *g;
+}
 
 // void tf::reducesum(graph &g, tensor &output, tensor &input) {
 
@@ -272,23 +311,35 @@ void tf::graph::graph_start_recording_session() {
     std::cout << "A session is already active. Cannot start a new session.\n";
     return;
   }
-  isSessionActive = true;
+  this->isSessionActive = true;
   std::cout << "Starting a new recording session.\n";
 }
 
 void tf::graph::graph_end_recording_session() {
   if (g_manager.isThereActiveSession()) {
     std::cout << "Ending the active session.\n";
-    isSessionActive = false;
+    this->isSessionActive = false;
+    g_manager.removeGraph(this);
   }
 }
 
 // void tf::graph::graph_optimize(graph &g) {}
 
-void tf::graph::graph_execute() {
-  static_cast<Graph *>(this->ptr)->compute();
-}
+void tf::graph::graph_execute() { static_cast<Graph *>(this->ptr)->compute(); }
 
 void tf::graph::graph_travarse_data_node() {
   static_cast<Graph *>(this->ptr)->traverse();
+}
+
+void tf::graph::graph_clear() {
+  if (ptr) {
+    delete static_cast<Graph *>(ptr);
+    ptr = nullptr;
+  }
+  g_manager.removeGraph(this);
+  isSessionActive = false;
+  input_a.ptr = nullptr;
+  input_b.ptr = nullptr;
+  ops = nullptr;
+  std::cout << "Graph cleared and session ended.\n";
 }

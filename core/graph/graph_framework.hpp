@@ -4,10 +4,12 @@
 #include <graph/graph_node.hpp>
 #include <iostream>
 #include <memory>
+#include <queue>
 #include <stdfloat>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
+
 enum class Functions {
   compute,
   search,
@@ -23,6 +25,9 @@ class Graph {
   unsigned long root_node_id;
 
   void dfs(node *start_node, std::unordered_set<node *> &visited,
+           Functions func);
+
+  void bfs(node *start_node, std::unordered_set<node *> &visited,
            Functions func);
 
 public:

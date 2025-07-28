@@ -18,6 +18,11 @@ typedef struct graph_manager {
 
   void addGraph(graph *g) { graph_list.push_back(g); }
 
+  void removeGraph(graph *g) {
+    graph_list.erase(std::remove(graph_list.begin(), graph_list.end(), g),
+                     graph_list.end());
+  }
+
   bool isThereActiveSession();
 
   graph *findActivateSession();
@@ -86,9 +91,9 @@ typedef struct tensor {
 
   void operator=(graph &g);
 
-  // void mul(tensor &input_b);
+  graph &mul(tensor &input_b);
 
-  // void matmul(tensor &input_b);
+  graph &matmul(tensor &input_b);
 
   // void pow(tensor &input, unsigned power);
 
@@ -124,6 +129,8 @@ typedef struct graph {
   void graph_execute();
 
   void graph_travarse_data_node();
+
+  void graph_clear();
 
 } graph;
 

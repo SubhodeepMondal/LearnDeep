@@ -146,9 +146,9 @@ public:
 
   Ops *add(Tensor<T> &input, bool &flag);
 
-  // Graph mul(Graph &g, Tensor<T> &input);
+  Ops *mul(Tensor<T> &input, bool &flag);
 
-  // Graph matmul(Graph &g, Tensor<T> &input);
+  Ops *matmul(Tensor<T> &input, bool &flag);
 
   // Graph pow(Graph &g, unsigned power);
 
