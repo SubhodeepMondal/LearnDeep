@@ -12,7 +12,7 @@ TEST_F(MathTest, GraphCreation_test) {
                         0.55964598, 0.51628139, 0.81488106, 0.51503196,
                         0.2614797,  0.78048695, 0.91069071, 0.08636421,
                         0.19244527, 0.8450769,  0.84808829, 0.6912999};
-  tf::tensor A, B, C;
+  tf::tensor A, B, C, D;;
   A.tf_create(tf_float64, 4, 4);
   B.tf_create(tf_float64, 4, 4);
   C.tf_create(tf_float64, 4, 4);
@@ -22,6 +22,7 @@ TEST_F(MathTest, GraphCreation_test) {
   tf::graph g;
   g.tf_create_graph();
   ASSERT_TRUE(g.ptr != nullptr);
+  // ASSERT_STRING_EQ(typeid(g).name(), "class tf::graph");
 
   g.graph_start_recording_session();
   ASSERT_TRUE(g.isSessionActive);
@@ -31,4 +32,7 @@ TEST_F(MathTest, GraphCreation_test) {
   EXPECT_TRUE(C.dt_type == tf_float64);
 
   g.graph_end_recording_session();
+  g.graph_travarse_data_node();
+  g.graph_execute();
+  g.graph_travarse_data_node();
 }

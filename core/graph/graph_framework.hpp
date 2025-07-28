@@ -6,20 +6,43 @@
 #include <memory>
 #include <stdfloat>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
-
+enum class Functions {
+  compute,
+  search,
+  travarse,
+};
 class Graph {
-  std::unordered_map<int, node *> graph;
+  std::unordered_set<Tensor<std::float64_t> *> data_nodes;
+  std::unordered_map<unsigned long, node *> graph;
 
   bool is_valid_graph;
 
+  node *root_node;
+  unsigned long root_node_id;
+
+  void dfs(node *start_node, std::unordered_set<node *> &visited,
+           Functions func);
+
 public:
-  Graph() : is_valid_graph(true) {}
+  Graph() : is_valid_graph(true) {
+    root_node_id = 0;
+    root_node = new node(0, type::root);
+    graph[root_node_id] = root_node;
+  }
 
   void addNode(Tensor<std::float64_t> *input_node);
+
   void addNode(Ops *ops);
+
   void addEdge(Tensor<std::float64_t> *src, Ops *dst);
+
   void addEdge(Ops *src, Tensor<std::float64_t> *dst);
+
+  void compute();
+
+  void traverse();
 };
 
 #endif // GRAPH_FRAMEWORK_HPP

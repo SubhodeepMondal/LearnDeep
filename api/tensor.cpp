@@ -90,6 +90,7 @@ tf::graph &tf::tensor::add(tensor &input_b) {
         g->input_a = *this;
         g->input_b = input_b;
         if (g) {
+          std::cout << "Adding tensor::addition to the active graph session.\n";
           Ops *ops = static_cast<Tensor<std::float64_t> *>(this->ptr)->add(
               *(static_cast<Tensor<std::float64_t> *>(input_b.ptr)), flag);
 
@@ -272,25 +273,22 @@ void tf::graph::graph_start_recording_session() {
     return;
   }
   isSessionActive = true;
+  std::cout << "Starting a new recording session.\n";
 }
 
 void tf::graph::graph_end_recording_session() {
   if (g_manager.isThereActiveSession()) {
     std::cout << "Ending the active session.\n";
     isSessionActive = false;
-    if (this == g_manager.findActivateSession()) {
-      isSessionActive = false;
-    } else {
-      std::cout << "No active session found for this graph.\n";
-    }
   }
 }
 
 // void tf::graph::graph_optimize(graph &g) {}
 
-// void tf::graph::graph_execute(graph &g) { static_cast<Graph *>(g)->execute();
-// }
+void tf::graph::graph_execute() {
+  static_cast<Graph *>(this->ptr)->compute();
+}
 
-// void tf::graph::graph_travarse_node(graph &g) {
-//   static_cast<Graph *>(g)->traversenode();
-// }
+void tf::graph::graph_travarse_data_node() {
+  static_cast<Graph *>(this->ptr)->traverse();
+}

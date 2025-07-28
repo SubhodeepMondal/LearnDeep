@@ -1,25 +1,64 @@
 #include "graph_node.hpp"
 
-void node::addInputNode(Tensor<std::float64_t>* input) {
-  this->input_node = input;
-  node_type = type::data; // This is a data node
-}
+#include <framework/MathLibrary.h>
+#include <iostream>
+#include <kernel/opskernel.h>
+// void node::addRootNode() {
+//   node_type = type::root; // This is a root node
+// }
 
-void node::addInputNode(Ops* ops) {
-  this->ops = ops;
-  node_type = type::compute; // This is a compute node
-}
+// void node::addInputNode(Tensor<std::float64_t> *input) {
+//   this->input_node = input;
+//   node_type = type::data; // This is a data node
+// }
 
-void node::setInputNode(node* input_node) {
+// void node::addInputNode(Ops *ops) {
+//   this->ops = ops;
+//   node_type = type::compute; // This is a compute node
+// }
+
+void node::setInputNode(node *input_node) {
   if (input_node) {
     input_nodes.push_back(input_node);
-    input_node_count++;
   }
 }
 
-void node::setOutputNode(node* output_node) {
+void node::setOutputNode(node *output_node) {
   if (output_node) {
     output_nodes.push_back(output_node);
-    output_node_count++;
+  }
+}
+
+void node::eraseNodeFromOutput(node *n) {
+  if (type::root == node_type) {
+    auto it = std::remove(output_nodes.begin(), output_nodes.end(), n);
+    if (it != output_nodes.end()) {
+      output_nodes.erase(it, output_nodes.end());
+    }
+  }
+}
+
+void node::execute() {
+  if (type::compute == node_type) {
+    // Execution logic for compute nodes
+    std::cout << "Executing node with ID: " << node_id << std::endl;
+    // Add actual execution logic here
+    ops->compute(); // Assuming Ops has an execute method
+  } else {
+    std::cout << "Node with ID: " << node_id << " is not a compute node."
+              << std::endl;
+  }
+}
+
+void node::print_data() {
+  if (type::data == node_type) {
+    std::cout << "Node ID: " << node_id << ", Node Type: Data" << std::endl;
+    if (input_node) {
+      input_node->printData(); // Assuming Tensor has a print_data method
+    }
+  } else if (type::compute == node_type) {
+    std::cout << "Node ID: " << node_id << ", Node Type: Compute" << std::endl;
+  } else {
+    std::cout << "Node ID: " << node_id << ", Node Type: Root" << std::endl;
   }
 }

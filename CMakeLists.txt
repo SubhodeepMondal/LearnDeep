@@ -16,12 +16,12 @@ add_subdirectory(test)
 
 add_custom_target(
     src
-    DEPENDS core tensor_api
+    DEPENDS core gpu tensor_api
 )
 
 add_custom_target(
     test
-    DEPENDS core tensor_api
+    DEPENDS core gpu tensor_api
 )
 
 set(CMAKE_INSTALL_PREFIX ${CMAKE_SOURCE_DIR}/build/)

@@ -11,4 +11,4 @@ add_executable(deeplearingLA_test unit/main.cpp
 target_include_directories(deeplearingLA_test PRIVATE ${CMAKE_SOURCE_DIR}/api
     ${CMAKE_SOURCE_DIR}/thirdparty/googletest/include)
 
-target_link_libraries(deeplearingLA_test PRIVATE core tensor_api gtest gtest_main OpenMP::OpenMP_CXX)
+target_link_libraries(deeplearingLA_test PRIVATE core gpu tensor_api gtest gtest_main OpenMP::OpenMP_CXX)

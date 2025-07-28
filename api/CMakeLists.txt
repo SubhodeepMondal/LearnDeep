@@ -11,5 +11,6 @@ target_include_directories(tensor_api PUBLIC ${CMAKE_SOURCE_DIR}/core)
 target_link_libraries(tensor_api
     PRIVATE
     core
+    gpu 
     OpenMP::OpenMP_CXX
 )

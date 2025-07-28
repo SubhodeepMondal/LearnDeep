@@ -74,12 +74,12 @@ if(CUDA_FOUND)
     set(CMAKE_CUDA_COMPILER "/usr/local/cuda/bin/nvcc")
     add_compile_definitions(-DCUDA_ENABLED)
 
-    list(APPEND COMBINED_RESORCES
-        LAS/gpu_interface.cuh
-        LAS/gpu_interface.cu
-        LAS/gpu_micro_kernels.cuh
-        LAS/gpu_micro_kernels.cu
-    )
+    # list(APPEND COMBINED_RESORCES
+    #     LAS/gpu_interface.cuh
+    #     LAS/gpu_interface.cu
+    #     LAS/gpu_micro_kernels.cuh
+    #     LAS/gpu_micro_kernels.cu
+    # )
     add_library(gpu SHARED LAS/gpu_interface.cu LAS/gpu_micro_kernels.cu)
 
     # Enable separate compilation for nested kernel launches

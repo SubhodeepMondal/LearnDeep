@@ -121,9 +121,9 @@ typedef struct graph {
 
   // void graph_optimize(graph &g);
 
-  // void graph_execute(graph &g);
+  void graph_execute();
 
-  // void graph_travarse_node(graph &g);
+  void graph_travarse_data_node();
 
 } graph;
 
