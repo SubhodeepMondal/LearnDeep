@@ -170,31 +170,22 @@ template <typename T> void ndarray<T>::printData() {
   int Elem;
 
   int *dim;
-  dim = new int[nDim];
-  for (int i = 0; i < nDim; i++)
-    dim[i] = dimension[i];
+  dim = new int[this->nDim];
+  for (int i = 0; i < this->nDim; i++)
+    dim[i] = this->dimension[i];
 
-  for (int i = 0; i < nElem; i++) {
+  for (int i = 0; i < this->nElem; i++) {
     if (dim[0] == 1)
       std::cout << "[";
 
     Elem = 1;
-    for (int j = 0; j < nDim; j++) {
+    for (int j = 0; j < this->nDim; j++) {
       Elem *= dim[j];
       if ((i + 1) % Elem == 1)
         std::cout << "[";
     }
 
     std::cout << "\t";
-
-    // if (type)
-    // {
-    // printCUDAElement(data + 1);
-    // gpu::print<<<1, 1>>>(data + i);
-    // cudaDeviceSynchronize();
-    // }
-    // else
-    // {
     std::cout.precision(6);
     std::cout.setf(std::ios::showpoint);
     std::cout << data[i];
@@ -204,7 +195,7 @@ template <typename T> void ndarray<T>::printData() {
       std::cout << ",";
 
     Elem = 1;
-    for (int j = 0; j < nDim; j++) {
+    for (int j = 0; j < this->nDim; j++) {
       Elem *= dim[j];
       if ((i + 1) % Elem == 0) {
         if (j == 0)
@@ -248,7 +239,19 @@ template <typename T> void ndarray<T>::initData(T *data) {
   // GPU_aux<T>::cudaMemmoryCopyToDevice(this->data, data, nElem);
   // }
   // else
-  std::memcpy(this->data, data, nElem * sizeof(T));
+  if (data) {
+    std::memcpy(this->data, data, nElem * sizeof(T));
+  } else if (data == nullptr) {
+    std::cout << "Data pointer is null, cannot initialize data.\n";
+    return;
+  }
+  if (nElem == 0) {
+    std::cout << "No elements to initialize.\n";
+    return;
+  }
+  // std::cout << "initData called with data: " << data << " nElem: " << nElem
+  // <<
+  // "\n";
 };
 
 template <typename T> void ndarray<T>::initData(ndarray<T> incData) {
@@ -371,20 +374,30 @@ template <typename T> void ndarray<T>::printNoOfElements() {
 }
 
 template <typename T> void ndarray<T>::reshape(unsigned n, unsigned *arr) {
-  this->nDim = n;
 
-  delete [] arr;
-  delete [] arr_dim;
+  if (this->nDim < n) {
+    this->nDim = n;
+    delete[] this->dimension;
+    delete[] this->arr_dim;
+    this->dimension = new unsigned[this->nDim];
+    this->arr_dim = new unsigned[this->nDim];
+  } else {
+    this->nDim = n;
+  }
 
-  this->dimension = new unsigned[this->nDim];
-  this->arr_dim = new unsigned[this->nDim];
-  this->nElem = 1;
-
+  unsigned temp_nElem = 1;
   for (int i = 0; i < this->nDim; i++) {
     this->dimension[i] = arr[i];
-    nElem *= dimension[i];
+    temp_nElem *= dimension[i];
   }
-  printDimensions();
+
+  if (this->nElem < temp_nElem) {
+    delete[] data;
+    this->nElem = temp_nElem;
+    data = new T[this->nElem];
+  } else{
+    this->nElem = temp_nElem;
+  }
 }
 
 template <typename T>

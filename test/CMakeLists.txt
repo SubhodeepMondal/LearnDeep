@@ -7,6 +7,7 @@ add_executable(deeplearingLA_test unit/main.cpp
     unit/addition.unit.cpp
     unit/multiplication.unit.cpp
     unit/matmul.unit.cpp
+    unit/reducesum.unit.cpp
 )
 # set(LIBS fcore tensor_api)
 target_include_directories(deeplearingLA_test PRIVATE ${CMAKE_SOURCE_DIR}/api

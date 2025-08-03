@@ -38,8 +38,8 @@ TEST_F(MathTest, MatrixMultiplication_2D) {
   g_matmul.graph_end_recording_session();
   g_matmul.graph_execute();
 
-  auto *tensorC_add = static_cast<Tensor<std::float64_t> *>(C.ptr);
+  auto *tensorC_matmul = static_cast<Tensor<std::float64_t> *>(C.ptr);
   for (int i = 0; i < 16; i++) {
-    EXPECT_NEAR(tensorC_add->getData()[i], c_mul[i], 0.0001);
+    EXPECT_NEAR(tensorC_matmul->getData()[i], c_mul[i], 0.0001);
   }
 }

@@ -888,6 +888,34 @@ template <typename T> Ops *Tensor<T>::matmul(Tensor<T> &input, bool &flag) {
   return ops;
 }
 
+template <typename T>
+Ops *Tensor<T>::reducesum(std::vector<unsigned> n, bool &flag) {
+  Ops *ops = NULL;
+  unsigned i, no_of_dimensions, count = 0;
+
+  std::sort(n.begin(), n.end());
+
+  no_of_dimensions = Tensor<T>::getNoOfDimensions();
+
+  for (i = 0; i < n.size(); i++) {
+    if (n[i] >= no_of_dimensions) {
+      flag = false;
+      std::cout << "Fatal error! reduction axis does not belong for the Tensor\n";
+      return ops;
+    }
+    count++;
+  }
+
+  if (count > 0) {
+    ops = new Opsreducesum;
+    Tensor<T> *inputs[1];
+    inputs[0] = this;
+    ops->initilizeinputs(inputs, n.size(), n.data());
+  }
+
+  return ops;
+}
+
 // template <typename T> Graph Tensor<T>::pow(Graph &g, unsigned power) {
 
 //   Ops *ops = new Opspower;
@@ -900,11 +928,9 @@ template <typename T> Ops *Tensor<T>::matmul(Tensor<T> &input, bool &flag) {
 
 // template <typename T>
 // Graph Tensor<T>::reducesum(Graph &g, unsigned n, unsigned *reduction_dims) {
-
 //   Ops *ops = new Opsreducesum;
 //   for (int i = 0; i < n; i++)
 //     reduction_dims[i] = this->getNoOfDimensions() - reduction_dims[i] - 1;
-
 //   // shorting dimensions using bubble short
 //   for (unsigned j = 0; j < n; j++)
 //     for (unsigned i = 0; i < n - j - 1; i++)
@@ -913,24 +939,18 @@ template <typename T> Ops *Tensor<T>::matmul(Tensor<T> &input, bool &flag) {
 //         reduction_dims[i] = reduction_dims[i + 1];
 //         reduction_dims[i + 1] = temp;
 //       }
-
 //   Tensor<T> *input[1];
 //   input[0] = this;
 //   ops->initilizeinputs(input, n, reduction_dims);
 //   g.addcomputenode(ops);
 //   return g;
 // }
-
 // template <typename T> void Tensor<T>::reducesum(Graph &g, Ops *ops) {
-
 //   unsigned count = 0;
 //   unsigned *reduction_dims;
 //   unsigned *dims;
-
 //   unsigned *arr_dims = new unsigned[this->getNoOfDimensions()];
-
 //   ptr = ptr_prev = head;
-
 //   while (ptr) {
 //     count++;
 //     ptr = ptr->next;
@@ -938,7 +958,6 @@ template <typename T> Ops *Tensor<T>::matmul(Tensor<T> &input, bool &flag) {
 
 //   reduction_dims = new unsigned[count];
 //   ptr = head;
-
 //   for (unsigned i = 0; i < count; i++) {
 //     reduction_dims[i] = this->getNoOfDimensions() - ptr->value - 1;
 //     ptr = ptr->next;

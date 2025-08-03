@@ -1,7 +1,9 @@
 #ifndef MATH_LIBRARY
 #define MATH_LIBRARY
 
+#include <algorithm>
 #include <iostream>
+#include <vector>
 
 #include "NDynamicArray.h"
 #include <LAS/CPULibrary.h>
@@ -149,6 +151,8 @@ public:
   Ops *mul(Tensor<T> &input, bool &flag);
 
   Ops *matmul(Tensor<T> &input, bool &flag);
+
+  Ops *reducesum(std::vector<unsigned> n, bool &flag);
 
   // Graph pow(Graph &g, unsigned power);
 

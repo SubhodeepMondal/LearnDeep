@@ -100,16 +100,22 @@ typedef struct tensor {
   // void scale(graph &g, tensor &output, tensor &input,
   //            std::float64_t scale_factor);
 
-  // void reducesum(graph &g, tensor &output, tensor &input);
-  // template <typename first_dim, typename... Args>
-  // void reducesum(graph &g, tensor &output, tensor &input, first_dim n,
-  //                Args... args);
+  graph &getReductionGraph(std::vector<unsigned> reduction_dims, bool &flag);
 
-  // template <typename... Args>
-  // void reducesum(graph &g, tensor &output, tensor &input, Args... args);
+  template <typename... Args> graph &reducesum(Args... args) {
+    std::vector<unsigned> dimensions;
+    bool flag = true;
 
-  // void mean(graph &g, tensor &output, tensor &input, const unsigned n);
+    // Add dimensions to the vector
+    addDimensions(dimensions, args...);
 
+    unsigned *reduction_dims = new unsigned[dimensions.size()];
+    for (int i = 0; i < dimensions.size(); i++) {
+      reduction_dims[i] = dimensions[i];
+    }
+
+    return getReductionGraph(dimensions, flag);
+  }
 } tensor;
 
 typedef struct graph {

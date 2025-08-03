@@ -37,10 +37,10 @@ TEST_F(MathTest, MatrixElementWiseMultiplication_2D) {
 
   g_mul.graph_end_recording_session();
   g_mul.graph_execute();
-  // g_mul.graph_clear();
+  g_mul.graph_clear();
 
-  auto *tensorC_add = static_cast<Tensor<std::float64_t> *>(C.ptr);
+  auto *tensorC_mul = static_cast<Tensor<std::float64_t> *>(C.ptr);
   for (int i = 0; i < 16; i++) {
-    EXPECT_NEAR(tensorC_add->getData()[i], c_mul[i], 0.0001);
+    EXPECT_NEAR(tensorC_mul->getData()[i], c_mul[i], 0.0001);
   }
 }

@@ -60,8 +60,7 @@ void tf::tensor::print_dimension() {
 }
 
 void tf::tensor::operator=(graph &g) {
-  if ((g.input_a.dt_type == g.input_b.dt_type) &&
-      (g.input_a.dt_type == this->dt_type)) {
+  if (g.input_a.dt_type == this->dt_type) {
     switch (this->dt_type) {
     case tf_float64:
       static_cast<Tensor<std::float64_t> *>(this->ptr)->assign(g.ops);
@@ -203,6 +202,42 @@ tf::graph &tf::tensor::matmul(tensor &input_b) {
   return *g;
 }
 
+tf::graph &tf::tensor::getReductionGraph(std::vector<unsigned> reduction_dims,
+                                         bool &flag) {
+  graph *g = nullptr;
+  switch (dt_type) {
+  case tf_float64:
+    if (g_manager.isThereActiveSession()) { // search for any activated graph
+      g = g_manager.findActivateSession();
+      g->input_a = *this;
+      if (g) {
+        std::cout << "Adding tensor::reduction sum to the active graph "
+                     "session.\n";
+        Ops *ops = static_cast<Tensor<std::float64_t> *>(g->input_a.ptr)
+                       ->reducesum(reduction_dims, flag);
+
+        g->ops = ops;
+
+        static_cast<Graph *>(g->ptr)->addNode(
+            static_cast<Tensor<std::float64_t> *>(this->ptr));
+        static_cast<Graph *>(g->ptr)->addNode(ops);
+
+        static_cast<Graph *>(g->ptr)->addEdge(
+            static_cast<Tensor<std::float64_t> *>(this->ptr), ops);
+      } else {
+        std::cerr << "No active graph session found.\n";
+      }
+    } else {
+      std::cerr << "No active graph session found.\n";
+    }
+    break;
+
+  default:
+    break;
+  }
+
+  return *g;
+}
 // void tf::reducesum(graph &g, tensor &output, tensor &input) {
 
 //   unsigned count = 0;
