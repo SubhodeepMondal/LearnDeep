@@ -24,7 +24,9 @@ namespace gpu_kernel {
 
     __global__ void matrixSum(double *a, double *b, double *c, unsigned x, unsigned y);
 
-    __global__ void matrixMul(double *a, double *b, double *c, unsigned x, unsigned y);
+    __global__ void matrixHadamardMul(double *a, double *b, double *c, unsigned x, unsigned y);
+    
+    __global__ void matrixMul(double *a, double *b, double *c, unsigned x, unsigned y, unsigned z);
 
     __global__ void matrixScalerMul(double *input, double scaler_value, double *output, unsigned x, unsigned y, unsigned z);
 

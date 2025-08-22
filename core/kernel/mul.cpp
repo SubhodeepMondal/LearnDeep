@@ -123,7 +123,7 @@ void Opsmul::kernel_dispatch(std::float64_t **ptr, unsigned *arr) {
   d_arr[1] = reinterpret_cast<double *>(ptr[1]);
   d_arr[2] = reinterpret_cast<double *>(ptr[2]);
 
-  gpu::gpu_mat_mul_f64(d_arr, arr);
+  gpu::gpu_mat_hadamard_mul_f64(d_arr, arr);
 #else
   if (__builtin_cpu_supports("avx2")) {
     avx2::avx2_mul_f64(ptr, arr);

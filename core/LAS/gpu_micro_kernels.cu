@@ -198,7 +198,8 @@ __global__ void gpu_kernel::matrixSum(double *a, double *b, double *c, unsigned 
         c[lin_idx] = a[lin_idx] + b[lin_idx];
 }
 
-__global__ void gpu_kernel::matrixMul(double *a, double *b, double *c, unsigned x, unsigned y){
+__global__ void gpu_kernel::matrixHadamardMul(double *a, double *b, double *c, unsigned x, unsigned y)
+{
     unsigned id_x, id_y, lin_idx;
     id_x = threadIdx.x + (blockDim.x * blockIdx.x);
     id_y = threadIdx.y + (blockDim.y * blockIdx.y);
@@ -206,6 +207,30 @@ __global__ void gpu_kernel::matrixMul(double *a, double *b, double *c, unsigned 
 
     if (id_x < x && id_y < y)
         c[lin_idx] = a[lin_idx] * b[lin_idx];
+}
+
+__global__ void gpu_kernel::matrixMul(double *a, double *b, double *c, unsigned x, unsigned y, unsigned z)
+{
+    // x output row size
+    // y (k collupsing row)
+    // z output column size
+    unsigned id_x, id_z;
+    unsigned lin_idx_a, lin_idx_b, lin_idx_c;
+    id_x = threadIdx.x + (blockDim.x * blockIdx.x);
+    id_z = threadIdx.y + (blockDim.y * blockIdx.y);
+    lin_idx_c = id_x + id_z * x;
+
+    for (int i = 0; i < z; i++)
+    {
+        if (id_x < x && id_z < y)
+        {
+            lin_idx_a = i + id_z * y;
+            lin_idx_b = id_x + i * x; // id_y + id_x * y;
+            c[lin_idx_c] += a[lin_idx_a] * b[lin_idx_b];
+            // if (id_x < 4 && id_z < 1)
+            //     printf("[t_idx:%u, t_idx:%u], c[%u](%lf) =  , a[%u](%lf) * b[%u](%lf)\n", id_x, id_z, lin_idx_c, c[lin_idx_c], lin_idx_a, a[lin_idx_a], lin_idx_b, b[lin_idx_b]);
+        }
+    }
 }
 
 __global__ void gpu_kernel::matrixScalerMul(double *input, double scaler_value, double *output, unsigned x, unsigned y, unsigned z)

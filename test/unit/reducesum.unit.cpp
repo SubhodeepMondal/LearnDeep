@@ -17,29 +17,32 @@ TEST_F(MathTest, MatrixReductionSum_2D) {
   std::float64_t c_reducesum[] = {2.39105, 1.66398, 2.27044, 1.49826};
 
   tf::tensor A, B, C, D;
-  A.tf_create(tf_float64, 2, 2, 4);
+  A.tf_create(tf_float64, 4, 4);
   B.tf_create(tf_float64, 4, 4);
   C.tf_create(tf_float64, 4, 4);
 
   A.tensor_of(a);
   B.tensor_of(b);
 
-  tf::graph g_add;
-  g_add.tf_create_graph();
+  tf::graph g_reduce_sum;
+  g_reduce_sum.tf_create_graph();
 
-  g_add.graph_start_recording_session();
+  g_reduce_sum.graph_start_recording_session();
 
-  C = A.reducesum(0, 2, 1);
+  C = A.reducesum(0);
 
-  g_add.graph_end_recording_session();
-  g_add.graph_execute();
-  g_add.graph_clear();
+  g_reduce_sum.graph_end_recording_session();
+  g_reduce_sum.graph_execute();
+
+  // std::cout << "Reduction Sum Result:\n";
+  // g_reduce_sum.graph_travarse_data_node();
+  g_reduce_sum.graph_clear();
   // C.print_data();
   // std::cout << "A data:\n";
   // A.print_data();
 
-  // auto *tensorC_reducesum= static_cast<Tensor<std::float64_t> *>(C.ptr);
-  // for (int i = 0; i < 4; i++) {
-  //   EXPECT_NEAR(tensorC_reducesum->getData()[i], c_reducesum[i], 0.0001);
-  // }
+  auto *tensorC_reducesum = static_cast<Tensor<std::float64_t> *>(C.ptr);
+  for (int i = 0; i < 4; i++) {
+    EXPECT_NEAR(tensorC_reducesum->getData()[i], c_reducesum[i], 0.0001);
+  }
 }

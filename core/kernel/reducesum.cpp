@@ -168,10 +168,10 @@ void Opsreducesum::compute() {
     temp_input->reshape(resulting_no_of_dims, resulting_dims);
     temp_input->initData(temp_output->getData());
 
-    std::cout << "\nReduction on dimension:\n";
-    temp_input->printDimensions();
-    std::cout << "\nResulting Tensor:\n";
-    temp_input->printData();
+    // std::cout << "\nReduction on dimension:\n";
+    // temp_input->printDimensions();
+    // std::cout << "\nResulting Tensor:\n";
+    // temp_input->printData();
   }
   this->output->initData(temp_output->getData());
 }

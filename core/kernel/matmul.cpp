@@ -1,8 +1,11 @@
+#ifdef CUDA_ENABLED
+#include <LAS/gpu_interface.cuh>
+#endif
+
 #include <LAS/CPULibrary.h>
 #include <LAS/avx2_micro_kernels.h>
 #include <framework/MathLibrary.h>
 #include <kernel/opskernel.h>
-
 
 void Opsmatmul::recursive_iterator(unsigned index, unsigned *dimension_arr,
                                    std::string function_name, unsigned *ui_arr,
@@ -133,9 +136,24 @@ void Opsmatmul::printoutput() {
 }
 
 void Opsmatmul::kernel_dispatch(std::float64_t **ptr, unsigned *arr) {
+
+#ifdef CUDA_ENABLED
+  double *d_arr[3];
+  d_arr[0] = reinterpret_cast<double *>(ptr[0]);
+  d_arr[1] = reinterpret_cast<double *>(ptr[1]);
+  d_arr[2] = reinterpret_cast<double *>(ptr[2]);
+
+  gpu::gpu_mat_mul_f64(d_arr, arr);
+#else
+  // if (__builtin_cpu_supports("avx2")) {
+  //   avx2::avx2_add_f64(ptr, arr);
+  // } else {
+  //   cpu::__madd(ptr, arr);
+  // }
   if (__builtin_cpu_supports("avx2")) {
     avx2::avx2_matmul_f64(ptr, arr);
   } else {
     cpu::__matmul(ptr, arr);
   }
+#endif
 }

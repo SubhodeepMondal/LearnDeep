@@ -36,8 +36,10 @@ TEST_F(MathTest, MatrixElementWiseMultiplication_2D) {
   C = A.mul(B);
 
   g_mul.graph_end_recording_session();
+
   g_mul.graph_execute();
   g_mul.graph_clear();
+
 
   auto *tensorC_mul = static_cast<Tensor<std::float64_t> *>(C.ptr);
   for (int i = 0; i < 16; i++) {

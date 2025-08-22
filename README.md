@@ -1,71 +1,56 @@
-# Deeplearning Library
+# Deep Learning Library
 
 ## Description
-    This library useses CUDA and C++ to implement basic functionality of Deeplearning
-    With the use of this library
-    1. A sequential model can be created.
-    2. Layers can be added to the model
-    3. Model compilation
-    4. Model training
+This library uses **CUDA** and **AVX/AVX2 kernels** to implement basic linear algebra subroutines for deep learning.
+
+With this library:
+- Linear algebra forward pass can be implemented in **eager mode** and **graph mode**.
+- Graph mode provides flexibility to add backpropagation functionality in future.
+
+**This Library is intented to function with tensors of n dimentions**
+
+---
+
+## Linear Algebra Subroutines (LAS)
+Currently, a small set of operations are implemented:
+
+1. Matrix addition
+2. Matrix multiplication
+3. Matrix Hadamard multiplication
+4. Exponential operation (`x^e`, where *e* is an integer)
+5. Reduction sum along the *n*-th dimension
+6. Scaling operation
+
+---
+
+## Build
+Follow these steps to build the library:
+
+### Requirement
+- To compile this library with CUDA support you must have nvcc compiler installed (cuda-toolkit 12.4 or later)
+- GCC/G++ : 13.x is required
 
 
+```bash
+mkdir -p build
+cd build/
+cmake -S .. -B .
+make
+```
 
+---
 
-## Model: Partially functional
-    At this stage only sequential model can be used.
+## Tests
+Tests are currently available only for the implemented operations.
+Each operation works on a 2D matrix of size 4 × 4.
 
+Run all test cases:
 
+```bash
+./test/deeplearingLA_test
+```
+Run a particular test case using --gtest_filter. Example:
 
-
-## Layers
-    Location:
-    include: include/Layers.h
-    source code: lib/Layers/*
-
-### Dense Layer: Fully functional
-    Forward and backward functionality is implemented    
-### Batch Normalization Layer: Not functional
-    Forward propagation functionality is implemented. Backward propagation is not implemented yet.
-
-
-
-
-
-## Activation Funcations
-    Location:
-    include: include/Activations.h
-    source code: lib/Activations/*
-
-### Relu, Sigmoid, linear, softman: Funtional
-
-
-
-
-## Optimizer Type: Functional
-    Location:
-    include: include/Optimizers_type.h
-    source code: lib/Optimizers/*
-
-### SGD (Stocastic Gradient Descent): Functional
-### SGD_momentum: Functional
-### Adagrad: Functional
-### Adadelta: Functional
-### RMSprop: Functional
-### ADAM: Functional
-
-
-
-
-## Losses: Partially Functional
-    Location:
-    include: include/Losses.h
-    source code: lib/Losses/*
-
-### Linear, Mean_Squared_Error, Categorical_Cross_Entropy, Binary_Cross_Entropy: Funcational
-
-
-
-
-
-## Bunch info:
-    master: baseline function working properly
+```bash
+./test/deeplearingLA_test --gtest_filter="*MatrixMultiplication_2D*"
+```
