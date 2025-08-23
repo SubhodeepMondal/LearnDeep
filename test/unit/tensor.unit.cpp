@@ -47,4 +47,7 @@ TEST_F(MathTest, MatrixInitialization_test) {
     EXPECT_EQ(a_ptr->getData()[i], a[i]);
     EXPECT_EQ(b_ptr->getData()[i], b[i]);
   }
+
+  // A.destory();
+  // B.destory();
 }

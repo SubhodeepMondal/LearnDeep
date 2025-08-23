@@ -29,13 +29,12 @@ typedef struct dim_node {
 
 template <typename T> class ndarray {
   std::string obj_name;
-  dim_node *head = NULL;
-  dim_node *ptr = NULL;
-  dim_node *prev = NULL;
+  // dim_node *head = NULL;
+  // dim_node *ptr = NULL;
+  // dim_node *prev = NULL;
   DataType tensor_type;
   using data_type = float;
   unsigned nDim, nElem;
-  unsigned no_of_gpu;
   unsigned *dimension, *arr_dim;
   unsigned dim_iterator;
   bool isDimInitilized = false;
@@ -43,11 +42,11 @@ template <typename T> class ndarray {
   T *data;
   void *data_ptr;
 
-  void addDimensions(){};
+  // void addDimensions(){};
 
-  void addDimensions(unsigned);
+  // void addDimensions(unsigned);
 
-  void addDimensions(const unsigned *);
+  // void addDimensions(const unsigned *);
 
 public:
   ndarray();
@@ -56,6 +55,15 @@ public:
 
   // copy constructor.
   ndarray(const ndarray<T> &ndarray);
+
+  // Copy assignment (deep copy).
+  ndarray<T> &operator=(const ndarray<T> &ndarray);
+
+  // Move constructor (steal resources).
+  ndarray(ndarray<T> &&ndarray) noexcept ;
+
+  // Move assignment (steal resources).
+  ndarray<T> &operator=(ndarray<T> &&ndarray) noexcept;
 
   ~ndarray();
 
@@ -119,8 +127,6 @@ public:
   T operator()(unsigned);
 
   ndarray<T> &operator[](unsigned);
-
-  ndarray<T> &operator=(const ndarray<T> &ndarray);
 };
 
 // #include "NDynamicArray.tpp"

@@ -1,3 +1,7 @@
+#ifdef CUDA_ENABLED
+#include <LAS/gpu_interface.cuh>
+#endif
+
 #include <LAS/CPULibrary.h>
 #include <LAS/avx2_micro_kernels.h>
 #include <framework/MathLibrary.h>
@@ -68,7 +72,8 @@ void Opsreducesum::recursive_sum(unsigned index, unsigned *dimension_arr,
                           input_index];
 
         ptr[1] = temp_arr;
-        cpu::__madd(ptr, a);
+
+        kernel_dispatch(ptr, a);
       }
       break;
     }
@@ -85,7 +90,8 @@ void Opsreducesum::recursive_sum(unsigned index, unsigned *dimension_arr,
                 input_ptr[i + j * x_axis * y_axis + stride * k + input_index];
 
         ptr[1] = temp_arr;
-        cpu::__madd(ptr, a);
+
+        kernel_dispatch(ptr, a);
       }
 
       break;
@@ -100,8 +106,8 @@ void Opsreducesum::recursive_sum(unsigned index, unsigned *dimension_arr,
         stride = x_axis * y_axis;
         temp_arr = input_ptr + (stride * k + input_index);
         ptr[1] = temp_arr;
-
-        cpu::__madd(ptr, a);
+        
+        kernel_dispatch(ptr, a);
       }
       temp_output->printData();
       break;
@@ -116,8 +122,7 @@ void Opsreducesum::recursive_sum(unsigned index, unsigned *dimension_arr,
 
         temp_inp = input_ptr + (stride * k + input_index);
         ptr[1] = temp_inp;
-
-        cpu::__madd(ptr, a);
+        kernel_dispatch(ptr, a);
       }
       break;
     }
@@ -168,10 +173,6 @@ void Opsreducesum::compute() {
     temp_input->reshape(resulting_no_of_dims, resulting_dims);
     temp_input->initData(temp_output->getData());
 
-    // std::cout << "\nReduction on dimension:\n";
-    // temp_input->printDimensions();
-    // std::cout << "\nResulting Tensor:\n";
-    // temp_input->printData();
   }
   this->output->initData(temp_output->getData());
 }
@@ -220,4 +221,22 @@ void Opsreducesum::printoutput() {
   std::cout << "output:\n";
   output->printData();
   std::cout << "\n";
+}
+
+void Opsreducesum::kernel_dispatch(std::float64_t **ptr, unsigned *arr) {
+
+#ifdef CUDA_ENABLED
+  double *d_arr[3];
+  d_arr[0] = reinterpret_cast<double *>(ptr[0]);
+  d_arr[1] = reinterpret_cast<double *>(ptr[1]);
+  d_arr[2] = reinterpret_cast<double *>(ptr[2]);
+
+  gpu::gpu_mat_add_f64(d_arr, arr);
+#else
+  if (__builtin_cpu_supports("avx2")) {
+    avx2::avx2_add_f64(ptr, arr);
+  } else {
+    cpu::__madd(ptr, arr);
+  }
+#endif
 }

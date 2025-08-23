@@ -1,3 +1,7 @@
+#ifdef CUDA_ENABLED
+#include <LAS/gpu_interface.cuh>
+#endif
+
 #include "avx2_micro_kernels.h"
 #include <cstring>
 #include <immintrin.h>
@@ -105,7 +109,7 @@ void avx2::avx2_add_f64(std::float64_t **ptr, unsigned *arr) {
 
   n_elements = m_size * n_size;
   omp_set_num_threads(std::thread::hardware_concurrency());
-  std::cout << "avx256 kernel for scale is running....\n";
+  std::cout << "avx256 kernel for add is running....\n";
 #pragma omp parallel for
   for (i = 0; i <= n_elements - 4; i += 4) {
     __m256d c_arr =

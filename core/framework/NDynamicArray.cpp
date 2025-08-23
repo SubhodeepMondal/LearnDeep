@@ -1,15 +1,12 @@
-#include "NDynamicArray.h"
+#include <framework/NDynamicArray.h>
 
 template <typename T> ndarray<T>::ndarray() {
   dim_iterator = 0;
   nDim = 0;
-  no_of_gpu = 0;
+  // no_of_gpu = 0;
   dimension = nullptr;
   arr_dim = nullptr;
   data = nullptr;
-
-  // std::cout << "default constructor data: " << data << " dim ptr: " <<
-  // dimension << " arr ptr: " << arr_dim << "\n";
 }
 
 template <typename T> ndarray<T>::ndarray(const ndarray<T> &ndarray) {
@@ -31,42 +28,6 @@ template <typename T> ndarray<T>::ndarray(const ndarray<T> &ndarray) {
     this->initData(ndarray.getData());
 }
 
-// template <typename T>
-// template <typename... Args>
-// ndarray<T>::ndarray(unsigned num, Args... args)
-// {
-//     unsigned i;
-//     nElem = 1;
-//     isDimInitilized = false;
-//     isInitilized = true;
-//     nDim = 0;
-//     dim_node *ptr_new = new dim_node;
-//     head = ptr = ptr_new;
-//     head->value = num;
-//     head->next = NULL;
-//     nDim++;
-//     addDimensions(args...);
-//     i = nDim - 1;
-//     if (!isDimInitilized)
-//     {
-//         isDimInitilized = true;
-//         dimension = new unsigned[nDim];
-//         arr_dim = new unsigned[nDim];
-//         ptr = head;
-//         while (ptr)
-//         {
-//             dimension[i--] = ptr->value;
-//             prev = ptr;
-//             ptr = ptr->next;
-//             delete prev;
-//         }
-//     }
-//     for (i = 0; i < nDim; i++)
-//         nElem *= dimension[i];
-//     data = new T[nElem];
-//     std::memset(data, 0, nElem * sizeof(T));
-// }
-
 template <typename T>
 ndarray<T>::ndarray(unsigned n, const unsigned *arr, DataType d_type) {
 
@@ -82,68 +43,74 @@ ndarray<T>::ndarray(unsigned n, const unsigned *arr, DataType d_type) {
     this->dimension[i] = arr[i];
     nElem *= dimension[i];
   }
-  data_ptr = new EnumToDataType<tf_bfloat16>::type[nElem];
 
   data = new T[nElem];
+  this->isInitilized = true;
   std::memset(data, 0, nElem * sizeof(T));
 }
 
-template <typename T> ndarray<T>::~ndarray() {
-  // printDimensions();
-  // std::cout << "Destroyer " << isInitilized << ", " << isDimInitilized <<
-  // "\n"; std::cout << "data: " << data << " dim ptr: " << dimension << " arr
-  // ptr: " << arr_dim << "\n";
-
-  // std::cout << "destroyer destroying data for object:" << obj_name << " " <<
-  // data << " " << dimension << " " << arr_dim <<  "!\n";
-  if (data) {
-    delete[] data;
-    data = nullptr;
-    // std::cout << "freed data memory \n ";
-  }
-
-  if (dimension) {
-    delete[] dimension;
-    dimension = nullptr;
-    // std::cout << "freed dimension memory \n ";
-  }
-
-  if (arr_dim) {
-    delete[] arr_dim;
-    arr_dim = nullptr;
-    // std::cout << "freed arr_dim memory \n ";
-  }
-  // std::cout << "destroyed!\n";
-}
-
-template <typename T> void ndarray<T>::addDimensions(unsigned w) {
-  dim_node *ptr_new = new dim_node;
-
-  ptr->next = ptr_new;
-  ptr_new->value = w;
-  ptr_new->next = NULL;
-  ptr = ptr->next;
-  nDim++;
-}
-
-template <typename T> void ndarray<T>::addDimensions(const unsigned *w) {
+template <typename T>
+ndarray<T> &ndarray<T>::operator=(const ndarray<T> &ndarray) {
+  if (this == &ndarray)
+    return *this;
+  if (isInitilized)
+    destroy();
+  isInitilized = true;
   isDimInitilized = true;
-  nDim = head->value;
+
+  this->nDim = ndarray.nDim;
   dimension = new unsigned[nDim];
   arr_dim = new unsigned[nDim];
-  for (unsigned i = 0; i < nDim; i++) {
-    dimension[i] = w[i];
-  }
 
-  delete head;
+  std::memcpy(dimension, ndarray.getDimensions(), nDim * sizeof(unsigned));
+  std::memset(arr_dim, 0, nDim * sizeof(unsigned));
+  nElem = ndarray.nElem;
+
+  data = new T[nElem];
+  if (ndarray.isInitilized)
+    this->initData(ndarray.getData());
+  return *this;
 }
 
-// template <typename T>
-// template <typename... args>
-// void ndarray<T>::addDimensions(unsigned w, args... Args) {
-//   addDimensions(w);
-//   addDimensions(Args...);
-// }
+template <typename T> ndarray<T>::ndarray(ndarray<T> &&ndarray) noexcept {
+  nDim = ndarray.nDim;
+  nElem = ndarray.nElem;
+  dimension = ndarray.dimension;
+  arr_dim = ndarray.arr_dim;
+  dim_iterator = ndarray.dim_iterator;
+  isDimInitilized = ndarray.isDimInitilized;
+  isInitilized = ndarray.isInitilized;
+  data = ndarray.data;
+  ndarray.dimension = nullptr;
+  ndarray.arr_dim = nullptr;
+  ndarray.data = nullptr;
+}
+
+template <typename T>
+ndarray<T> &ndarray<T>::operator=(ndarray<T> &&ndarray) noexcept {
+  if (this != &ndarray) {
+    if (isInitilized)
+      destroy();
+    nDim = ndarray.nDim;
+    nElem = ndarray.nElem;
+    dimension = ndarray.dimension;
+    arr_dim = ndarray.arr_dim;
+    dim_iterator = ndarray.dim_iterator;
+    isDimInitilized = ndarray.isDimInitilized;
+    isInitilized = ndarray.isInitilized;
+    data = ndarray.data;
+    ndarray.dimension = nullptr;
+    ndarray.arr_dim = nullptr;
+    ndarray.data = nullptr;
+  }
+  return *this;
+}
+
+template <typename T> ndarray<T>::~ndarray() {
+
+  std::cout << "Destructor called for object: " << "\n";
+  destroy();
+}
 
 template <typename T> const unsigned *ndarray<T>::getDimensions() const {
   return dimension;
@@ -219,26 +186,15 @@ template <typename T> void ndarray<T>::printLinearData() {
 }
 
 template <typename T> void ndarray<T>::initData(T data) {
-  // if (type)
-  // {
   T *item = new T[nElem];
   for (int i = 0; i < nElem; i++)
     item[i] = data;
-  // GPU_aux<T>::cudaMemoryCopyHostToDevice(this->data,item,nElem);
-  // cudaMemcpy(this->data, item, sizeof(T) * nElem, cudaMemcpyHostToDevice);
   delete[] item;
-  // }
-  // else
   for (int i = 0; i < nElem; i++)
     this->data[i] = data;
 }
 
 template <typename T> void ndarray<T>::initData(T *data) {
-  // if (type)
-  // {
-  // GPU_aux<T>::cudaMemmoryCopyToDevice(this->data, data, nElem);
-  // }
-  // else
   if (data) {
     std::memcpy(this->data, data, nElem * sizeof(T));
   } else if (data == nullptr) {
@@ -249,9 +205,6 @@ template <typename T> void ndarray<T>::initData(T *data) {
     std::cout << "No elements to initialize.\n";
     return;
   }
-  // std::cout << "initData called with data: " << data << " nElem: " << nElem
-  // <<
-  // "\n";
 };
 
 template <typename T> void ndarray<T>::initData(ndarray<T> incData) {
@@ -264,32 +217,16 @@ template <typename T> void ndarray<T>::initData(ndarray<T> incData) {
     nElem *= dimension[i];
   }
 
-  // if (type)
-  // {
-  // GPU_aux<T>::cudaMemoryCopyHostToDevice(this->data, incData.getData(),
-  // nElem); cudaMemcpy(this->data, incData.getData(), sizeof(T) * nElem,
-  // cudaMemcpyHostToDevice);
-  // }
-  // else
-  // {
   data = new T[nElem];
   T *ptr = incData.getData();
 
   for (int i = 0; i < nElem; i++)
     this->data[i] = ptr[i];
-  // }
 }
 
 template <typename T>
 void ndarray<T>::initPartialData(unsigned index, unsigned n, T *data_source) {
   int j = 0;
-  // if (type)
-  // {
-  // GPU_aux<T>::cudaMemoryCopyHostToDevice(data+index, data_source,n);
-  // cudaMemcpy((data + index), data_source, sizeof(T) * n,
-  // cudaMemcpyHostToDevice);
-  // }
-  // else
   for (int i = index; i < (index + n); i++)
     data[i] = data_source[j++];
 }
@@ -332,15 +269,17 @@ void ndarray<T>::resetDimensions(unsigned n, unsigned *arr) {
 template <typename T> DataType ndarray<T>::getType() { return tensor_type; }
 
 template <typename T> void ndarray<T>::destroy() {
+  if (data) {
+    delete[] data;
+    data = nullptr;
+  }
   if (dimension) {
     delete[] dimension;
     dimension = nullptr;
-    // std::cout << "freed dimension memory in destroy\n ";
   }
   if (arr_dim) {
     delete[] arr_dim;
     arr_dim = nullptr;
-    // std::cout << "freed arr_dim memory in destroy\n ";
   }
   // std::cout << "destroyed!\n";
 }
@@ -374,7 +313,6 @@ template <typename T> void ndarray<T>::printNoOfElements() {
 }
 
 template <typename T> void ndarray<T>::reshape(unsigned n, unsigned *arr) {
-
   if (this->nDim < n) {
     this->nDim = n;
     delete[] this->dimension;
@@ -395,37 +333,9 @@ template <typename T> void ndarray<T>::reshape(unsigned n, unsigned *arr) {
     delete[] data;
     this->nElem = temp_nElem;
     data = new T[this->nElem];
-  } else{
+  } else {
     this->nElem = temp_nElem;
   }
-}
-
-template <typename T>
-ndarray<T> &ndarray<T>::operator=(const ndarray<T> &ndarray) {
-  // std::cout << "inside assignment operator" << this << " " << &ndarray <<
-  // "\n";
-  if (this == &ndarray)
-    return *this;
-  if (isInitilized)
-    destroy();
-  isInitilized = true;
-  isDimInitilized = true;
-
-  this->nDim = ndarray.getNoOfDimensions();
-  dimension = new unsigned[nDim];
-  arr_dim = new unsigned[nDim];
-
-  std::memcpy(dimension, ndarray.getDimensions(), nDim * sizeof(unsigned));
-  std::memset(arr_dim, 0, nDim * sizeof(unsigned));
-  nElem = ndarray.getNoOfElem();
-
-  data = new T[nElem];
-  if (ndarray.isInitilized)
-    this->initData(ndarray.getData());
-
-  // std::cout << "assignment operator data: " << data << " dim ptr: " <<
-  // dimension << " arr ptr: " << arr_dim << "\n";
-  return *this;
 }
 
 // template class ndarray<std::bfloat16_t>;

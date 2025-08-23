@@ -32,7 +32,6 @@ void gpu::gpu_mat_add_f64(double **ptr, unsigned *arr)
   cudaError_t err;
   gpu_kernel::matrixSum<<<grid, block>>>(d_a, d_b, d_c, x, y);
   cudaMemcpy(c, d_c, x * y * sizeof(double), cudaMemcpyDeviceToHost);
-  // cudaDeviceSynchronize();
   cudaFree(d_a);
   cudaFree(d_b);
   cudaFree(d_c);

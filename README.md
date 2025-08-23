@@ -26,9 +26,10 @@ Currently, a small set of operations are implemented:
 ## Build
 Follow these steps to build the library:
 
-### Requirement
-- To compile this library with CUDA support you must have nvcc compiler installed (cuda-toolkit 12.4 or later)
+### Requirements
 - GCC/G++ : 13.x is required
+- OpenMP
+- Not mandetory: To compile this library with CUDA support you must have nvcc compiler installed (cuda-toolkit 12.4 or later)
 
 
 ```bash
@@ -37,7 +38,14 @@ cd build/
 cmake -S .. -B .
 make
 ```
+- To compile this library without CUDA support -DENABLE_CUDA=OFF
 
+```bash
+mkdir -p build
+cd build/
+cmake -DENABLE_CUDA=OFF -S .. -B .
+make
+```
 ---
 
 ## Tests

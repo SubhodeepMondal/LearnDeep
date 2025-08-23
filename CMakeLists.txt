@@ -6,6 +6,9 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mavx2")
 find_package(OpenMP REQUIRED) # Find OpenMP package
 
+
+option(ENABLE_CUDA "Build with CUDA support" ON)
+
 add_subdirectory(thirdparty/googletest)
 
 add_subdirectory(core)
@@ -16,12 +19,12 @@ add_subdirectory(test)
 
 add_custom_target(
     src
-    DEPENDS core gpu tensor_api
+    DEPENDS core tensor_api
 )
 
 add_custom_target(
     test
-    DEPENDS core gpu tensor_api
+    DEPENDS core tensor_api
 )
 
 set(CMAKE_INSTALL_PREFIX ${CMAKE_SOURCE_DIR}/build/)

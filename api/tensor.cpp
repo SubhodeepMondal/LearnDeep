@@ -118,6 +118,43 @@ tf::graph &tf::tensor::add(tensor &input_b) {
   return *g;
 }
 
+tf::graph &tf::tensor::getReductionGraph(std::vector<unsigned> reduction_dims,
+                                         bool &flag) {
+  graph *g = nullptr;
+  switch (dt_type) {
+  case tf_float64:
+    if (g_manager.isThereActiveSession()) { // search for any activated graph
+      g = g_manager.findActivateSession();
+      g->input_a = *this;
+      if (g) {
+        std::cout << "Adding tensor::reduction sum to the active graph "
+                     "session.\n";
+        Ops *ops = static_cast<Tensor<std::float64_t> *>(this->ptr)->reducesum(
+            reduction_dims, flag);
+
+        g->ops = ops;
+
+        static_cast<Graph *>(g->ptr)->addNode(
+            static_cast<Tensor<std::float64_t> *>(this->ptr));
+        static_cast<Graph *>(g->ptr)->addNode(ops);
+
+        static_cast<Graph *>(g->ptr)->addEdge(
+            static_cast<Tensor<std::float64_t> *>(this->ptr), ops);
+      } else {
+        std::cerr << "No active graph session found.\n";
+      }
+    } else {
+      std::cerr << "No active graph session found.\n";
+    }
+    break;
+
+  default:
+    break;
+  }
+
+  return *g;
+}
+
 tf::graph &tf::tensor::mul(tensor &input_b) {
   graph *g = nullptr;
   if (this->dt_type == input_b.dt_type) {
@@ -132,19 +169,21 @@ tf::graph &tf::tensor::mul(tensor &input_b) {
         g->input_b = input_b;
         if (g) {
           std::cout << "Adding tensor::addition to the active graph session.\n";
-          Ops *ops = static_cast<Tensor<std::float64_t> *>(this->ptr)->mul(
-              *(static_cast<Tensor<std::float64_t> *>(input_b.ptr)), flag);
+          Ops *ops =
+              static_cast<Tensor<std::float64_t> *>(g->input_a.ptr)
+                  ->mul(*(static_cast<Tensor<std::float64_t> *>(input_b.ptr)),
+                        flag);
 
           g->ops = ops;
 
           static_cast<Graph *>(g->ptr)->addNode(
-              static_cast<Tensor<std::float64_t> *>(this->ptr));
+              static_cast<Tensor<std::float64_t> *>(g->input_a.ptr));
           static_cast<Graph *>(g->ptr)->addNode(
               static_cast<Tensor<std::float64_t> *>(input_b.ptr));
           static_cast<Graph *>(g->ptr)->addNode(ops);
 
           static_cast<Graph *>(g->ptr)->addEdge(
-              static_cast<Tensor<std::float64_t> *>(this->ptr), ops);
+              static_cast<Tensor<std::float64_t> *>(g->input_a.ptr), ops);
           static_cast<Graph *>(g->ptr)->addEdge(
               static_cast<Tensor<std::float64_t> *>(input_b.ptr), ops);
         } else {
@@ -202,139 +241,76 @@ tf::graph &tf::tensor::matmul(tensor &input_b) {
   return *g;
 }
 
-tf::graph &tf::tensor::getReductionGraph(std::vector<unsigned> reduction_dims,
-                                         bool &flag) {
-  graph *g = nullptr;
+tf::tensor tf::tensor::eager_matmul(tensor &input_b) {
+  tensor output;
+
+  if (this->dt_type == input_b.dt_type) {
+    switch (dt_type) {
+    case tf_float64: {
+      output.dt_type = this->dt_type;
+      output.ptr = static_cast<Tensor<std::float64_t> *>(this->ptr)->matmul(
+          *(static_cast<Tensor<std::float64_t> *>(input_b.ptr)));
+      break;
+    }
+    default:
+      std::cout << "Invalid data type!";
+    }
+  }
+  return output;
+}
+
+tf::tensor tf::tensor::eager_add(tensor &input_b) {
+  tensor output;
+
+  if (this->dt_type == input_b.dt_type) {
+    switch (dt_type) {
+    case tf_float64: {
+      output.dt_type = this->dt_type;
+      output.ptr = static_cast<Tensor<std::float64_t> *>(this->ptr)->add(
+          *(static_cast<Tensor<std::float64_t> *>(input_b.ptr)));
+      break;
+    }
+    default:
+      std::cout << "Invalid data type!";
+    }
+  }
+  return output;
+}
+
+tf::tensor tf::tensor::operator*(tensor &input_b) {
+  tensor output;
+
+  if (this->dt_type == input_b.dt_type) {
+    switch (dt_type) {
+    case tf_float64: {
+      output.dt_type = this->dt_type;
+      output.ptr = static_cast<Tensor<std::float64_t> *>(this->ptr)->mul(
+          *(static_cast<Tensor<std::float64_t> *>(input_b.ptr)));
+      break;
+    }
+    default:
+      std::cout << "Invalid data type!";
+    }
+  }
+  return output;
+}
+
+tf::tensor
+tf::tensor::eager_getReduction(std::vector<unsigned> reduction_dims) {
+  tensor output;
   switch (dt_type) {
   case tf_float64:
-    if (g_manager.isThereActiveSession()) { // search for any activated graph
-      g = g_manager.findActivateSession();
-      g->input_a = *this;
-      if (g) {
-        std::cout << "Adding tensor::reduction sum to the active graph "
-                     "session.\n";
-        Ops *ops = static_cast<Tensor<std::float64_t> *>(g->input_a.ptr)
-                       ->reducesum(reduction_dims, flag);
-
-        g->ops = ops;
-
-        static_cast<Graph *>(g->ptr)->addNode(
-            static_cast<Tensor<std::float64_t> *>(this->ptr));
-        static_cast<Graph *>(g->ptr)->addNode(ops);
-
-        static_cast<Graph *>(g->ptr)->addEdge(
-            static_cast<Tensor<std::float64_t> *>(this->ptr), ops);
-      } else {
-        std::cerr << "No active graph session found.\n";
-      }
-    } else {
-      std::cerr << "No active graph session found.\n";
-    }
+    output.dt_type = this->dt_type;
+    output.ptr = static_cast<Tensor<std::float64_t> *>(this->ptr)->reducesum(
+        reduction_dims);
     break;
 
   default:
     break;
   }
 
-  return *g;
+  return output;
 }
-// void tf::reducesum(graph &g, tensor &output, tensor &input) {
-
-//   unsigned count = 0;
-//   unsigned *reduction_dims;
-//   unsigned *dims;
-
-//   arg_ptr = arg_ptr_prev = arg_head;
-
-//   while (arg_ptr) {
-//     count++;
-//     arg_ptr = arg_ptr->next;
-//   }
-//   std::cout << "count: " << count << "\n";
-//   reduction_dims = new unsigned[count];
-//   arg_ptr = arg_head;
-
-//   for (unsigned i = 0; i < count; i++) {
-//     reduction_dims[i] = arg_ptr->value;
-//     arg_ptr = arg_ptr->next;
-//     delete[] arg_ptr_prev;
-//     arg_ptr_prev = arg_ptr;
-//   }
-
-//   if ((input.dt_type == output.dt_type)) {
-//     switch (output.dt_type) {
-//     case tf_float64:
-//       static_cast<Tensor<std::float64_t> *>(output.ptr)
-//           ->assign(static_cast<Tensor<std::float64_t>
-//           *>(input.ptr)->reducesum(
-//               *(static_cast<Graph *>(g)), count, reduction_dims));
-//     }
-//   }
-// }
-
-// template <typename first_dim, typename... Args>
-// void tf::reducesum(graph &g, tensor &output, tensor &input, first_dim n,
-//                    Args... args) {
-//   unsigned count = 0;
-//   unsigned *reduction_dims;
-//   unsigned *dims;
-
-//   arg_ptr = arg_ptr_prev = arg_head;
-
-//   while (arg_ptr) {
-//     count++;
-//     arg_ptr = arg_ptr->next;
-//   }
-//   std::cout << "count: " << count << "\n";
-//   reduction_dims = new unsigned[count];
-//   arg_ptr = arg_head;
-
-//   for (unsigned i = 0; i < count; i++) {
-//     reduction_dims[i] = arg_ptr->value;
-//     arg_ptr = arg_ptr->next;
-//     delete[] arg_ptr_prev;
-//     arg_ptr_prev = arg_ptr;
-//   }
-
-//   if ((input.dt_type == output.dt_type)) {
-//     switch (output.dt_type) {
-//     case tf_float64:
-//       static_cast<Tensor<std::float64_t> *>(output.ptr)
-//           ->assign(static_cast<Tensor<std::float64_t>
-//           *>(input.ptr)->reducesum(
-//               *(static_cast<Graph *>(g)), count, reduction_dims));
-//     }
-//   }
-// }
-
-// template <typename... Args>
-// void tf::reducesum(graph &g, tensor &output, tensor &input, Args... args) {
-//   arg_head = NULL;
-//   reducesum(g, output, input, args...);
-// }
-
-// void tf::mean(graph &g, tensor &output, tensor &input, const unsigned n) {
-//   if ((input.dt_type == output.dt_type)) {
-//     switch (output.dt_type) {
-//     case tf_float64:
-//       static_cast<Tensor<std::float64_t> *>(output.ptr)
-//           ->assign(static_cast<Tensor<std::float64_t> *>(input.ptr)->mean(
-//               *(static_cast<Graph *>(g)), n));
-//     }
-//   }
-// }
-
-// void tf::scale(graph &g, tensor &output, tensor &input,
-//                std::float64_t scale_factor) {
-//   if ((input.dt_type == output.dt_type)) {
-//     switch (output.dt_type) {
-//     case tf_float64:
-//       static_cast<Tensor<std::float64_t> *>(output.ptr)
-//           ->assign(static_cast<Tensor<std::float64_t> *>(input.ptr)->scale(
-//               *(static_cast<Graph *>(g)), scale_factor));
-//     }
-//   }
-// }
 
 void tf::graph::tf_create_graph() {
   ptr = new Graph();
@@ -357,8 +333,6 @@ void tf::graph::graph_end_recording_session() {
     g_manager.removeGraph(this);
   }
 }
-
-// void tf::graph::graph_optimize(graph &g) {}
 
 void tf::graph::graph_execute() { static_cast<Graph *>(this->ptr)->compute(); }
 

@@ -189,6 +189,8 @@ public:
   void printinputs();
 
   void printoutput();
+
+  void kernel_dispatch(std::float64_t **, unsigned *);
 };
 
 class Opsscale : public Ops {

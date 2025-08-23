@@ -37,5 +37,5 @@ TEST_F(MathTest, GraphCreation_test) {
   // g.graph_travarse_data_node();
   g.graph_execute();
   // g.graph_travarse_data_node();
-  // g.graph_clear();
+  g.graph_clear();
 }

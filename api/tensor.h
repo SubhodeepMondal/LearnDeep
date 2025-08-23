@@ -31,7 +31,7 @@ typedef struct graph_manager {
 extern graph_manager g_manager;
 
 typedef struct tensor {
-  void *ptr;
+  void *ptr{nullptr};
   DataType dt_type;
 
   void addDimensions(std::vector<unsigned> &dimensions, unsigned w) {
@@ -95,10 +95,87 @@ typedef struct tensor {
 
   graph &matmul(tensor &input_b);
 
-  // void pow(tensor &input, unsigned power);
+  tensor eager_matmul(tensor &input_b);
 
-  // void scale(graph &g, tensor &output, tensor &input,
-  //            std::float64_t scale_factor);
+  tensor eager_add(tensor &input_b);
+
+  tensor eager_getReduction(std::vector<unsigned> reduction_dims);
+
+  template <typename... Args> tensor eager_reducesum(Args... args) {
+    std::vector<unsigned> dimensions;
+    bool flag = true;
+
+    // Add dimensions to the vector
+    addDimensions(dimensions, args...);
+
+    unsigned *reduction_dims = new unsigned[dimensions.size()];
+    for (int i = 0; i < dimensions.size(); i++) {
+      reduction_dims[i] = dimensions[i];
+    }
+
+    delete[] reduction_dims;
+
+    return eager_getReduction(dimensions);
+  }
+
+  tensor operator*(tensor &input_b);
+
+  // --- Default constructor
+  tensor() = default;
+
+  // --- Destructor
+  ~tensor() { /*destory();*/ }
+
+  // --- Copy constructor
+  tensor(const tensor &other) {
+    dt_type = other.dt_type;
+    if (other.ptr) {
+      auto *src = static_cast<Tensor<std::float64_t> *>(other.ptr);
+      ptr = new Tensor<std::float64_t>(*src); // deep copy
+    }
+  }
+
+  // --- Copy assignment
+  tensor &operator=(const tensor &other) {
+    if (this != &other) {
+      // destory();
+      dt_type = other.dt_type;
+      if (other.ptr) {
+        auto *src = static_cast<Tensor<std::float64_t> *>(other.ptr);
+        ptr = new Tensor<std::float64_t>(*src); // deep copy
+      } else {
+        ptr = nullptr;
+      }
+    }
+    return *this;
+  }
+
+  // --- Move constructor
+  tensor(tensor &&other) noexcept {
+    dt_type = other.dt_type;
+    ptr = other.ptr;
+    other.ptr = nullptr;
+  }
+
+  // --- Move assignment
+  tensor &operator=(tensor &&other) noexcept {
+    if (this != &other) {
+      // destory();
+      dt_type = other.dt_type;
+      ptr = other.ptr;
+      other.ptr = nullptr;
+    }
+    return *this;
+  }
+
+  // --- Destroy function
+  void destory() {
+    if (ptr) {
+      static_cast<Tensor<std::float64_t> *>(ptr)->destroy();
+      // delete static_cast<Tensor<std::float64_t> *>(ptr);
+      ptr = nullptr;
+    }
+  }
 
   graph &getReductionGraph(std::vector<unsigned> reduction_dims, bool &flag);
 
@@ -113,8 +190,13 @@ typedef struct tensor {
     for (int i = 0; i < dimensions.size(); i++) {
       reduction_dims[i] = dimensions[i];
     }
+    delete[] reduction_dims;
 
     return getReductionGraph(dimensions, flag);
+  }
+
+  std::float64_t *getPtr() {
+    return static_cast<Tensor<std::float64_t> *>(this->ptr)->getData();
   }
 } tensor;
 
