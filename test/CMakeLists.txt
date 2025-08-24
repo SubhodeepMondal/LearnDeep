@@ -8,6 +8,9 @@ add_executable(deeplearingLA_test unit/main.cpp
     unit/matmul.unit.cpp
     unit/reducesum.unit.cpp
     unit/gemm.unit.cpp
+    unit/scale.unit.cpp
+    unit/power.unit.cpp
+    unit/mean.unit.cpp
 )
 
 target_include_directories(deeplearingLA_test PRIVATE ${CMAKE_SOURCE_DIR}/api

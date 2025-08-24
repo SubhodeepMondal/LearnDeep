@@ -29,7 +29,7 @@ TEST_F(MathTest, GraphCreation_test) {
   g.graph_start_recording_session();
   ASSERT_TRUE(g.isSessionActive);
 
-  C = A.add(B);
+  C = A.add(g, B);
   ASSERT_TRUE(C.ptr != nullptr);
   EXPECT_TRUE(C.dt_type == tf_float64);
 

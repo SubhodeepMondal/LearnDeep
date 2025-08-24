@@ -38,10 +38,6 @@ TEST_F(MathTest, Eager_MatrixMultiplication_2D) {
   for (int i = 0; i < 16; i++) {
     EXPECT_NEAR(tensorC_matmul->getData()[i], c_mul[i], 0.0001);
   }
-
-  A.destory();
-  B.destory();
-  C.destory();
 }
 
 TEST_F(MathTest, MatrixMultiplication_2D) {
@@ -74,11 +70,11 @@ TEST_F(MathTest, MatrixMultiplication_2D) {
   tf::graph g_matmul;
   g_matmul.tf_create_graph();
 
-  g_matmul.graph_start_recording_session();
+  // g_matmul.graph_start_recording_session();
 
-  C = A.matmul(B);
+  C = A.matmul(g_matmul, B);
 
-  g_matmul.graph_end_recording_session();
+  // g_matmul.graph_end_recording_session();
   g_matmul.graph_execute();
 
   g_matmul.graph_clear();

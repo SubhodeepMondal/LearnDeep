@@ -27,17 +27,12 @@ TEST_F(MathTest, Eager_MatrixAddition_2D) {
   B.tensor_of(b);
 
   C = A.eager_add(B);
-  
+
   auto *tensorC_matmul = static_cast<Tensor<std::float64_t> *>(C.ptr);
   for (int i = 0; i < 16; i++) {
     EXPECT_NEAR(C.getPtr()[i], c_add[i], 0.0001);
   }
-
-  A.destory();
-  B.destory();
-  C.destory();
 }
-
 
 TEST_F(MathTest, MatrixAddition_2D) {
 
@@ -67,11 +62,8 @@ TEST_F(MathTest, MatrixAddition_2D) {
   tf::graph g_add;
   g_add.tf_create_graph();
 
-  g_add.graph_start_recording_session();
+  C = A.add(g_add, B);
 
-  C = A.add(B);
-
-  g_add.graph_end_recording_session();
   g_add.graph_execute();
   g_add.graph_clear();
 

@@ -119,3 +119,42 @@ void gpu::gpu_mat_mul_f64(double **ptr, unsigned *arr)
     std::cerr << "CUDA error: " << cudaGetErrorString(err) << std::endl;
   }
 };
+
+void gpu::gpu_mat_scale_f64(double **ptr, unsigned *arr)
+{
+  double *a = ptr[0];
+  double scaling_factor = ptr[1][0]; 
+  double *c = ptr[2];
+
+  unsigned x = arr[0]; // x output row size
+  unsigned y = arr[1]; // y k row
+
+  std::cout << "GPU kernel for matrix scaling is running..." << std::endl;
+  dim3 block;
+  dim3 grid;
+
+  block.x = (32 > x) ? x : 32;
+  block.y = (32 > y) ? y : 32;
+  grid.x = (x + block.x - 1) / block.x;
+  grid.y = (y + block.y - 1) / block.y;
+
+  double *d_a, *d_c;
+  cudaMalloc((void **)&d_a, x * y * sizeof(double));
+  cudaMalloc((void **)&d_c, x * y * sizeof(double));
+
+  cudaMemcpy(d_a, a, x * y * sizeof(double), cudaMemcpyHostToDevice);
+
+  cudaError_t err;
+  gpu_kernel::matrixScalerMul<<<grid, block>>>(d_a, scaling_factor, d_c, x, y);
+
+  cudaMemcpy(c, d_c, x * y * sizeof(double), cudaMemcpyDeviceToHost);
+
+  cudaFree(d_a);
+  cudaFree(d_c);
+
+  err = cudaGetLastError();
+  if (err != cudaSuccess)
+  {
+    std::cerr << "CUDA error: " << cudaGetErrorString(err) << std::endl;
+  }
+}

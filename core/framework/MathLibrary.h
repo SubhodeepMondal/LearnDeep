@@ -46,79 +46,45 @@ public:
 
   void assign(Ops *ops) { ops->initilizeoutput(this); }
 
-  /// @brief This function calculates matrix multiplication A X B
-  /// @tparam None
-  /// @param input_B_matrix Tensor class, expects Tensor or similar y dimension
-  /// that of current Tensor.
-  /// @return returns Tensor class type.
-  Tensor<T> *matmul(Tensor<T> &);
-
-  /// @brief This function does element wise multiplication with pass costant
-  /// value
-  /// @tparam None
-  /// @param const value std::float64_t
-  /// @return returns Tensor class type.
-  Tensor<T> scale(const std::float64_t);
-
-  /// @brief This function calculates matrix addition A + B
-  /// @tparam None
-  /// @param input_B_matrix Tensor class, expects Tensor or similar rank and
-  /// dimension that of current Tensor.
-  /// @return returns Tensor class type.
   Tensor<T> *add(Tensor<T> &);
 
-  /// @brief This function calculates matrix multiplication A X B
-  /// @tparam None
-  /// @param input_B_matrix Tensor class, expects Tensor or similar y dimension
-  /// that of current Tensor.
-  /// @return returns Tensor class type.
+  Tensor<T> *matmul(Tensor<T> &);
+
   Tensor<T> *operator*(Tensor<T> &);
 
   Tensor<T> *mul(Tensor<T> &);
 
-  /// @brief This function calculates matrix addition A + B
-  /// @tparam None
-  /// @param input_B_matrix Tensor class, expects Tensor or similar rank and
-  /// dimension that of current Tensor.
-  /// @return returns Tensor class type.
   Tensor<T> operator+(const Tensor<T>);
 
-  /// @brief This function calculates matrix addition A + B
-  /// @tparam None
-  /// @param input_B_matrix Tensor class, expects Tensor or similar rank and
-  /// dimension that of current Tensor.
-  /// @return returns Tensor class type.
   Tensor<T> operator-(const Tensor<T>);
 
   Tensor<T> vectoradd(const Tensor<T>);
 
-  /// @brief This function transposes current Tensor
-  /// @tparam None
-  /// @return void, output (call by referance)
   void transpose();
 
-  /// @brief This function reduction sum operation along the reduction
-  /// dimension.
-  /// @tparam None
-  /// @param reduction_dimension Unsigned, Along which dimension the Tensor
-  /// needs to be reduced
-  /// @return returns Tensor class type.
   Tensor<T> *reducesum(std::vector<unsigned>);
 
-  /// @brief This function calculates matrix addition A + B
-  /// @tparam None
-  /// @param input_B_matrix Tensor class, expects Tensor or similar rank and
-  /// dimension that of current Tensor.
-  /// @return returns Tensor class type.
-  Tensor<T> pow(unsigned);
+  Tensor<T> *scale(const std::float64_t);
 
-  Ops *add(Tensor<T> &input, bool &flag);
+  Tensor<T> *pow(unsigned);
 
-  Ops *mul(Tensor<T> &input, bool &flag);
+  Tensor<T> *mean(const unsigned);
 
-  Ops *matmul(Tensor<T> &input, bool &flag);
+  Ops *add(Graph &g, Tensor<T> &input, bool &flag);
 
-  Ops *reducesum(std::vector<unsigned> n, bool &flag);
+  Ops *mean(Graph &g, unsigned dim, bool &flag);
+
+  // Ops *mul(Tensor<T> &input, bool &flag);
+
+  Ops *mul(Graph &g, Tensor<T> &input, bool &flag);
+
+  Ops *matmul(Graph &g, Tensor<T> &input, bool &flag);
+
+  Ops *reducesum(Graph &g, std::vector<unsigned> n, bool &flag);
+
+  Ops *scale(Graph &g, const std::float64_t scaleFactor, bool &flag);
+
+  Ops *power(Graph &g, unsigned exponent, bool &flag);
 };
 
 // template class Tensor<std::float64_t>;

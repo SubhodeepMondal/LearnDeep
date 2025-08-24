@@ -1,1 +1,0 @@
-g++ -c lib/Math/CPULibrary.cpp -fopenmp -o build/obj/CPULibrary.o -I include && ar cr build/archieve/libcpu.a build/obj/CPULibrary.o  && g++ test/Linear_Algebra.cpp -lcpu -o build/exe/Linear_Algebra.out -I include -L build/archieve -fopenmp  && ./build/exe/Linear_Algebra.out

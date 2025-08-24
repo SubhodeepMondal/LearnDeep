@@ -194,7 +194,7 @@ public:
 };
 
 class Opsscale : public Ops {
-  std::float64_t scale_factor;
+  std::float64_t scale_factor[1];
 
   Tensor<std::float64_t> **inputs;
   Tensor<std::float64_t> *output;

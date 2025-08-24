@@ -1,8 +1,11 @@
+#ifdef CUDA_ENABLED
+#include <LAS/gpu_interface.cuh>
+#endif
+
 #include <LAS/CPULibrary.h>
 #include <LAS/avx2_micro_kernels.h>
 #include <framework/MathLibrary.h>
 #include <kernel/opskernel.h>
-
 
 void Opsscale::recursive_iterator(unsigned index, unsigned *dimension_arr,
                                   std::string function_name, unsigned *ui_arr,
@@ -45,7 +48,7 @@ void Opsscale::recursive_iterator(unsigned index, unsigned *dimension_arr,
     ptr[1] = dl_arr;
     ptr[2] = output->getData() + c_index;
 
-    kernel_dispatch(ptr,a);
+    kernel_dispatch(ptr, a);
   } else {
     for (unsigned i = 0; i < inputs[0]->getDimensions()[index]; i++) {
       dimension_arr[index] = i;
@@ -61,13 +64,13 @@ void Opsscale::compute() {
   arr = new unsigned[inputs[0]->getNoOfDimensions()];
 
   recursive_iterator(inputs[0]->getNoOfDimensions() - 1, arr,
-                     "matrix_scaler_multiplication", NULL, &scale_factor, NULL);
+                     "matrix_scaler_multiplication", NULL, scale_factor, NULL);
   delete[] arr;
 }
 
 void Opsscale::initilizeinputs(Tensor<std::float64_t> **inputs,
                                std::float64_t scale_factor) {
-  this->scale_factor = scale_factor;
+  this->scale_factor[0] = scale_factor;
   this->inputs = new Tensor<std::float64_t> *[1];
   this->inputs[0] = inputs[0];
 }
@@ -92,9 +95,19 @@ void Opsscale::printoutput() {
 }
 
 void Opsscale::kernel_dispatch(std::float64_t **ptr, unsigned *arr) {
+#ifdef CUDA_ENABLED
+  double *d_arr[3];
+  d_arr[0] = reinterpret_cast<double *>(ptr[0]);
+  d_arr[1] = reinterpret_cast<double *>(ptr[1]);
+  d_arr[2] = reinterpret_cast<double *>(ptr[2]);
+
+  gpu::gpu_mat_scale_f64(d_arr, arr);
+#else
   if (__builtin_cpu_supports("avx2")) {
     avx2::avx2_scale_f64(ptr, arr);
   } else {
     cpu::__mscalermul(ptr, arr);
   }
+#endif
 }
+

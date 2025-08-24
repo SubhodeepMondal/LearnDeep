@@ -58,14 +58,10 @@ TEST_F(MathTest, MatrixReductionSum_2D) {
   tf::graph g_reduce_sum;
   g_reduce_sum.tf_create_graph();
 
-  g_reduce_sum.graph_start_recording_session();
+  C = A.reducesum(g_reduce_sum, 0);
 
-  C = A.reducesum(0);
-
-  g_reduce_sum.graph_end_recording_session();
   g_reduce_sum.graph_execute();
   g_reduce_sum.graph_clear();
-  // C.print_data();
 
   auto *tensorC_reducesum = static_cast<Tensor<std::float64_t> *>(C.ptr);
   for (int i = 0; i < 4; i++) {

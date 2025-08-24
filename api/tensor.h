@@ -79,6 +79,7 @@ typedef struct tensor {
   unsigned getNoOfElem() {
     return static_cast<Tensor<std::float64_t> *>(ptr)->getNoOfElem();
   }
+
   void tensor_of(double low_limit, double upper_limit);
 
   void tensor_of(std::float64_t *data);
@@ -87,13 +88,19 @@ typedef struct tensor {
 
   void print_dimension();
 
-  graph &add(tensor &input_b);
-
   void operator=(graph &g);
 
-  graph &mul(tensor &input_b);
+  graph &add(graph &g, tensor &input_b);
 
-  graph &matmul(tensor &input_b);
+  graph &mean(graph &g, unsigned dim);
+
+  graph &mul(graph &g, tensor &input_b);
+
+  graph &matmul(graph &g, tensor &input_b);
+
+  graph &scale(graph &g, std::float64_t scaleFactor);
+
+  graph &pow(graph &g, unsigned exponent);
 
   tensor eager_matmul(tensor &input_b);
 
@@ -119,6 +126,12 @@ typedef struct tensor {
   }
 
   tensor operator*(tensor &input_b);
+
+  tensor eager_scale(const std::float64_t scaleFactor);
+
+  tensor eager_pow(const unsigned exponent);
+
+  tensor eager_mean(const unsigned dim);
 
   // --- Default constructor
   tensor() = default;
@@ -177,9 +190,10 @@ typedef struct tensor {
     }
   }
 
-  graph &getReductionGraph(std::vector<unsigned> reduction_dims, bool &flag);
+  graph &getReductionGraph(graph &g, std::vector<unsigned> reduction_dims,
+                           bool &flag);
 
-  template <typename... Args> graph &reducesum(Args... args) {
+  template <typename... Args> graph &reducesum(graph &g, Args... args) {
     std::vector<unsigned> dimensions;
     bool flag = true;
 
@@ -192,7 +206,7 @@ typedef struct tensor {
     }
     delete[] reduction_dims;
 
-    return getReductionGraph(dimensions, flag);
+    return getReductionGraph(g, dimensions, flag);
   }
 
   std::float64_t *getPtr() {
@@ -211,8 +225,6 @@ typedef struct graph {
   void graph_start_recording_session();
 
   void graph_end_recording_session();
-
-  // void graph_optimize(graph &g);
 
   void graph_execute();
 

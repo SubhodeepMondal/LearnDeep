@@ -28,7 +28,7 @@ namespace gpu_kernel {
     
     __global__ void matrixMul(double *a, double *b, double *c, unsigned x, unsigned y, unsigned z);
 
-    __global__ void matrixScalerMul(double *input, double scaler_value, double *output, unsigned x, unsigned y, unsigned z);
+    __global__ void matrixScalerMul(double *input, double scaler_value, double *output, unsigned x, unsigned y);
 
     __global__ void matrixAccuracyValue(double *confusion_matrix, double *accuracy, unsigned x, unsigned y);
 
@@ -60,30 +60,5 @@ namespace gpu_kernel {
 
     __global__ void matrixDifference(double *input_A, double *input_B, double *output_C, unsigned x, unsigned y);
 
-    __global__ void matrixCrossEntropy(double *input_A, double *input_B, double *output_C, unsigned x, unsigned y, unsigned z);
-
-    __global__ void matrixCrossEntropyDifference(double *input_A, double *input_B, double *output_C, unsigned x, unsigned y, unsigned z);
-
-    __global__ void matrixConfusionMatrix(double *input_A, double *input_B, double *output_C, unsigned x, unsigned y);
-
-    __global__ void matrixBinaryCrossEntropy(double *input_A, double *input_B, double *output_C, unsigned x, unsigned y);
-
-    __global__ void matrixUpdateParameters(double *weights_biases, double *learning_rate, double *d_weights_biases, unsigned a_m, unsigned a_n, unsigned a_o);
-
-    __global__ void maritrxWeightedSum(double *input, double *output, unsigned x, unsigned y, double alpha);
-
-    __global__ void matrixNormalize(double *input, double *std_div, double *mean, double *output, unsigned x, unsigned y);
-
-    __global__ void matrixNormalScaling(double *input, double *gamma, double *beta, double *output, unsigned x, unsigned y);
-
-    __global__ void matrixExponentiallyWeightedMovingAvg(double sigma, double *sum_d_weights_biases, double *d_weights_biases, unsigned a_m, unsigned a_n, unsigned a_o);
-
-    __global__ void matrixUpdateWeightsBiasesRMSprop(double sigma, double epsalon, double *sum_d_weights_biases, double *d_weights_biases, unsigned a_m, unsigned a_n, unsigned a_o);
-
-    __global__ void matrixUpdateWeightsBiasesADAM(double *sigma, double *epsalon, double *learning_rate, double *sum_d_weights_biases, double *sum_d_weights_biases_squared, double *d_weights_biases, double *weights_biases, unsigned a_m, unsigned a_n);
-
-    __global__ void matrixUpdateLearningRateAdagrad(double epsalon, double learning_rate, double *learning_rate_eta, double *delta_weights_biases, double *sum_delta_weights, unsigned a_m, unsigned a_n, unsigned a_o);
-
-    __global__ void matrixUpdateLearningRateAdadelta(double epsalon, double sigma, double *delta_weights_biases, double *sum_delta_weights, double *learning_rate, double *eta_learning_rate, unsigned a_m, unsigned a_n, unsigned a_o);
 }
 #endif

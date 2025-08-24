@@ -42,12 +42,9 @@ TEST_F(MathTest, general_matrix_multiplication_2D) {
   tf::graph g_gemm;
   g_gemm.tf_create_graph();
 
-  g_gemm.graph_start_recording_session();
+  D = A.matmul(g_gemm, B);
+  E = D.add(g_gemm, C);
 
-  D = A.matmul(B);
-  E = D.add(C);
-
-  g_gemm.graph_end_recording_session();
   g_gemm.graph_execute();
 
   g_gemm.graph_clear();

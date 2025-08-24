@@ -1,8 +1,11 @@
+#ifdef CUDA_ENABLED
+#include <LAS/gpu_interface.cuh>
+#endif
+
 #include <LAS/CPULibrary.h>
 #include <LAS/avx2_micro_kernels.h>
 #include <framework/MathLibrary.h>
 #include <kernel/opskernel.h>
-
 
 void Opspower::recursive_iterator(unsigned index, unsigned *dimension_arr,
                                   std::string function_name, unsigned *ui_arr,
@@ -47,7 +50,7 @@ void Opspower::recursive_iterator(unsigned index, unsigned *dimension_arr,
       }
 
     int j;
-    unsigned a[2];  
+    unsigned a[2];
     std::float64_t *ptr[3];
 
     a[0] = inpA_x;
@@ -85,14 +88,14 @@ void Opspower::compute() {
 
 void Opspower::initilizeinputs(Tensor<std::float64_t> **inputs,
                                unsigned exponent) {
-  unsigned i;
+  // unsigned i;
   this->exponent = exponent;
 
   this->inputs = new Tensor<std::float64_t> *[1];
 
-  for (i = 0; i < 1; i++) {
-    this->inputs[i] = inputs[i];
-  }
+  // for (i = 0; i < 1; i++) {
+    this->inputs[0] = inputs[0];
+  // }
 }
 
 void Opspower::initilizeoutput(Tensor<std::float64_t> *output) {
@@ -116,9 +119,18 @@ void Opspower::printoutput() {
 }
 
 void Opspower::kernel_dispatch(std::float64_t **ptr, unsigned *arr) {
+#ifdef CUDA_ENABLED
+  double *d_arr[3];
+  d_arr[0] = reinterpret_cast<double *>(ptr[0]);
+  d_arr[1] = reinterpret_cast<double *>(ptr[1]);
+  d_arr[2] = reinterpret_cast<double *>(ptr[2]);
+
+  gpu::gpu_mat_hadamard_mul_f64(d_arr, arr);
+#else
   if (__builtin_cpu_supports("avx2")) {
     avx2::avx2_mul_f64(ptr, arr);
   } else {
     cpu::__melementwisemul(ptr, arr);
   }
+#endif
 }

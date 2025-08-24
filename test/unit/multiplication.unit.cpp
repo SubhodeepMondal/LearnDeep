@@ -27,16 +27,12 @@ TEST_F(MathTest, Eager_MatrixHarmandMultiplication_2D) {
   A.tensor_of(a);
   B.tensor_of(b);
 
-  C = A*B;
+  C = A * B;
 
   auto *tensorC_matmul = static_cast<Tensor<std::float64_t> *>(C.ptr);
   for (int i = 0; i < 16; i++) {
     EXPECT_NEAR(tensorC_matmul->getData()[i], c_add[i], 0.0001);
   }
-
-  A.destory();
-  B.destory();
-  C.destory();
 }
 
 TEST_F(MathTest, MatrixElementWiseMultiplication_2D) {
@@ -67,15 +63,14 @@ TEST_F(MathTest, MatrixElementWiseMultiplication_2D) {
   tf::graph g_mul;
   g_mul.tf_create_graph();
 
-  g_mul.graph_start_recording_session();
+  // g_mul.graph_start_recording_session();
 
-  C = A.mul(B);
+  C = A.mul(g_mul, B);
 
-  g_mul.graph_end_recording_session();
+  // g_mul.graph_end_recording_session();
 
   g_mul.graph_execute();
   g_mul.graph_clear();
-
 
   auto *tensorC_mul = static_cast<Tensor<std::float64_t> *>(C.ptr);
   for (int i = 0; i < 16; i++) {

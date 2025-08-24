@@ -54,26 +54,6 @@ template <typename T> Tensor<T> *Tensor<T>::matmul(Tensor<T> &input) {
   return output;
 }
 
-template <typename T>
-Tensor<T> Tensor<T>::scale(const std::float64_t scaleFactor) {
-  Tensor<T> output;
-
-  unsigned no_of_dims;
-  unsigned *arr;
-  T scale_factor = scaleFactor;
-  DataType d_type = tf_float64;
-
-  no_of_dims = Tensor<T>::getNoOfDimensions();
-
-  arr = new unsigned[no_of_dims];
-
-  output = Tensor<T>(no_of_dims, this->getDimensions(), d_type);
-
-  delete[] arr;
-
-  return output;
-}
-
 template <typename T> Tensor<T> *Tensor<T>::operator*(Tensor<T> &input) {
   Tensor<T> *output;
   Ops *ops;
@@ -156,7 +136,6 @@ template <typename T> Tensor<T> *Tensor<T>::add(Tensor<T> &input) {
   DataType d_type = tf_float64;
 
   unsigned flag = 1;
-
 
   for (int i = 0; i < this->getNoOfDimensions(); i++)
     if (this->getDimensions()[i] != input.getDimensions()[i]) {
@@ -387,32 +366,89 @@ template <typename T> Tensor<T> *Tensor<T>::reducesum(std::vector<unsigned> n) {
   return output;
 }
 
-template <typename T> Tensor<T> Tensor<T>::pow(const unsigned exponent) {
-  unsigned i, *arr;
+template <typename T>
+Tensor<T> *Tensor<T>::scale(const std::float64_t scaleFactor) {
+  Tensor<T> *output;
+  Ops *ops;
   DataType d_type = tf_float64;
 
-  Tensor<T> output(this->getNoOfDimensions(), this->getDimensions(), d_type);
+  ops = new Opsscale;
+  output =
+      new Tensor<T>(this->getNoOfDimensions(), this->getDimensions(), d_type);
+  Tensor<T> *inputs[1];
+  inputs[0] = this;
+  ops->initilizeinputs(inputs, scaleFactor);
+  ops->initilizeoutput(output);
+  ops->compute();
 
-  if (exponent == 0)
-    output.initData(1);
-  else if (exponent > 0) {
-    output.initData(this->getData());
-    arr = new unsigned[this->getNoOfDimensions()];
+  delete ops;
+  return output;
+}
 
-    // std::cout << output.getData() << "\n";
-    for (i = 1; i < exponent; i++)
-      // recursive_iterator(this->getNoOfDimensions() - 1, arr, output, output,
-      //                    cpu::__melementwisemul, "matrix_power", NULL, NULL,
-      //                    NULL);
-      delete[] arr;
+template <typename T> Tensor<T> *Tensor<T>::pow(const unsigned exponent) {
+  Tensor<T> *output;
+  DataType d_type = tf_float64;
+  Ops *ops;
+
+  output =
+      new Tensor<T>(this->getNoOfDimensions(), this->getDimensions(), d_type);
+  if (exponent == 0) {
+    output->initData(1);
+  } else if (exponent == 1) {
+    output->initData(this->getData());
+  } else {
+    ops = new Opspower;
+
+    Tensor<T> *inputs[1];
+    inputs[0] = this;
+
+    ops->initilizeinputs(inputs, exponent);
+    ops->initilizeoutput(output);
+    ops->compute();
+
+    delete ops;
   }
+  return output;
+}
+
+template <typename T> Tensor<T> *Tensor<T>::mean(const unsigned dim) {
+  Tensor<T> *output;
+  Tensor<T> *temp_reducesum;
+  Ops *ops;
+  DataType d_type = tf_float64;
+
+  // first perform reducesum operation along the specified dimension
+  ops = new Opsreducesum;
+  temp_reducesum = new Tensor<T>(this->getNoOfDimensions() - 1,
+                                 this->getDimensions(), d_type);
+  Tensor<T> *inputs[1];
+  inputs[0] = this;
+  unsigned reduction_dim = (this->getNoOfDimensions() - dim - 1) > 0
+                               ? (this->getNoOfDimensions() - dim - 1)
+                               : 0;
+  unsigned dims[1] = {reduction_dim};
+  ops->initilizeinputs(inputs, 1, dims);
+  ops->initilizeoutput(temp_reducesum);
+  ops->compute();
+  delete ops;
+
+  // then perform scale operation with scale factor = 1/n, n = size of the
+  ops = new Opsscale;
+  output = new Tensor<T>(temp_reducesum->getNoOfDimensions(),
+                         temp_reducesum->getDimensions(), d_type);
+  std::float64_t scale_factor = 1.0f / this->getDimensions()[reduction_dim];
+  ops->initilizeinputs(&temp_reducesum, scale_factor);
+  ops->initilizeoutput(output);
+  ops->compute();
+  delete ops;
 
   return output;
 }
 
-template <typename T> Ops *Tensor<T>::add(Tensor<T> &input, bool &flag) {
-
-  Ops *ops = NULL;
+template <typename T>
+Ops *Tensor<T>::add(Graph &g, Tensor<T> &input, bool &flag) {
+  Ops *ops = nullptr;
+  Tensor<T> *inputs[2];
   unsigned i, no_of_dimensions;
 
   no_of_dimensions = Tensor<T>::getNoOfDimensions();
@@ -426,10 +462,18 @@ template <typename T> Ops *Tensor<T>::add(Tensor<T> &input, bool &flag) {
     }
     if (flag) {
       ops = new Opsadd;
-      Tensor<T> *inputs[2];
+
       inputs[0] = this;
       inputs[1] = &input;
+
       ops->initilizeinputs(inputs, (unsigned)2);
+
+      g.addNode(this);
+      g.addNode(&input);
+      g.addNode(ops);
+
+      g.addEdge(this, ops);
+      g.addEdge(&input, ops);
     } else {
       std::cout << "Error!" << i
                 << "th Dimension does not match with second matrix.\n";
@@ -441,7 +485,49 @@ template <typename T> Ops *Tensor<T>::add(Tensor<T> &input, bool &flag) {
   return ops;
 }
 
-template <typename T> Ops *Tensor<T>::mul(Tensor<T> &input, bool &flag) {
+template <typename T> Ops *Tensor<T>::mean(Graph &g, unsigned dim, bool &flag) {
+  Tensor<T> *temp_reducesum;
+  Ops *ops;
+  DataType d_type = tf_float64;
+
+  // first perform reducesum operation along the specified dimension
+  ops = new Opsreducesum;
+  temp_reducesum = new Tensor<T>(this->getNoOfDimensions() - 1,
+                                 this->getDimensions(), d_type);
+  Tensor<T> *inputs[1];
+  inputs[0] = this;
+  unsigned reduction_dim = (this->getNoOfDimensions() - dim - 1) > 0
+                               ? (this->getNoOfDimensions() - dim - 1)
+                               : 0;
+  unsigned dims[1] = {reduction_dim};
+
+  // initialize the inputs and add nodes and edges to the graph
+  ops->initilizeinputs(inputs, 1, dims);
+  g.addNode(this);
+  g.addNode(ops);
+  g.addEdge(this, ops);
+
+  // initialize the output and add nodes and edges to the graph
+  ops->initilizeoutput(temp_reducesum);
+  g.addNode(temp_reducesum);
+  g.addEdge(ops, temp_reducesum);
+
+  // then perform scale operation with scale factor = 1/n, n = size of the
+  // dimension
+  ops = new Opsscale;
+  std::float64_t scale_factor = 1.0f / this->getDimensions()[reduction_dim];
+  ops->initilizeinputs(&temp_reducesum, scale_factor);
+
+  g.addNode(temp_reducesum);
+  g.addNode(ops);
+
+  g.addEdge(temp_reducesum, ops);
+
+  return ops;
+}
+
+template <typename T>
+Ops *Tensor<T>::mul(Graph &g, Tensor<T> &input, bool &flag) {
 
   Ops *ops = NULL;
   unsigned i, no_of_dimensions;
@@ -461,6 +547,13 @@ template <typename T> Ops *Tensor<T>::mul(Tensor<T> &input, bool &flag) {
       inputs[0] = this;
       inputs[1] = &input;
       ops->initilizeinputs(inputs, (unsigned)2);
+
+      g.addNode(this);
+      g.addNode(&input);
+      g.addNode(ops);
+
+      g.addEdge(this, ops);
+      g.addEdge(&input, ops);
     } else {
       std::cout << "Error! " << i
                 << "th Dimension does not match with second matrix.\n";
@@ -473,7 +566,8 @@ template <typename T> Ops *Tensor<T>::mul(Tensor<T> &input, bool &flag) {
   return ops;
 }
 
-template <typename T> Ops *Tensor<T>::matmul(Tensor<T> &input, bool &flag) {
+template <typename T>
+Ops *Tensor<T>::matmul(Graph &g, Tensor<T> &input, bool &flag) {
 
   Ops *ops = NULL;
   unsigned i, no_of_dimensions;
@@ -496,6 +590,15 @@ template <typename T> Ops *Tensor<T>::matmul(Tensor<T> &input, bool &flag) {
         inputs[0] = this;
         inputs[1] = &input;
         ops->initilizeinputs(inputs, (unsigned)2);
+
+        g.addNode(this);   // Add the first input node to the graph
+        g.addNode(&input); // Add the second input node to the graph
+        g.addNode(ops);    // Add the operation node to the graph
+
+        g.addEdge(this, ops); // Create an edge from the first input node to the
+                              // operation node
+        g.addEdge(&input, ops); // Create an edge from the second input node to
+                                // the operation node
       } else {
         std::cout << "Error!" << i
                   << "th Dimension does not match with second matrix.\n";
@@ -513,7 +616,7 @@ template <typename T> Ops *Tensor<T>::matmul(Tensor<T> &input, bool &flag) {
 }
 
 template <typename T>
-Ops *Tensor<T>::reducesum(std::vector<unsigned> n, bool &flag) {
+Ops *Tensor<T>::reducesum(Graph &g, std::vector<unsigned> n, bool &flag) {
   Ops *ops = NULL;
   unsigned i, no_of_dimensions, count = 0;
 
@@ -536,8 +639,43 @@ Ops *Tensor<T>::reducesum(std::vector<unsigned> n, bool &flag) {
     Tensor<T> *inputs[1];
     inputs[0] = this;
     ops->initilizeinputs(inputs, n.size(), n.data());
+
+    g.addNode(this);
+    g.addNode(ops);
+
+    g.addEdge(this, ops);
   }
 
+  return ops;
+}
+
+template <typename T>
+Ops *Tensor<T>::scale(Graph &g, const std::float64_t scaleFactor,
+                      [[maybe_unused]] bool &flag) {
+  Ops *ops = new Opsscale;
+  Tensor<T> *inputs[1];
+  inputs[0] = this;
+
+  ops->initilizeinputs(inputs, scaleFactor);
+
+  g.addNode(this);
+  g.addNode(ops);
+
+  g.addEdge(this, ops);
+
+  return ops;
+}
+
+template <typename T>
+Ops *Tensor<T>::power(Graph &g, const unsigned exponent, bool &flag) {
+  Ops *ops = new Opspower;
+
+  Tensor<T> *inputs[1];
+  inputs[0] = this;
+  ops->initilizeinputs(inputs, exponent);
+  g.addNode(this);
+  g.addNode(ops);
+  g.addEdge(this, ops);
   return ops;
 }
 
