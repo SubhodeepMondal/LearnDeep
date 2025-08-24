@@ -163,7 +163,7 @@ tf::graph &tf::tensor::pow(graph &g, unsigned exponent) {
   return g;
 }
 
-tf::tensor tf::tensor::eager_matmul(tensor &input_b) {
+tf::tensor tf::tensor::matmul(tensor &input_b) {
   tensor output;
 
   if (this->dt_type == input_b.dt_type) {
@@ -181,7 +181,7 @@ tf::tensor tf::tensor::eager_matmul(tensor &input_b) {
   return output;
 }
 
-tf::tensor tf::tensor::eager_add(tensor &input_b) {
+tf::tensor tf::tensor::add(tensor &input_b) {
   tensor output;
 
   if (this->dt_type == input_b.dt_type) {
@@ -217,7 +217,7 @@ tf::tensor tf::tensor::operator*(tensor &input_b) {
   return output;
 }
 
-tf::tensor tf::tensor::eager_scale(const std::float64_t scaleFactor) {
+tf::tensor tf::tensor::scale(const std::float64_t scaleFactor) {
   tensor output;
 
   switch (dt_type) {
@@ -233,7 +233,7 @@ tf::tensor tf::tensor::eager_scale(const std::float64_t scaleFactor) {
   return output;
 }
 
-tf::tensor tf::tensor::eager_pow(const unsigned exponent) {
+tf::tensor tf::tensor::pow(const unsigned exponent) {
   tensor output;
 
   switch (dt_type) {
@@ -249,7 +249,7 @@ tf::tensor tf::tensor::eager_pow(const unsigned exponent) {
   return output;
 }
 
-tf::tensor tf::tensor::eager_mean(const unsigned dim) {
+tf::tensor tf::tensor::mean(const unsigned dim) {
   tensor output;
 
   switch (dt_type) {
@@ -265,7 +265,7 @@ tf::tensor tf::tensor::eager_mean(const unsigned dim) {
 }
 
 tf::tensor
-tf::tensor::eager_getReduction(std::vector<unsigned> reduction_dims) {
+tf::tensor::getReduction(std::vector<unsigned> reduction_dims) {
   tensor output;
   switch (dt_type) {
   case tf_float64:

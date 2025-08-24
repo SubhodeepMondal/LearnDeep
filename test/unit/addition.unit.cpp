@@ -26,7 +26,7 @@ TEST_F(MathTest, Eager_MatrixAddition_2D) {
   A.tensor_of(a);
   B.tensor_of(b);
 
-  C = A.eager_add(B);
+  C = A.add(B);
 
   auto *tensorC_matmul = static_cast<Tensor<std::float64_t> *>(C.ptr);
   for (int i = 0; i < 16; i++) {

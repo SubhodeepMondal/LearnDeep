@@ -19,7 +19,7 @@ TEST_F(MathTest, Eager_MatrixPower_2D) {
   A.tf_create(tf_float64, 4, 4);
   A.tensor_of(a);
 
-  C = A.eager_pow(2);
+  C = A.pow(2);
 
   auto *tensorC_power = static_cast<Tensor<std::float64_t> *>(C.ptr);
   for (int i = 0; i < 16; i++) {

@@ -18,7 +18,7 @@ TEST_F(MathTest, Eager_MatrixMean_2D) {
 
   A.tensor_of(a);
 
-  C = A.eager_mean(0);
+  C = A.mean(0);
 
   auto *tensorC_mean = static_cast<Tensor<std::float64_t> *>(C.ptr);
   for (int i = 0; i < 4; i++) {

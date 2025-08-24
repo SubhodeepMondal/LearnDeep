@@ -13,7 +13,7 @@
             "binaryDir": "${sourceDir}/build",
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Debug",
-                "ENABLE_CUDA": "ON"
+                "ENABLE_CUDA": "OFF"
             }
         },
         {

@@ -24,7 +24,7 @@ TEST_F(MathTest, Eager_MatrixReductionSum_2D) {
   A.tensor_of(a);
   B.tensor_of(b);
 
-  C = A.eager_reducesum(0);
+  C = A.reducesum(0);
 
   auto *tensorC_reducesum = static_cast<Tensor<std::float64_t> *>(C.ptr);
   for (int i = 0; i < 4; i++) {

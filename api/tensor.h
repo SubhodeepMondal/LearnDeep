@@ -102,13 +102,13 @@ typedef struct tensor {
 
   graph &pow(graph &g, unsigned exponent);
 
-  tensor eager_matmul(tensor &input_b);
+  tensor matmul(tensor &input_b);
 
-  tensor eager_add(tensor &input_b);
+  tensor add(tensor &input_b);
 
-  tensor eager_getReduction(std::vector<unsigned> reduction_dims);
+  tensor getReduction(std::vector<unsigned> reduction_dims);
 
-  template <typename... Args> tensor eager_reducesum(Args... args) {
+  template <typename... Args> tensor reducesum(Args... args) {
     std::vector<unsigned> dimensions;
     bool flag = true;
 
@@ -122,16 +122,16 @@ typedef struct tensor {
 
     delete[] reduction_dims;
 
-    return eager_getReduction(dimensions);
+    return getReduction(dimensions);
   }
 
   tensor operator*(tensor &input_b);
 
-  tensor eager_scale(const std::float64_t scaleFactor);
+  tensor scale(const std::float64_t scaleFactor);
 
-  tensor eager_pow(const unsigned exponent);
+  tensor pow(const unsigned exponent);
 
-  tensor eager_mean(const unsigned dim);
+  tensor mean(const unsigned dim);
 
   // --- Default constructor
   tensor() = default;

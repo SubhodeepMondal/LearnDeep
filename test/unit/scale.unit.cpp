@@ -20,7 +20,7 @@ TEST_F(MathTest, Eager_MatrixScale_2D) {
 
   A.tensor_of(a);
 
-  C = A.eager_scale(0.625);
+  C = A.scale(0.625);
 
   auto *tensorC_scale = static_cast<Tensor<std::float64_t> *>(C.ptr);
   for (int i = 0; i < 16; i++) {
@@ -48,7 +48,7 @@ TEST_F(MathTest, MatrixScale_2D) {
 
   tf::graph g_scale;
   g_scale.tf_create_graph();
-    
+
   C = A.scale(g_scale, 0.625);
 
   g_scale.graph_execute();
