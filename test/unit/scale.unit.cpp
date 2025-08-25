@@ -17,6 +17,7 @@ TEST_F(MathTest, Eager_MatrixScale_2D) {
 
   tf::tensor A, C;
   A.tf_create(tf_float64, 4, 4);
+  C.tf_create(tf_float64, 4, 4);
 
   A.tensor_of(a);
 
