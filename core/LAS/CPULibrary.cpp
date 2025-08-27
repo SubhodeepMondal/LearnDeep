@@ -1,4 +1,5 @@
 #include "CPULibrary.h"
+#include <cmath>
 #include <cstring>
 #include <omp.h>
 
@@ -186,4 +187,70 @@ void cpu::__mtranspose(std::float64_t **ptr, unsigned *arr) {
   }
 
   delete[] temp;
+}
+
+void cpu::__msqrt(std::float64_t **ptr, unsigned *arr) {
+  std::float64_t *A, *C;
+  unsigned x, y;
+
+  A = ptr[0];
+  C = ptr[1];
+
+  x = arr[0];
+  y = arr[1];
+#pragma omp parallel for
+  for (unsigned j = 0; j < y; j++)
+    for (unsigned i = 0; i < x; i++)
+      C[i + j * x] = std::sqrt(A[i + j * x]);
+}
+
+void cpu::__mrelu(std::float64_t **ptr, unsigned *arr) {
+  std::float64_t *A, *C;
+  unsigned x, y;
+
+  A = ptr[0];
+  C = ptr[1];
+
+  x = arr[0];
+  y = arr[1];
+#pragma omp parallel for
+  for (unsigned j = 0; j < y; j++)
+    for (unsigned i = 0; i < x; i++)
+      C[i + j * x] = (A[i + j * x] > 0) ? A[i + j * x] : 0;
+}
+
+void cpu::__msigmoid(std::float64_t **ptr, unsigned *arr) {
+  std::float64_t *A, *C;
+  unsigned x, y;
+
+  A = ptr[0];
+  C = ptr[1];
+
+  x = arr[0];
+  y = arr[1];
+#pragma omp parallel for
+  for (unsigned j = 0; j < y; j++)
+    for (unsigned i = 0; i < x; i++)
+      C[i + j * x] = 1 / (1 + std::exp(-A[i + j * x]));
+}
+
+void cpu::__msoftmax(std::float64_t **ptr, unsigned *arr) {
+  std::float64_t *A, *C;
+  unsigned x, y;
+
+  A = ptr[0];
+  C = ptr[1];
+
+  x = arr[0];
+  y = arr[1];
+#pragma omp parallel for
+  for (unsigned j = 0; j < y; j++) {
+    std::float64_t sum = 0;
+    for (unsigned i = 0; i < x; i++) {
+      C[i + j * x] = std::exp(A[i + j * x]);
+      sum += C[i + j * x];
+    }
+    for (unsigned i = 0; i < x; i++)
+      C[i + j * x] = C[i + j * x] / sum;
+  }
 }

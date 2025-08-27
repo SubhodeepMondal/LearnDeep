@@ -13,7 +13,10 @@
             "binaryDir": "${sourceDir}/build",
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Debug",
-                "ENABLE_CUDA": "OFF"
+                "ENABLE_CUDA": "ON",
+                "USE_SYSTEM_GTEST" : "OFF",
+                "USE_SYSTEM_BENCHMARK " : "OFF"
+
             }
         },
         {

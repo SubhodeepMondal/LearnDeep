@@ -1,5 +1,7 @@
 #include "graph_node.hpp"
 
+
+#include <absl/log/log.h>
 #include <framework/MathLibrary.h>
 #include <iostream>
 #include <kernel/opskernel.h>
@@ -28,24 +30,24 @@ void node::eraseNodeFromOutput(node *n) {
 void node::execute() {
   if (type::compute == node_type) {
     // Execution logic for compute nodes
-    std::cout << "Executing node with ID: " << node_id << std::endl;
+    LOG(INFO)<< "Executing node with ID: " << node_id << std::endl;
     // Add actual execution logic here
     ops->compute(); // Assuming Ops has an execute method
   } else {
-    std::cout << "Node with ID: " << node_id << " is not a compute node."
+    LOG(INFO)<< "Node with ID: " << node_id << " is not a compute node."
               << std::endl;
   }
 }
 
 void node::print_data() {
   if (type::data == node_type) {
-    std::cout << "Node ID: " << node_id << ", Node Type: Data" << std::endl;
+    LOG(INFO)<< "Node ID: " << node_id << ", Node Type: Data" << std::endl;
     if (input_node) {
       input_node->printData(); // Assuming Tensor has a print_data method
     }
   } else if (type::compute == node_type) {
-    std::cout << "Node ID: " << node_id << ", Node Type: Compute" << std::endl;
+    LOG(INFO)<< "Node ID: " << node_id << ", Node Type: Compute" << std::endl;
   } else {
-    std::cout << "Node ID: " << node_id << ", Node Type: Root" << std::endl;
+    LOG(INFO)<< "Node ID: " << node_id << ", Node Type: Root" << std::endl;
   }
 }

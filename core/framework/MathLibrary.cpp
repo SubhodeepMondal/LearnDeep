@@ -385,6 +385,59 @@ Tensor<T> *Tensor<T>::scale(const std::float64_t scaleFactor) {
   return output;
 }
 
+template <typename T> Tensor<T> *Tensor<T>::sqrt() {
+  Tensor<T> *output;
+  Ops *ops = new Opssqrt;
+  DataType d_type = tf_float64;
+
+  output =
+      new Tensor<T>(this->getNoOfDimensions(), this->getDimensions(), d_type);
+  Tensor<T> *inputs[1];
+  inputs[0] = this;
+  ops->initilizeinputs(inputs, (unsigned)1);
+  ops->initilizeoutput(output);
+  ops->compute();
+
+  delete ops;
+  return output;
+}
+
+template <typename T> Tensor<T> *Tensor<T>::sub(Tensor<T> &input) {
+  Tensor<T> *output;
+  Ops *ops;
+  DataType d_type = tf_float64;
+
+  unsigned flag = 1;
+
+  for (int i = 0; i < this->getNoOfDimensions(); i++)
+    if (this->getDimensions()[i] != input.getDimensions()[i]) {
+      flag = 0;
+      break;
+    }
+  if (flag) {
+    ops = new Opssub;
+    output =
+        new Tensor<T>(this->getNoOfDimensions(), this->getDimensions(), d_type);
+    Tensor<T> *inputs[2];
+    inputs[0] = this;
+    inputs[1] = &input;
+    ops->initilizeinputs(inputs, (unsigned)2);
+    ops->initilizeoutput(output);
+    ops->compute();
+
+    delete ops;
+    return output;
+  } else {
+    std::cout << "Two metrix requires same shape to perform matrix addition, "
+                 "here matrix A ";
+    Tensor<T>::printDimensions();
+    std::cout << " and matrix B ";
+    input.printDimensions();
+    std::cout << " are of differenct shape.\n";
+    return output;
+  }
+}
+
 template <typename T> Tensor<T> *Tensor<T>::pow(const unsigned exponent) {
   Tensor<T> *output;
   DataType d_type = tf_float64;
@@ -408,6 +461,23 @@ template <typename T> Tensor<T> *Tensor<T>::pow(const unsigned exponent) {
 
     delete ops;
   }
+  return output;
+}
+
+template <typename T> Tensor<T> *Tensor<T>::relu() {
+  Tensor<T> *output;
+  Ops *ops = new Opsrelu;
+  DataType d_type = tf_float64;
+
+  output =
+      new Tensor<T>(this->getNoOfDimensions(), this->getDimensions(), d_type);
+  Tensor<T> *inputs[1];
+  inputs[0] = this;
+  ops->initilizeinputs(inputs, (unsigned)1);
+  ops->initilizeoutput(output);
+  ops->compute();
+
+  delete ops;
   return output;
 }
 
@@ -650,6 +720,30 @@ Ops *Tensor<T>::reducesum(Graph &g, std::vector<unsigned> n, bool &flag) {
 }
 
 template <typename T>
+Ops *Tensor<T>::pow(Graph &g, const unsigned exponent, bool &flag) {
+  Ops *ops = new Opspower;
+
+  Tensor<T> *inputs[1];
+  inputs[0] = this;
+  ops->initilizeinputs(inputs, exponent);
+  g.addNode(this);
+  g.addNode(ops);
+  g.addEdge(this, ops);
+  return ops;
+}
+
+template <typename T> Ops *Tensor<T>::relu(Graph &g, bool &flag) {
+  Ops *ops = new Opsrelu;
+  Tensor<T> *inputs[1];
+  inputs[0] = this;
+  ops->initilizeinputs(inputs, (unsigned)1);
+  g.addNode(this);
+  g.addNode(ops);
+  g.addEdge(this, ops);
+  return ops;
+}
+
+template <typename T>
 Ops *Tensor<T>::scale(Graph &g, const std::float64_t scaleFactor,
                       [[maybe_unused]] bool &flag) {
   Ops *ops = new Opsscale;
@@ -666,16 +760,54 @@ Ops *Tensor<T>::scale(Graph &g, const std::float64_t scaleFactor,
   return ops;
 }
 
-template <typename T>
-Ops *Tensor<T>::power(Graph &g, const unsigned exponent, bool &flag) {
-  Ops *ops = new Opspower;
-
+template <typename T> Ops *Tensor<T>::sqrt(Graph &g, bool &flag) {
+  Ops *ops = new Opssqrt;
   Tensor<T> *inputs[1];
   inputs[0] = this;
-  ops->initilizeinputs(inputs, exponent);
+  ops->initilizeinputs(inputs, (unsigned)1);
   g.addNode(this);
   g.addNode(ops);
   g.addEdge(this, ops);
+  return ops;
+}
+
+template <typename T>
+Ops *Tensor<T>::sub(Graph &g, Tensor<T> &input, bool &flag) {
+  Ops *ops = NULL;
+  unsigned i, no_of_dimensions;
+
+  no_of_dimensions = Tensor<T>::getNoOfDimensions();
+
+  if (no_of_dimensions == input.getNoOfDimensions()) {
+    for (i = 0; i < no_of_dimensions; i++) {
+      if (Tensor<T>::getDimensions()[i] != input.getDimensions()[i]) {
+        flag = false;
+        break;
+      }
+    }
+    if (flag) {
+      ops = new Opssub;
+
+      Tensor<T> *inputs[2];
+      inputs[0] = this;
+      inputs[1] = &input;
+
+      ops->initilizeinputs(inputs, (unsigned)2);
+
+      g.addNode(this);
+      g.addNode(&input);
+      g.addNode(ops);
+
+      g.addEdge(this, ops);
+      g.addEdge(&input, ops);
+    } else {
+      std::cout << "Error!" << i
+                << "th Dimension does not match with second matrix.\n";
+    }
+  } else {
+    std::cout << "Dimension mismatch, First matrix and second matrix has "
+                 "different rank.\n";
+  }
   return ops;
 }
 

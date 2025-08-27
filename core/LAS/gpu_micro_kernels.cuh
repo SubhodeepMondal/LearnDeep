@@ -48,6 +48,8 @@ namespace gpu_kernel {
 
     __global__ void matrixSigmoid(double *a, double *d_a, int x, int y);
 
+    __global__ void matrixSub(double *input_A, double *input_B, double *output, unsigned x, unsigned y);
+
     __global__ void matrixLinear(double *a, double *d_a, int x, int y);
 
     __global__ void matrixSoftmax(double *a, double *softmax_sum, double *d_a, unsigned x, unsigned y);

@@ -1,18 +1,20 @@
+
+#include "absl/log/log.h"
+#include "gpu_interface.cuh"
 #include <LAS/gpu_interface.cuh>
 #include <LAS/gpu_micro_kernels.cuh>
 #include <cuda_runtime.h>
 #include <iostream>
 
-void gpu::gpu_mat_add_f64(double **ptr, unsigned *arr)
-{
-
+void gpu::gpu_mat_add_f64(double **ptr, unsigned *arr) {
+  
   double *a = ptr[0];
   double *b = ptr[1];
   double *c = ptr[2];
   unsigned x = arr[0];
   unsigned y = arr[1];
 
-  std::cout << "GPU kernel for matrix addition is running..." << std::endl;
+  LOG(INFO) << "GPU kernel for matrix addition is running..." << std::endl;
 
   dim3 block;
   dim3 grid;
@@ -36,22 +38,21 @@ void gpu::gpu_mat_add_f64(double **ptr, unsigned *arr)
   cudaFree(d_b);
   cudaFree(d_c);
   err = cudaGetLastError();
-  if (err != cudaSuccess)
-  {
-    std::cerr << "CUDA error: " << cudaGetErrorString(err) << std::endl;
+  if (err != cudaSuccess) {
+    LOG(ERROR) << "CUDA error: " << cudaGetErrorString(err) << std::endl;
   }
 };
 
-void gpu::gpu_mat_hadamard_mul_f64(double **ptr, unsigned *arr)
-{
-
+void gpu::gpu_mat_hadamard_mul_f64(double **ptr, unsigned *arr) {
+  
   double *a = ptr[0];
   double *b = ptr[1];
   double *c = ptr[2];
   unsigned x = arr[0];
   unsigned y = arr[1];
 
-  std::cout << "GPU kernel for matrix element wise multipliction is running..." << std::endl;
+  LOG(INFO) << "GPU kernel for matrix element wise multipliction is running..."
+            << std::endl;
 
   dim3 block;
   dim3 grid;
@@ -75,14 +76,13 @@ void gpu::gpu_mat_hadamard_mul_f64(double **ptr, unsigned *arr)
   cudaFree(d_b);
   cudaFree(d_c);
   err = cudaGetLastError();
-  if (err != cudaSuccess)
-  {
-    std::cerr << "CUDA error: " << cudaGetErrorString(err) << std::endl;
+  if (err != cudaSuccess) {
+    LOG(ERROR) << "CUDA error: " << cudaGetErrorString(err) << std::endl;
   }
 };
 
-void gpu::gpu_mat_mul_f64(double **ptr, unsigned *arr)
-{
+void gpu::gpu_mat_mul_f64(double **ptr, unsigned *arr) {
+  
   double *a = ptr[0];
   double *b = ptr[1];
   double *c = ptr[2];
@@ -90,7 +90,8 @@ void gpu::gpu_mat_mul_f64(double **ptr, unsigned *arr)
   unsigned y = arr[1]; // y k row
   unsigned z = arr[2]; // z output column size
 
-  std::cout << "GPU kernel for matrix element wise multipliction is running..." << std::endl;
+  LOG(INFO) << "GPU kernel for matrix element wise multipliction is running..."
+            << std::endl;
 
   dim3 block;
   dim3 grid;
@@ -114,22 +115,21 @@ void gpu::gpu_mat_mul_f64(double **ptr, unsigned *arr)
   cudaFree(d_b);
   cudaFree(d_c);
   err = cudaGetLastError();
-  if (err != cudaSuccess)
-  {
-    std::cerr << "CUDA error: " << cudaGetErrorString(err) << std::endl;
+  if (err != cudaSuccess) {
+    LOG(ERROR) << "CUDA error: " << cudaGetErrorString(err) << std::endl;
   }
 };
 
-void gpu::gpu_mat_scale_f64(double **ptr, unsigned *arr)
-{
+void gpu::gpu_mat_scale_f64(double **ptr, unsigned *arr) {
+  
   double *a = ptr[0];
-  double scaling_factor = ptr[1][0]; 
+  double scaling_factor = ptr[1][0];
   double *c = ptr[2];
 
   unsigned x = arr[0]; // x output row size
   unsigned y = arr[1]; // y k row
 
-  std::cout << "GPU kernel for matrix scaling is running..." << std::endl;
+  LOG(INFO) << "GPU kernel for matrix scaling is running..." << std::endl;
   dim3 block;
   dim3 grid;
 
@@ -153,8 +153,178 @@ void gpu::gpu_mat_scale_f64(double **ptr, unsigned *arr)
   cudaFree(d_c);
 
   err = cudaGetLastError();
-  if (err != cudaSuccess)
-  {
-    std::cerr << "CUDA error: " << cudaGetErrorString(err) << std::endl;
+  if (err != cudaSuccess) {
+    LOG(ERROR) << "CUDA error: " << cudaGetErrorString(err) << std::endl;
+  }
+}
+
+void gpu::gpu_mat_sub_f64(double **ptr, unsigned *arr) {
+  
+  double *a = ptr[0];
+  double *b = ptr[1];
+  double *c = ptr[2];
+  unsigned x = arr[0];
+  unsigned y = arr[1];
+
+  LOG(INFO) << "GPU kernel for matrix addition is running..." << std::endl;
+
+  dim3 block;
+  dim3 grid;
+  block.x = (32 > x) ? x : 32;
+  block.y = (32 > y) ? y : 32;
+  grid.x = (x + block.x - 1) / block.x;
+  grid.y = (y + block.y - 1) / block.y;
+
+  double *d_a, *d_b, *d_c;
+
+  cudaMalloc((void **)&d_a, x * y * sizeof(double));
+  cudaMalloc((void **)&d_b, x * y * sizeof(double));
+  cudaMalloc((void **)&d_c, x * y * sizeof(double));
+
+  cudaMemcpy(d_a, a, x * y * sizeof(double), cudaMemcpyHostToDevice);
+  cudaMemcpy(d_b, b, x * y * sizeof(double), cudaMemcpyHostToDevice);
+  cudaError_t err;
+  gpu_kernel::matrixSub<<<grid, block>>>(d_a, d_b, d_c, x, y);
+  cudaMemcpy(c, d_c, x * y * sizeof(double), cudaMemcpyDeviceToHost);
+  cudaFree(d_a);
+  cudaFree(d_b);
+  cudaFree(d_c);
+  err = cudaGetLastError();
+  if (err != cudaSuccess) {
+    LOG(ERROR) << "CUDA error: " << cudaGetErrorString(err) << std::endl;
+  }
+}
+
+void gpu::gpu_mat_sqrt_f64(double **ptr, unsigned *arr) {
+  
+  double *a = ptr[0];
+  double *c = ptr[1];
+  unsigned x = arr[0];
+  unsigned y = arr[1];
+
+  LOG(INFO) << "GPU kernel for matrix square root is running..." << std::endl;
+
+  dim3 block;
+  dim3 grid;
+  block.x = (32 > x) ? x : 32;
+  block.y = (32 > y) ? y : 32;
+  grid.x = (x + block.x - 1) / block.x;
+  grid.y = (y + block.y - 1) / block.y;
+
+  double *d_a, *d_c;
+
+  cudaMalloc((void **)&d_a, x * y * sizeof(double));
+  cudaMalloc((void **)&d_c, x * y * sizeof(double));
+
+  cudaMemcpy(d_a, a, x * y * sizeof(double), cudaMemcpyHostToDevice);
+  cudaError_t err;
+  gpu_kernel::matrixSqrt<<<grid, block>>>(d_a, d_c, x, y);
+  cudaMemcpy(c, d_c, x * y * sizeof(double), cudaMemcpyDeviceToHost);
+  cudaFree(d_a);
+  cudaFree(d_c);
+  err = cudaGetLastError();
+  if (err != cudaSuccess) {
+    LOG(ERROR) << "CUDA error: " << cudaGetErrorString(err) << std::endl;
+  }
+}
+
+void gpu::gpu_mat_relu_f64(double **ptr, unsigned int *arr) {
+  
+  double *a = ptr[0];
+  double *c = ptr[1];
+  unsigned x = arr[0];
+  unsigned y = arr[1];
+
+  LOG(INFO) << "GPU kernel for matrix ReLU is running..." << std::endl;
+
+  dim3 block;
+  dim3 grid;
+  block.x = (32 > x) ? x : 32;
+  block.y = (32 > y) ? y : 32;
+  grid.x = (x + block.x - 1) / block.x;
+  grid.y = (y + block.y - 1) / block.y;
+
+  double *d_a, *d_c;
+
+  cudaMalloc((void **)&d_a, x * y * sizeof(double));
+  cudaMalloc((void **)&d_c, x * y * sizeof(double));
+
+  cudaMemcpy(d_a, a, x * y * sizeof(double), cudaMemcpyHostToDevice);
+  cudaError_t err;
+  gpu_kernel::matrixRelu<<<grid, block>>>(d_a, d_c, x, y);
+  cudaMemcpy(c, d_c, x * y * sizeof(double), cudaMemcpyDeviceToHost);
+  cudaFree(d_a);
+  cudaFree(d_c);
+  err = cudaGetLastError();
+  if (err != cudaSuccess) {
+    LOG(ERROR) << "CUDA error: " << cudaGetErrorString(err) << std::endl;
+  }
+}
+
+void gpu::gpu_mat_sigmoid_f64(double **ptr, unsigned int *arr) {
+  
+  double *a = ptr[0];
+  double *c = ptr[1];
+  unsigned x = arr[0];
+  unsigned y = arr[1];
+
+  LOG(INFO) << "GPU kernel for matrix Sigmoid is running..." << std::endl;
+
+  dim3 block;
+  dim3 grid;
+  block.x = (32 > x) ? x : 32;
+  block.y = (32 > y) ? y : 32;
+  grid.x = (x + block.x - 1) / block.x;
+  grid.y = (y + block.y - 1) / block.y;
+
+  double *d_a, *d_c;
+
+  cudaMalloc((void **)&d_a, x * y * sizeof(double));
+  cudaMalloc((void **)&d_c, x * y * sizeof(double));
+
+  cudaMemcpy(d_a, a, x * y * sizeof(double), cudaMemcpyHostToDevice);
+  cudaError_t err;
+  gpu_kernel::matrixSigmoid<<<grid, block>>>(d_a, d_c, x, y);
+  cudaMemcpy(c, d_c, x * y * sizeof(double), cudaMemcpyDeviceToHost);
+  cudaFree(d_a);
+  cudaFree(d_c);
+  err = cudaGetLastError();
+  if (err != cudaSuccess) {
+    LOG(ERROR) << "CUDA error: " << cudaGetErrorString(err) << std::endl;
+  }
+}
+
+void gpu::gpu_mat_softmax_f64(double **ptr, unsigned int *arr) {
+  
+  double *a = ptr[0];
+  double *c = ptr[1];
+  unsigned x = arr[0];
+  unsigned y = arr[1];
+
+  LOG(INFO) << "GPU kernel for matrix Softmax is running..." << std::endl;
+
+  dim3 block;
+  dim3 grid;
+  block.x = (32 > x) ? x : 32;
+  block.y = (32 > y) ? y : 32;
+  grid.x = (x + block.x - 1) / block.x;
+  grid.y = (y + block.y - 1) / block.y;
+
+  double *d_a, *d_c, *d_softmax_sum;
+
+  cudaMalloc((void **)&d_a, x * y * sizeof(double));
+  cudaMalloc((void **)&d_c, x * y * sizeof(double));
+  cudaMalloc((void **)&d_softmax_sum, x * sizeof(double));
+
+  cudaMemcpy(d_a, a, x * y * sizeof(double), cudaMemcpyHostToDevice);
+  cudaError_t err;
+  gpu_kernel::matrixSoftmax<<<grid, block>>>(d_a, d_softmax_sum, d_c, x, y);
+  cudaMemcpy(c, d_c, x * y * sizeof(double), cudaMemcpyDeviceToHost);
+  cudaFree(d_a);
+  cudaFree(d_c);
+  cudaFree(d_softmax_sum);
+  err = cudaGetLastError();
+  if (err != cudaSuccess) {
+    LOG(ERROR) << "CUDA error: " << cudaGetErrorString(err) << std::endl;
   }
 }

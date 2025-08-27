@@ -219,4 +219,113 @@ public:
   void printoutput();
 };
 
+class Opssqrt : public Ops {
+  Tensor<std::float64_t> **inputs;
+  Tensor<std::float64_t> *output;
+  void recursive_iterator(unsigned index, unsigned *dimension_arr,
+                          std::string function_name, unsigned *ui_arr,
+                          std::float64_t *dl_arr,
+                          Tensor<std::float64_t> *misc_arr);
+
+  void kernel_dispatch(std::float64_t **, unsigned *);
+
+public:
+  void compute();
+  void initilizeinputs(Tensor<std::float64_t> **inputs, unsigned no_of_inputs);
+  void initilizeoutput(Tensor<std::float64_t> *output);
+  Tensor<std::float64_t> **getinputs() { return inputs; }
+  Tensor<std::float64_t> *getoutput() { return output; }
+  unsigned getnoofinputs() { return 1; }
+  void printinputs();
+  void printoutput();
+};
+
+class Opssub : public Ops {
+  unsigned no_of_inputs;
+
+  Tensor<std::float64_t> **inputs;
+  Tensor<std::float64_t> *output;
+  void recursive_iterator(unsigned index, unsigned *dimension_arr,
+                          std::string function_name, unsigned *ui_arr,
+                          std::float64_t *dl_arr,
+                          Tensor<std::float64_t> *misc_arr);
+
+  void kernel_dispatch(std::float64_t **, unsigned *);
+
+public:
+  Opssub() {}
+  void compute();
+  void initilizeinputs(Tensor<std::float64_t> **inputs, unsigned no_of_inputs);
+  void initilizeoutput(Tensor<std::float64_t> *output);
+
+  Tensor<std::float64_t> **getinputs() { return inputs; }
+
+  Tensor<std::float64_t> *getoutput() { return output; }
+
+  unsigned getnoofinputs() { return no_of_inputs; }
+
+  void printinputs();
+  void printoutput();
+};
+
+class Opsrelu : public Ops {
+  Tensor<std::float64_t> **inputs;
+  Tensor<std::float64_t> *output;
+  void recursive_iterator(unsigned index, unsigned *dimension_arr,
+                          std::string function_name, unsigned *ui_arr,
+                          std::float64_t *dl_arr,
+                          Tensor<std::float64_t> *misc_arr);
+
+  void kernel_dispatch(std::float64_t **, unsigned *);
+public:
+  void compute();
+  void initilizeinputs(Tensor<std::float64_t> **inputs, unsigned no_of_inputs);
+  void initilizeoutput(Tensor<std::float64_t> *output);
+  Tensor<std::float64_t> **getinputs() { return inputs; }
+  Tensor<std::float64_t> *getoutput() { return output; }
+  unsigned getnoofinputs() { return 1; }
+  void printinputs();
+  void printoutput();
+};
+
+class Opssigmoid : public Ops {
+  Tensor<std::float64_t> **inputs;
+  Tensor<std::float64_t> *output;
+  void recursive_iterator(unsigned index, unsigned *dimension_arr,
+                          std::string function_name, unsigned *ui_arr,
+                          std::float64_t *dl_arr,
+                          Tensor<std::float64_t> *misc_arr);
+
+  void kernel_dispatch(std::float64_t **, unsigned *);
+public:
+  void compute();
+  void initilizeinputs(Tensor<std::float64_t> **inputs, unsigned no_of_inputs);
+  void initilizeoutput(Tensor<std::float64_t> *output);
+  Tensor<std::float64_t> **getinputs() { return inputs; }
+  Tensor<std::float64_t> *getoutput() { return output; }
+  unsigned getnoofinputs() { return 1; }
+  void printinputs();
+  void printoutput();
+};
+
+class Opssoftmax : public Ops {
+  Tensor<std::float64_t> **inputs;
+  Tensor<std::float64_t> *output;
+  void recursive_iterator(unsigned index, unsigned *dimension_arr,
+                          std::string function_name, unsigned *ui_arr,
+                          std::float64_t *dl_arr,
+                          Tensor<std::float64_t> *misc_arr);
+
+  void kernel_dispatch(std::float64_t **, unsigned *);
+public:
+  void compute();
+  void initilizeinputs(Tensor<std::float64_t> **inputs, unsigned no_of_inputs);
+  void initilizeoutput(Tensor<std::float64_t> *output);
+  Tensor<std::float64_t> **getinputs() { return inputs; }
+  Tensor<std::float64_t> *getoutput() { return output; }
+  unsigned getnoofinputs() { return 1; }
+  void printinputs();
+  void printoutput();
+};
+
 #endif // OPS_kernel

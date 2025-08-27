@@ -3,14 +3,19 @@
 #creating library for kernel operations
 
 set(COMBINED_RESORCES
-    kernel/opskernel.h
-    kernel/opskernel.cpp
     kernel/add.cpp
     kernel/matmul.cpp
     kernel/mul.cpp
+    kernel/opskernel.cpp
+    kernel/opskernel.h
     kernel/power.cpp
     kernel/reducesum.cpp
+    kernel/relu.cpp
     kernel/scale.cpp
+    kernel/softmax.cpp
+    kernel/sigmoid.cpp
+    kernel/sub.cpp
+    kernel/sqrt.cpp
 
 
     graph/graph_framework.hpp
@@ -18,7 +23,7 @@ set(COMBINED_RESORCES
     graph/graph_node.hpp
     graph/graph_node.cpp
 
-
+    framework/log_config.hpp
     framework/MathLibrary.h
     framework/MathLibrary.cpp
     framework/NDynamicArray.h
@@ -32,7 +37,7 @@ set(COMBINED_RESORCES
 )
 
 add_library(core SHARED ${COMBINED_RESORCES})
-target_link_libraries(core PUBLIC OpenMP::OpenMP_CXX)
+target_link_libraries(core PUBLIC OpenMP::OpenMP_CXX absl::log)
 target_include_directories(core PUBLIC ${CMAKE_SOURCE_DIR}/core)
 
 enable_language(CUDA)
@@ -65,12 +70,20 @@ if(ENABLE_CUDA AND CMAKE_CUDA_COMPILER)
     target_include_directories(gpu PRIVATE ${CMAKE_SOURCE_DIR}/core/
         /usr/local/cuda/include)
 
+    target_link_libraries(gpu PUBLIC
+        absl::log
+        absl::log_initialize
+        absl::flags_parse)
+
     # Or set architecture explicitly
     set(CMAKE_CUDA_ARCHITECTURES 90) # or 80, 86, etc.
 
 
     # Link core with gpu (so test only needs to link core)
-    target_link_libraries(core PRIVATE gpu)
+    target_link_libraries(core PUBLIC gpu
+        absl::log
+        absl::log_initialize
+        absl::flags_parse)
 
     target_compile_definitions(core PUBLIC CUDA_ENABLED)
 

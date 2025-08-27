@@ -1,4 +1,5 @@
 #include <graph/graph_framework.hpp>
+#include <absl/log/log.h>
 
 void Graph::addNode(Tensor<std::float64_t> *input_node) {
   if (data_nodes.count(input_node) == 0) {
@@ -76,21 +77,21 @@ void Graph::dfs(node *start_node, std::unordered_set<node *> &visited,
     switch (func) {
     case Functions::compute:
       if (start_node->node_type == type::compute) {
-        std::cout << "Computing node with ID: " << start_node->node_id
+        LOG(INFO)<< "Computing node with ID: " << start_node->node_id
                   << std::endl;
         start_node->execute(); // Execute the node's logic
       } else {
-        std::cout << "Skipping data node with ID: " << start_node->node_id
+        LOG(INFO)<< "Skipping data node with ID: " << start_node->node_id
                   << std::endl;
       }
       break;
     case Functions::travarse:
       if (start_node->node_type == type::data) {
-        std::cout << "Printing node with ID: " << start_node->node_id
+        LOG(INFO)<< "Printing node with ID: " << start_node->node_id
                   << std::endl;
         start_node->print_data();
       } else {
-        std::cout << "Skipping compute node with ID: " << start_node->node_id
+        LOG(INFO)<< "Skipping compute node with ID: " << start_node->node_id
                   << std::endl;
       }
       break;

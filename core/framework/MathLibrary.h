@@ -66,7 +66,13 @@ public:
 
   Tensor<T> *scale(const std::float64_t);
 
+  Tensor<T> *sqrt();
+
+  Tensor<T> *sub(Tensor<T> &);
+
   Tensor<T> *pow(unsigned);
+
+  Tensor<T> *relu();
 
   Tensor<T> *mean(const unsigned);
 
@@ -82,9 +88,15 @@ public:
 
   Ops *reducesum(Graph &g, std::vector<unsigned> n, bool &flag);
 
+  Ops *pow(Graph &g, unsigned exponent, bool &flag);
+
+  Ops *relu(Graph &g, bool &flag);
+
   Ops *scale(Graph &g, const std::float64_t scaleFactor, bool &flag);
 
-  Ops *power(Graph &g, unsigned exponent, bool &flag);
+  Ops *sqrt(Graph &g, bool &flag);
+
+  Ops *sub(Graph &g, Tensor<T> &input, bool &flag);
 };
 
 // template class Tensor<std::float64_t>;

@@ -11,25 +11,6 @@
 namespace tf {
 struct graph;
 
-typedef struct graph_manager {
-  graph *ptr;
-  bool isValidGraph;
-  std::vector<graph *> graph_list;
-
-  void addGraph(graph *g) { graph_list.push_back(g); }
-
-  void removeGraph(graph *g) {
-    graph_list.erase(std::remove(graph_list.begin(), graph_list.end(), g),
-                     graph_list.end());
-  }
-
-  bool isThereActiveSession();
-
-  graph *findActivateSession();
-} graph_manager;
-
-extern graph_manager g_manager;
-
 typedef struct tensor {
   void *ptr{nullptr};
   DataType dt_type;
@@ -98,13 +79,25 @@ typedef struct tensor {
 
   graph &matmul(graph &g, tensor &input_b);
 
+  graph &pow(graph &g, unsigned exponent);
+
+  graph &relu(graph &g);
+  
   graph &scale(graph &g, std::float64_t scaleFactor);
 
-  graph &pow(graph &g, unsigned exponent);
+  graph &sqrt(graph &g);
+
+  graph &sub(graph &g, tensor &input_b);
+
+  tensor add(tensor &input_b);
 
   tensor matmul(tensor &input_b);
 
-  tensor add(tensor &input_b);
+  tensor pow(const unsigned exponent);
+
+  tensor relu();
+
+  tensor mean(const unsigned dim);
 
   tensor getReduction(std::vector<unsigned> reduction_dims);
 
@@ -125,13 +118,15 @@ typedef struct tensor {
     return getReduction(dimensions);
   }
 
+  tensor operator+(tensor &input_b);
+
   tensor operator*(tensor &input_b);
 
   tensor scale(const std::float64_t scaleFactor);
 
-  tensor pow(const unsigned exponent);
+  tensor sqrt();
 
-  tensor mean(const unsigned dim);
+  tensor sub(tensor &input_b);
 
   // --- Default constructor
   tensor() = default;
@@ -222,10 +217,6 @@ typedef struct graph {
   Ops *ops;
   void tf_create_graph();
 
-  void graph_start_recording_session();
-
-  void graph_end_recording_session();
-
   void graph_execute();
 
   void graph_travarse_data_node();
@@ -233,11 +224,6 @@ typedef struct graph {
   void graph_clear();
 
 } graph;
-
-struct arg_list {
-  unsigned value;
-  struct arg_list *next;
-};
 
 } // namespace tf
 
