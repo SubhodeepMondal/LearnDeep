@@ -78,21 +78,20 @@ void Graph::dfs(node *start_node, std::unordered_set<node *> &visited,
     case Functions::compute:
       if (start_node->node_type == type::compute) {
         LOG(INFO)<< "Computing node with ID: " << start_node->node_id
-                  << std::endl;
+                  ;
         start_node->execute(); // Execute the node's logic
       } else {
         LOG(INFO)<< "Skipping data node with ID: " << start_node->node_id
-                  << std::endl;
+                  ;
       }
       break;
     case Functions::travarse:
       if (start_node->node_type == type::data) {
         LOG(INFO)<< "Printing node with ID: " << start_node->node_id
-                  << std::endl;
+                  ;
         start_node->print_data();
       } else {
-        LOG(INFO)<< "Skipping compute node with ID: " << start_node->node_id
-                  << std::endl;
+        LOG(INFO)<< "Skipping compute node with ID: " << start_node->node_id;
       }
       break;
 
@@ -108,7 +107,7 @@ void Graph::dfs(node *start_node, std::unordered_set<node *> &visited,
 
 void Graph::compute() {
   if (!is_valid_graph) {
-    std::cerr << "Graph is not valid for computation." << std::endl;
+    std::cerr << "Graph is not valid for computation." ;
     return;
   }
 
@@ -118,7 +117,7 @@ void Graph::compute() {
 
 void Graph::traverse() {
   if (!is_valid_graph) {
-    std::cerr << "Graph is not valid!" << std::endl;
+    std::cerr << "Graph is not valid!" ;
     return;
   }
 

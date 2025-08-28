@@ -83,7 +83,8 @@ if(ENABLE_CUDA AND CMAKE_CUDA_COMPILER)
     target_link_libraries(core PUBLIC gpu
         absl::log
         absl::log_initialize
-        absl::flags_parse)
+        absl::flags_parse
+        )
 
     target_compile_definitions(core PUBLIC CUDA_ENABLED)
 

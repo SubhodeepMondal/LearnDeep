@@ -1,4 +1,5 @@
 #include <framework/NDynamicArray.h>
+#include <absl/log/log.h>
 
 template <typename T> ndarray<T>::ndarray() {
   dim_iterator = 0;
@@ -108,7 +109,7 @@ ndarray<T> &ndarray<T>::operator=(ndarray<T> &&ndarray) noexcept {
 
 template <typename T> ndarray<T>::~ndarray() {
 
-  std::cout << "Destructor called for object: " << "\n";
+  LOG(INFO) << "Destructor called for object: " << "\n";
   destroy();
 }
 

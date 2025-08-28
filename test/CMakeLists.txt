@@ -26,19 +26,24 @@ target_link_libraries(deeplearingLA_test PRIVATE tensor_api thirdparty::gtest_ma
 # Benchmarking suite for deeplearingLA
 add_executable(benchmark_test benchmark/main.benchmark.cpp
     benchmark/addition.benchmark.cpp
-    # benchmark/multiplication.benchmark.cpp
-    # benchmark/matmul.benchmark.cpp
+    benchmark/multiplication.benchmark.cpp
+    benchmark/matmul.benchmark.cpp
+    # benchmark/mean.benchmark.cpp
     # benchmark/reducesum.benchmark.cpp
     # benchmark/scale.benchmark.cpp
-    # benchmark/power.benchmark.cpp
+    benchmark/power.benchmark.cpp
     # benchmark/relu.benchmark.cpp
     # benchmark/sub.benchmark.cpp
     # benchmark/sqrt.benchmark.cpp
 )
 
 target_include_directories(benchmark_test PRIVATE ${CMAKE_SOURCE_DIR}/api
-${CMAKE_SOURCE_DIR}/core)
-target_link_libraries(benchmark_test PRIVATE 
+    ${CMAKE_SOURCE_DIR}/core)
+
+target_link_libraries(benchmark_test PRIVATE
     tensor_api
     thirdparty::benchmark
-    )
+    absl::log
+    absl::log_initialize
+    absl::flags_parse
+)

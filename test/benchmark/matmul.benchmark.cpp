@@ -1,8 +1,8 @@
 #include <benchmark/benchmark.h>
 #include <tensor.h>
 
-// -------- Benchmark Eager Addition --------
-static void mat_add_eager_tensor(benchmark::State &state) {
+// -------- Benchmark Eager Matmul --------
+static void mat_matmul_eager_tensor(benchmark::State &state) {
   // Define two large matrices
   const int N = static_cast<int>(
       state.range(0)); // Size parameter (e.g. 256, 512, 1024 ...)
@@ -20,7 +20,7 @@ static void mat_add_eager_tensor(benchmark::State &state) {
   // }
 
   for (auto _ : state) {
-    C = A.add(B);                // Perform matrix addition
+    C = A.matmul(B);                // Perform matrix Matmul
     benchmark::DoNotOptimize(C); // Prevent compiler optimization
   }
 
@@ -28,7 +28,7 @@ static void mat_add_eager_tensor(benchmark::State &state) {
 }
 
 // Register this benchmark with different input sizes
-BENCHMARK(mat_add_eager_tensor)
+BENCHMARK(mat_matmul_eager_tensor)
     ->Arg(1 << 8)   // 256 elements
     ->Arg(1 << 9)   // 512 elements
     ->Arg(1 << 10)  // 1024 elements
@@ -36,8 +36,8 @@ BENCHMARK(mat_add_eager_tensor)
     // ->Arg(1 << 14); // 16K elements
 
 
-// -------- Benchmark Graph Addition --------
-static void mat_add_graph_tensor(benchmark::State &state) {
+// -------- Benchmark Graph Matmul --------
+static void mat_matmul_graph_tensor(benchmark::State &state) {
   // Define two large matrices
   const int N = static_cast<int>(
       state.range(0)); // Size parameter (e.g. 256, 512, 1024 ...)
@@ -48,23 +48,23 @@ static void mat_add_graph_tensor(benchmark::State &state) {
   A.tensor_of(-0.5, 0.85);
   B.tensor_of(0.25, 0.75);
 
-  tf::graph g_add;
-  g_add.tf_create_graph();
+  tf::graph g_matmul;
+  g_matmul.tf_create_graph();
 
-  C = A.add(g_add, B);
+  C = A.matmul(g_matmul, B);
 
   for (auto _ : state) {
-    g_add.graph_execute();                // Perform matrix addition
+    g_matmul.graph_execute();                // Perform matrix Matmul
     benchmark::DoNotOptimize(C); // Prevent compiler optimization
   }
-  g_add.graph_clear();
+  g_matmul.graph_clear();
 
 
   state.SetItemsProcessed(int64_t(state.iterations()) * N * N);
 }
 
 // Register this benchmark with different input sizes
-BENCHMARK(mat_add_graph_tensor)
+BENCHMARK(mat_matmul_graph_tensor)
     ->Arg(1 << 8)   // 256 elements
     ->Arg(1 << 9)   // 512 elements
     ->Arg(1 << 10)  // 1024 elements

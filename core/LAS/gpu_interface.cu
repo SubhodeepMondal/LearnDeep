@@ -14,7 +14,7 @@ void gpu::gpu_mat_add_f64(double **ptr, unsigned *arr) {
   unsigned x = arr[0];
   unsigned y = arr[1];
 
-  LOG(INFO) << "GPU kernel for matrix addition is running..." << std::endl;
+  LOG(INFO) << "GPU kernel for matrix addition is running..." ;
 
   dim3 block;
   dim3 grid;
@@ -39,7 +39,7 @@ void gpu::gpu_mat_add_f64(double **ptr, unsigned *arr) {
   cudaFree(d_c);
   err = cudaGetLastError();
   if (err != cudaSuccess) {
-    LOG(ERROR) << "CUDA error: " << cudaGetErrorString(err) << std::endl;
+    LOG(ERROR) << "CUDA error: " << cudaGetErrorString(err) ;
   }
 };
 
@@ -52,7 +52,7 @@ void gpu::gpu_mat_hadamard_mul_f64(double **ptr, unsigned *arr) {
   unsigned y = arr[1];
 
   LOG(INFO) << "GPU kernel for matrix element wise multipliction is running..."
-            << std::endl;
+            ;
 
   dim3 block;
   dim3 grid;
@@ -77,7 +77,7 @@ void gpu::gpu_mat_hadamard_mul_f64(double **ptr, unsigned *arr) {
   cudaFree(d_c);
   err = cudaGetLastError();
   if (err != cudaSuccess) {
-    LOG(ERROR) << "CUDA error: " << cudaGetErrorString(err) << std::endl;
+    LOG(ERROR) << "CUDA error: " << cudaGetErrorString(err) ;
   }
 };
 
@@ -91,7 +91,7 @@ void gpu::gpu_mat_mul_f64(double **ptr, unsigned *arr) {
   unsigned z = arr[2]; // z output column size
 
   LOG(INFO) << "GPU kernel for matrix element wise multipliction is running..."
-            << std::endl;
+            ;
 
   dim3 block;
   dim3 grid;
@@ -116,7 +116,7 @@ void gpu::gpu_mat_mul_f64(double **ptr, unsigned *arr) {
   cudaFree(d_c);
   err = cudaGetLastError();
   if (err != cudaSuccess) {
-    LOG(ERROR) << "CUDA error: " << cudaGetErrorString(err) << std::endl;
+    LOG(ERROR) << "CUDA error: " << cudaGetErrorString(err) ;
   }
 };
 
@@ -129,7 +129,7 @@ void gpu::gpu_mat_scale_f64(double **ptr, unsigned *arr) {
   unsigned x = arr[0]; // x output row size
   unsigned y = arr[1]; // y k row
 
-  LOG(INFO) << "GPU kernel for matrix scaling is running..." << std::endl;
+  LOG(INFO) << "GPU kernel for matrix scaling is running..." ;
   dim3 block;
   dim3 grid;
 
@@ -154,7 +154,7 @@ void gpu::gpu_mat_scale_f64(double **ptr, unsigned *arr) {
 
   err = cudaGetLastError();
   if (err != cudaSuccess) {
-    LOG(ERROR) << "CUDA error: " << cudaGetErrorString(err) << std::endl;
+    LOG(ERROR) << "CUDA error: " << cudaGetErrorString(err) ;
   }
 }
 
@@ -166,7 +166,7 @@ void gpu::gpu_mat_sub_f64(double **ptr, unsigned *arr) {
   unsigned x = arr[0];
   unsigned y = arr[1];
 
-  LOG(INFO) << "GPU kernel for matrix addition is running..." << std::endl;
+  LOG(INFO) << "GPU kernel for matrix addition is running..." ;
 
   dim3 block;
   dim3 grid;
@@ -191,7 +191,7 @@ void gpu::gpu_mat_sub_f64(double **ptr, unsigned *arr) {
   cudaFree(d_c);
   err = cudaGetLastError();
   if (err != cudaSuccess) {
-    LOG(ERROR) << "CUDA error: " << cudaGetErrorString(err) << std::endl;
+    LOG(ERROR) << "CUDA error: " << cudaGetErrorString(err) ;
   }
 }
 
@@ -202,7 +202,7 @@ void gpu::gpu_mat_sqrt_f64(double **ptr, unsigned *arr) {
   unsigned x = arr[0];
   unsigned y = arr[1];
 
-  LOG(INFO) << "GPU kernel for matrix square root is running..." << std::endl;
+  LOG(INFO) << "GPU kernel for matrix square root is running..." ;
 
   dim3 block;
   dim3 grid;
@@ -224,7 +224,7 @@ void gpu::gpu_mat_sqrt_f64(double **ptr, unsigned *arr) {
   cudaFree(d_c);
   err = cudaGetLastError();
   if (err != cudaSuccess) {
-    LOG(ERROR) << "CUDA error: " << cudaGetErrorString(err) << std::endl;
+    LOG(ERROR) << "CUDA error: " << cudaGetErrorString(err) ;
   }
 }
 
@@ -235,7 +235,7 @@ void gpu::gpu_mat_relu_f64(double **ptr, unsigned int *arr) {
   unsigned x = arr[0];
   unsigned y = arr[1];
 
-  LOG(INFO) << "GPU kernel for matrix ReLU is running..." << std::endl;
+  LOG(INFO) << "GPU kernel for matrix ReLU is running..." ;
 
   dim3 block;
   dim3 grid;
@@ -257,7 +257,7 @@ void gpu::gpu_mat_relu_f64(double **ptr, unsigned int *arr) {
   cudaFree(d_c);
   err = cudaGetLastError();
   if (err != cudaSuccess) {
-    LOG(ERROR) << "CUDA error: " << cudaGetErrorString(err) << std::endl;
+    LOG(ERROR) << "CUDA error: " << cudaGetErrorString(err) ;
   }
 }
 
@@ -268,7 +268,7 @@ void gpu::gpu_mat_sigmoid_f64(double **ptr, unsigned int *arr) {
   unsigned x = arr[0];
   unsigned y = arr[1];
 
-  LOG(INFO) << "GPU kernel for matrix Sigmoid is running..." << std::endl;
+  LOG(INFO) << "GPU kernel for matrix Sigmoid is running..." ;
 
   dim3 block;
   dim3 grid;
@@ -290,7 +290,7 @@ void gpu::gpu_mat_sigmoid_f64(double **ptr, unsigned int *arr) {
   cudaFree(d_c);
   err = cudaGetLastError();
   if (err != cudaSuccess) {
-    LOG(ERROR) << "CUDA error: " << cudaGetErrorString(err) << std::endl;
+    LOG(ERROR) << "CUDA error: " << cudaGetErrorString(err) ;
   }
 }
 
@@ -301,7 +301,7 @@ void gpu::gpu_mat_softmax_f64(double **ptr, unsigned int *arr) {
   unsigned x = arr[0];
   unsigned y = arr[1];
 
-  LOG(INFO) << "GPU kernel for matrix Softmax is running..." << std::endl;
+  LOG(INFO) << "GPU kernel for matrix Softmax is running..." ;
 
   dim3 block;
   dim3 grid;
@@ -325,6 +325,6 @@ void gpu::gpu_mat_softmax_f64(double **ptr, unsigned int *arr) {
   cudaFree(d_softmax_sum);
   err = cudaGetLastError();
   if (err != cudaSuccess) {
-    LOG(ERROR) << "CUDA error: " << cudaGetErrorString(err) << std::endl;
+    LOG(ERROR) << "CUDA error: " << cudaGetErrorString(err) ;
   }
 }
