@@ -1,6 +1,9 @@
 #include "opskernel.h"
 #include "../framework/MathLibrary.h"
 
+
+Ops::~Ops() {}
+
 void Ops::recursive_iterator(unsigned index, unsigned *dimension_arr,
                              // Tensor<std::float64_t> input_a,
                              Tensor<std::float64_t> input_b, Tensor<std::float64_t> &output,

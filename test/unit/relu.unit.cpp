@@ -29,7 +29,7 @@ TEST_F(MathTest, Eager_Matrixrelu_2D) {
   }
 }
 
-TEST_F(MathTest, Matrixrelu_2D) {
+TEST_F(MathTest, Graph_Matrixrelu_2D) {
 
   std::float64_t a[] = {-0.12545988, 0.45071431,  0.23199394,  0.09865848,
                         -0.34398136, -0.34400548, -0.44191639, 0.36617615,
@@ -53,10 +53,10 @@ TEST_F(MathTest, Matrixrelu_2D) {
   C = A.relu(g_scale);
 
   g_scale.graph_execute();
-  g_scale.graph_clear();
 
   auto *tensorC_relu = static_cast<Tensor<std::float64_t> *>(C.ptr);
   for (int i = 0; i < 16; i++) {
     EXPECT_NEAR(tensorC_relu->getData()[i], c_relu[i], 0.0001);
   }
+  g_scale.graph_clear();
 }

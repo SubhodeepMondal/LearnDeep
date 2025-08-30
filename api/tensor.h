@@ -2,6 +2,7 @@
 #define TENSOR_MAIN_API
 
 #include <algorithm>
+#include <cstddef>
 #include <framework/MathLibrary.h>
 #include <graph/graph_framework.hpp>
 #include <iostream>
@@ -29,13 +30,7 @@ typedef struct tensor {
   template <typename... Args> void tf_create(DataType d_type, Args... args) {
     unsigned *arr;
     std::vector<unsigned> dimensions;
-
     addDimensions(dimensions, args...);
-
-    arr = new unsigned[dimensions.size()];
-    for (int i = 0; i < dimensions.size(); i++) {
-      arr[i] = dimensions[i];
-    }
 
     switch (d_type) {
     case tf_float64:
@@ -46,7 +41,6 @@ typedef struct tensor {
       ptr = nullptr;
     }
     dt_type = d_type;
-    delete[] arr;
   }
 
   unsigned getNoOfDimensions() {
@@ -82,7 +76,7 @@ typedef struct tensor {
   graph &pow(graph &g, unsigned exponent);
 
   graph &relu(graph &g);
-  
+
   graph &scale(graph &g, std::float64_t scaleFactor);
 
   graph &sqrt(graph &g);
@@ -146,11 +140,13 @@ typedef struct tensor {
   // --- Copy assignment
   tensor &operator=(const tensor &other) {
     if (this != &other) {
-      // destory();
       dt_type = other.dt_type;
       if (other.ptr) {
-        auto *src = static_cast<Tensor<std::float64_t> *>(other.ptr);
-        ptr = new Tensor<std::float64_t>(*src); // deep copy
+        if (this->ptr) {
+          // delete static_cast<Tensor<std::float64_t> *>(this->ptr);
+          this->ptr = nullptr;
+        }
+        this->ptr = other.ptr;
       } else {
         ptr = nullptr;
       }
@@ -180,7 +176,7 @@ typedef struct tensor {
   void destory() {
     if (ptr) {
       static_cast<Tensor<std::float64_t> *>(ptr)->destroy();
-      // delete static_cast<Tensor<std::float64_t> *>(ptr);
+      delete static_cast<Tensor<std::float64_t> *>(ptr);
       ptr = nullptr;
     }
   }

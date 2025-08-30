@@ -14,25 +14,56 @@
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Debug",
                 "ENABLE_CUDA": "ON",
-                "USE_SYSTEM_GTEST" : "OFF",
-                "USE_SYSTEM_BENCHMARK " : "OFF"
-
+                "USE_SYSTEM_GTEST": "OFF",
+                "USE_SYSTEM_BENCHMARK ": "OFF"
             }
         },
         {
-            "name": "release",
+            "name": "release_cpu",
             "generator": "Unix Makefiles",
             "binaryDir": "${sourceDir}/build/release",
             "cacheVariables": {
-                "CMAKE_BUILD_TYPE": "Release"
+                "CMAKE_BUILD_TYPE": "Release",
+                "ENABLE_CUDA": "OFF",
+                "USE_SYSTEM_GTEST": "OFF",
+                "USE_SYSTEM_BENCHMARK ": "OFF"
             }
         },
         {
-            "name": "debug",
+            "name": "release_gpu",
+            "generator": "Unix Makefiles",
+            "binaryDir": "${sourceDir}/build/release",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release",
+                "ENABLE_CUDA": "ON",
+                "USE_SYSTEM_GTEST": "OFF",
+                "USE_SYSTEM_BENCHMARK ": "OFF"
+            }
+        },
+        {
+            "name": "debug_cpu",
+            "hidden": false,
             "generator": "Unix Makefiles",
             "binaryDir": "${sourceDir}/build/debug",
             "cacheVariables": {
-                "CMAKE_BUILD_TYPE": "Debug"
+                "CMAKE_BUILD_TYPE": "Debug",
+                "ENABLE_CUDA": "OFF",
+                "USE_SYSTEM_GTEST": "OFF",
+                "USE_SYSTEM_BENCHMARK ": "OFF"
+                // "CMAKE_CXX_FLAGS": "-fsanitize=address"
+            }
+        },
+        {
+            "name": "debug_gpu",
+            "hidden": false,
+            "generator": "Unix Makefiles",
+            "binaryDir": "${sourceDir}/build/debug",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug",
+                "ENABLE_CUDA": "ON",
+                "USE_SYSTEM_GTEST": "OFF",
+                "USE_SYSTEM_BENCHMARK ": "OFF",
+                // "CMAKE_CXX_FLAGS": "-fsanitize=address"
             }
         }
     ],
@@ -40,16 +71,28 @@
         {
             "name": "default",
             "configurePreset": "default"
+        },
+        {
+            "name": "release_cpu",
+            "configurePreset": "release_cpu"
+        },
+        {
+            "name": "release_gpu",
+            "configurePreset": "release_gpu"
+        },
+        {
+            "name": "debug_cpu",
+            "configurePreset": "debug_cpu"
+        },
+        {
+            "name": "debug_gpu",
+            "configurePreset": "debug_gpu"
         }
     ],
     "testPresets": [
         {
-            "name": "debug",
-            "configurePreset": "debug"
-        },
-        {
-            "name": "release",
-            "configurePreset": "release"
+            "name": "release_cpu",
+            "configurePreset": "release_cpu"
         }
     ]
 }

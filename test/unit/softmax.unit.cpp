@@ -29,7 +29,7 @@ TEST_F(MathTest, Eager_MatrixScale_2D) {
   }
 }
 
-TEST_F(MathTest, MatrixScale_2D) {
+TEST_F(MathTest, Graph_MatrixScale_2D) {
 
   std::float64_t a[] = {0.37454012, 0.95071431, 0.73199394, 0.59865848,
                         0.15601864, 0.15599452, 0.05808361, 0.86617615,
@@ -53,10 +53,10 @@ TEST_F(MathTest, MatrixScale_2D) {
   C = A.scale(g_scale, 0.625);
 
   g_scale.graph_execute();
-  g_scale.graph_clear();
 
   auto *tensorC_scale = static_cast<Tensor<std::float64_t> *>(C.ptr);
   for (int i = 0; i < 16; i++) {
     EXPECT_NEAR(tensorC_scale->getData()[i], c_scale[i], 0.0001);
   }
+  g_scale.graph_clear();
 }

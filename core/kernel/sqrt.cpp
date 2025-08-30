@@ -69,7 +69,6 @@ void Opssqrt::compute() {
 
 void Opssqrt::initilizeinputs(Tensor<std::float64_t> **inputs,
                               unsigned no_of_inputs) {
-  this->inputs = new Tensor<std::float64_t> *[1];
   this->inputs[0] = inputs[0];
 }
 

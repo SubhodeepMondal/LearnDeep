@@ -91,7 +91,8 @@ void Opspower::initilizeinputs(Tensor<std::float64_t> **inputs,
   // unsigned i;
   this->exponent = exponent;
 
-  this->inputs = new Tensor<std::float64_t> *[1];
+  // this->inputs = new Tensor<std::float64_t> *[1];
+  this->inputs[0] = inputs[0];
 
   // for (i = 0; i < 1; i++) {
     this->inputs[0] = inputs[0];

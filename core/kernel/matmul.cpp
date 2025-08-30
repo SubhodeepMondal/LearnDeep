@@ -1,11 +1,19 @@
+#include "opskernel.h"
 #ifdef CUDA_ENABLED
 #include <LAS/gpu_interface.cuh>
 #endif
 
 #include <LAS/CPULibrary.h>
 #include <LAS/avx2_micro_kernels.h>
+#include <absl/log/log.h>
 #include <framework/MathLibrary.h>
 #include <kernel/opskernel.h>
+
+Opsmatmul::~Opsmatmul() {
+  LOG(INFO) << "Destroying matmul ops" << std::endl;
+
+  this->destory();
+}
 
 void Opsmatmul::recursive_iterator(unsigned index, unsigned *dimension_arr,
                                    std::string function_name, unsigned *ui_arr,
@@ -89,7 +97,7 @@ void Opsmatmul::initilizeinputs(Tensor<std::float64_t> **inputs,
   unsigned i;
   this->no_of_inputs = no_of_inputs;
 
-  this->inputs = new Tensor<std::float64_t> *[this->no_of_inputs];
+  // this->inputs = new Tensor<std::float64_t> *[this->no_of_inputs];
 
   for (i = 0; i < this->no_of_inputs; i++) {
     this->inputs[i] = inputs[i];
@@ -157,3 +165,5 @@ void Opsmatmul::kernel_dispatch(std::float64_t **ptr, unsigned *arr) {
   }
 #endif
 }
+
+void Opsmatmul::destory() {}

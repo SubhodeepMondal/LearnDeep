@@ -14,7 +14,9 @@ enum class Functions {
   compute,
   search,
   travarse,
+  release_resource
 };
+
 class Graph {
   std::unordered_set<Tensor<std::float64_t> *> data_nodes;
   std::unordered_map<unsigned long, node *> graph;
@@ -48,6 +50,8 @@ public:
   void compute();
 
   void traverse();
+
+  void release_resources();
 };
 
 #endif // GRAPH_FRAMEWORK_HPP

@@ -1,5 +1,7 @@
-#include <graph/graph_framework.hpp>
+#include "graph_framework.hpp"
 #include <absl/log/log.h>
+#include <graph/graph_framework.hpp>
+#include <unordered_set>
 
 void Graph::addNode(Tensor<std::float64_t> *input_node) {
   if (data_nodes.count(input_node) == 0) {
@@ -8,7 +10,6 @@ void Graph::addNode(Tensor<std::float64_t> *input_node) {
     node *new_node = new node(reinterpret_cast<unsigned long>(input_node),
                               type::data, input_node);
     graph[reinterpret_cast<unsigned long>(input_node)] = new_node;
-    // new_node->addInputNode(input_node);
     root_node->setOutputNode(new_node);
   }
 }
@@ -16,7 +17,6 @@ void Graph::addNode(Ops *ops) {
   node *new_node = new node(reinterpret_cast<unsigned long>(ops), type::compute,
                             nullptr, ops);
   graph[reinterpret_cast<unsigned long>(ops)] = new_node;
-  // new_node->addInputNode(ops);
 }
 
 void Graph::addEdge(Tensor<std::float64_t> *src, Ops *dst) {
@@ -39,7 +39,7 @@ void Graph::addEdge(Ops *src, Tensor<std::float64_t> *dst) {
 }
 
 void Graph::bfs(node *start_node, std::unordered_set<node *> &visited,
-           Functions func) {
+                Functions func) {
   std::queue<node *> queue;
   queue.push(start_node);
   visited.insert(start_node);
@@ -77,24 +77,22 @@ void Graph::dfs(node *start_node, std::unordered_set<node *> &visited,
     switch (func) {
     case Functions::compute:
       if (start_node->node_type == type::compute) {
-        LOG(INFO)<< "Computing node with ID: " << start_node->node_id
-                  ;
+        LOG(INFO) << "Computing node with ID: " << start_node->node_id;
         start_node->execute(); // Execute the node's logic
       } else {
-        LOG(INFO)<< "Skipping data node with ID: " << start_node->node_id
-                  ;
+        LOG(INFO) << "Skipping data node with ID: " << start_node->node_id;
       }
       break;
     case Functions::travarse:
       if (start_node->node_type == type::data) {
-        LOG(INFO)<< "Printing node with ID: " << start_node->node_id
-                  ;
+        LOG(INFO) << "Printing node with ID: " << start_node->node_id;
         start_node->print_data();
       } else {
-        LOG(INFO)<< "Skipping compute node with ID: " << start_node->node_id;
+        LOG(INFO) << "Skipping compute node with ID: " << start_node->node_id;
       }
       break;
-
+    case Functions::release_resource:
+      start_node->release_resources();
     default:
       break;
     }
@@ -107,7 +105,7 @@ void Graph::dfs(node *start_node, std::unordered_set<node *> &visited,
 
 void Graph::compute() {
   if (!is_valid_graph) {
-    std::cerr << "Graph is not valid for computation." ;
+    std::cerr << "Graph is not valid for computation.";
     return;
   }
 
@@ -117,10 +115,22 @@ void Graph::compute() {
 
 void Graph::traverse() {
   if (!is_valid_graph) {
-    std::cerr << "Graph is not valid!" ;
+    std::cerr << "Graph is not valid!";
     return;
   }
 
   std::unordered_set<node *> visited;
   bfs(graph[root_node_id], visited, Functions::travarse);
+}
+
+void Graph::release_resources() {
+  if (!is_valid_graph) {
+    std::cerr << "Graph is not valid!";
+    return;
+  }
+  std::unordered_set<node *> visited;
+  dfs(root_node, visited, Functions::release_resource);
+
+  for (auto nodes : graph)
+    delete nodes.second;
 }

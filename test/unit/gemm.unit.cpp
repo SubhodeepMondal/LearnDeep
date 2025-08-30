@@ -49,7 +49,7 @@ TEST_F(MathTest, eager_general_matrix_multiplication_2D) {
 }
 
 
-TEST_F(MathTest, general_matrix_multiplication_2D) {
+TEST_F(MathTest, Graph_General_Matrix_Multiplication_2D) {
   // gemm is a general matrix multiplication operation
   // It performs matrix multiplication followed by addition with another matrix
   // A * B + C
@@ -93,10 +93,10 @@ TEST_F(MathTest, general_matrix_multiplication_2D) {
 
   g_gemm.graph_execute();
 
-  g_gemm.graph_clear();
-
   auto *tensorE_gemm = static_cast<Tensor<std::float64_t> *>(E.ptr);
   for (int i = 0; i < 16; i++) {
     EXPECT_NEAR(tensorE_gemm->getData()[i], e_gemm[i], 0.0001);
   }
+
+  g_gemm.graph_clear();
 }

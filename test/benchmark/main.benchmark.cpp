@@ -7,7 +7,7 @@
 
 int main(int argc, char **argv) {
   // Parse Abseil flags first (so --minloglevel etc. are handled)
-  absl::ParseCommandLine(argc, argv);
+  // absl::ParseCommandLine(argc, argv);
   absl::InitializeLog();
 
   //   absl::SetMinLogLevel(absl::LogSeverity::kInfo);

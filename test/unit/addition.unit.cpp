@@ -34,7 +34,7 @@ TEST_F(MathTest, Eager_MatrixAddition_2D) {
   }
 }
 
-TEST_F(MathTest, MatrixAddition_2D) {
+TEST_F(MathTest, Graph_MatrixAddition_2D) {
 
   std::float64_t a[] = {0.42602198, 0.51120308, 0.66381781, 0.79000792,
                         0.73980886, 0.1366799,  0.3818528,  0.40564105,
@@ -65,10 +65,10 @@ TEST_F(MathTest, MatrixAddition_2D) {
   C = A.add(g_add, B);
 
   g_add.graph_execute();
-  g_add.graph_clear();
 
   auto *tensorC_add = static_cast<Tensor<std::float64_t> *>(C.ptr);
   for (int i = 0; i < 16; i++) {
     EXPECT_NEAR(tensorC_add->getData()[i], c_add[i], 0.0001);
   }
+  g_add.graph_clear();
 }

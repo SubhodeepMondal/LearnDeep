@@ -32,7 +32,7 @@ TEST_F(MathTest, Eager_MatrixReductionSum_2D) {
   }
 }
 
-TEST_F(MathTest, MatrixReductionSum_2D) {
+TEST_F(MathTest, Graph_MatrixReductionSum_2D) {
 
   std::float64_t a[] = {0.42602198, 0.51120308, 0.66381781, 0.79000792,
                         0.73980886, 0.1366799,  0.3818528,  0.40564105,
@@ -61,10 +61,10 @@ TEST_F(MathTest, MatrixReductionSum_2D) {
   C = A.reducesum(g_reduce_sum, 0);
 
   g_reduce_sum.graph_execute();
-  g_reduce_sum.graph_clear();
 
   auto *tensorC_reducesum = static_cast<Tensor<std::float64_t> *>(C.ptr);
   for (int i = 0; i < 4; i++) {
     EXPECT_NEAR(tensorC_reducesum->getData()[i], c_reducesum[i], 0.0001);
   }
+  g_reduce_sum.graph_clear();
 }

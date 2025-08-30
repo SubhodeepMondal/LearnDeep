@@ -8,16 +8,8 @@
 #include <vector>
 
 
-#include "absl/log/globals.h"
 #include "absl/log/log.h"       
 
-// struct AbslLogSilencer {
-//   AbslLogSilencer() {
-//     absl::SetMinLogLevel(absl::LogSeverityAtLeast::kError);
-//   }
-// };
-
-// static AbslLogSilencer g_absl_log_silencer;
 
 template <typename T> class Tensor;
 class Ops;
@@ -52,5 +44,6 @@ public:
   void execute();                        // Execution logic
   void print_data();
   void eraseNodeFromOutput(node *n);
+  void release_resources();
 } node;
 #endif

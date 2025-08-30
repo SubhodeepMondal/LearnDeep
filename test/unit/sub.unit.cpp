@@ -34,7 +34,7 @@ TEST_F(MathTest, Eager_MatrixSubtraction_2D) {
   }
 }
 
-TEST_F(MathTest, MatrixSubtraction_2D) {
+TEST_F(MathTest, Graph_MatrixSubtraction_2D) {
 
   std::float64_t a[] = {0.37454012, 0.95071431, 0.73199394, 0.59865848,
                         0.15601864, 0.15599452, 0.05808361, 0.86617615,
@@ -65,10 +65,10 @@ TEST_F(MathTest, MatrixSubtraction_2D) {
   C = A.sub(g_sub, B);
 
   g_sub.graph_execute();
-  g_sub.graph_clear();
 
   auto *tensorC_sub = static_cast<Tensor<std::float64_t> *>(C.ptr);
   for (int i = 0; i < 16; i++) {
     EXPECT_NEAR(tensorC_sub->getData()[i], c_sub[i], 0.0001);
   }
+  g_sub.graph_clear();
 }

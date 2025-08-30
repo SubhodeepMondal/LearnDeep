@@ -86,14 +86,9 @@ void Opssub::compute() {
 
 void Opssub::initilizeinputs(Tensor<std::float64_t> **inputs,
                              unsigned no_of_inputs) {
-  unsigned i;
   this->no_of_inputs = no_of_inputs;
-
-  this->inputs = new Tensor<std::float64_t> *[this->no_of_inputs];
-
-  for (i = 0; i < this->no_of_inputs; i++) {
-    this->inputs[i] = inputs[i];
-  }
+  this->inputs[0] = inputs[0];
+  this->inputs[1] = inputs[1];
 }
 
 void Opssub::initilizeoutput(Tensor<std::float64_t> *output) {

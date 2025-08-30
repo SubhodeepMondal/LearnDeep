@@ -108,7 +108,7 @@ ndarray<T> &ndarray<T>::operator=(ndarray<T> &&ndarray) noexcept {
 }
 
 template <typename T> ndarray<T>::~ndarray() {
-
+  // std::cout << "Destructor called for object: " << "\n";
   LOG(INFO) << "Destructor called for object: " << "\n";
   destroy();
 }
@@ -176,7 +176,7 @@ template <typename T> void ndarray<T>::printData() {
       std::cout << std::endl;
   }
   // std::cout << std::endl;
-  free(dim);
+  delete [] dim;
 }
 
 template <typename T> void ndarray<T>::printLinearData() {
@@ -313,7 +313,7 @@ template <typename T> void ndarray<T>::printNoOfElements() {
   std::cout << nElem << "\n";
 }
 
-template <typename T> void ndarray<T>::reshape(unsigned n, unsigned *arr) {
+template <typename T> void ndarray<T>::reshape(unsigned n,const unsigned *arr) {
   if (this->nDim < n) {
     this->nDim = n;
     delete[] this->dimension;

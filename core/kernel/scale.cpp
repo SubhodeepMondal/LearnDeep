@@ -71,7 +71,6 @@ void Opsscale::compute() {
 void Opsscale::initilizeinputs(Tensor<std::float64_t> **inputs,
                                std::float64_t scale_factor) {
   this->scale_factor[0] = scale_factor;
-  this->inputs = new Tensor<std::float64_t> *[1];
   this->inputs[0] = inputs[0];
 }
 

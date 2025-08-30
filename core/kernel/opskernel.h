@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <iostream>
 #include <stdfloat>
+#include <vector>
 
 template <typename T> class Tensor;
 
@@ -20,6 +21,7 @@ typedef enum function_names {
 
 class Ops {
 public:
+  virtual ~Ops() = 0;
   virtual void compute() = 0;
   virtual void initilizeoutput(Tensor<std::float64_t> *) = 0;
   virtual void initilizeinputs(Tensor<std::float64_t> **input_a,
@@ -34,6 +36,7 @@ public:
   virtual void printinputs() {}
   virtual void printoutput() {}
   virtual void autograd() {}
+  virtual void destory() {}
 
   virtual void recursive_iterator(unsigned index, unsigned *dimension_arr,
                                   // Tensor<std::float64_t> input_a,
@@ -43,16 +46,17 @@ public:
                                   std::float64_t *dl_arr,
                                   Tensor<std::float64_t> *misc_arr);
 
-  static void recursive_sum(unsigned index, unsigned *dimension_arr,
-                            Tensor<std::float64_t> input_b,
-                            Tensor<std::float64_t> &output,
-                            unsigned reduction_dim, std::float64_t *temp_input);
+  virtual void recursive_sum(unsigned index, unsigned *dimension_arr,
+                             Tensor<std::float64_t> input_b,
+                             Tensor<std::float64_t> &output,
+                             unsigned reduction_dim,
+                             std::float64_t *temp_input);
 };
 
 class Opsmul : public Ops {
   unsigned no_of_inputs;
 
-  Tensor<std::float64_t> **inputs;
+  Tensor<std::float64_t> *inputs[2];
   Tensor<std::float64_t> *output;
   void recursive_iterator(unsigned index, unsigned *dimension_arr,
                           std::string function_name, unsigned *ui_arr,
@@ -62,7 +66,8 @@ class Opsmul : public Ops {
   void kernel_dispatch(std::float64_t **, unsigned *);
 
 public:
-  Opsmul() {}
+  Opsmul() = default;
+  ~Opsmul() {}
   void compute();
   void initilizeinputs(Tensor<std::float64_t> **inputs, unsigned no_of_inputs);
 
@@ -82,7 +87,7 @@ public:
 class Opsadd : public Ops {
   unsigned no_of_inputs;
 
-  Tensor<std::float64_t> **inputs;
+  Tensor<std::float64_t> *inputs[2];
   Tensor<std::float64_t> *output;
   void recursive_iterator(unsigned index, unsigned *dimension_arr,
                           std::string function_name, unsigned *ui_arr,
@@ -92,7 +97,8 @@ class Opsadd : public Ops {
   void kernel_dispatch(std::float64_t **, unsigned *);
 
 public:
-  Opsadd() {}
+  Opsadd() = default;
+  ~Opsadd() {}
   void compute();
   void initilizeinputs(Tensor<std::float64_t> **inputs, unsigned no_of_inputs);
   void initilizeoutput(Tensor<std::float64_t> *output);
@@ -110,14 +116,16 @@ public:
 class Opsmatmul : public Ops {
   unsigned no_of_inputs;
 
-  Tensor<std::float64_t> **inputs;
+  Tensor<std::float64_t> *inputs[2];
   Tensor<std::float64_t> *output;
   void recursive_iterator(unsigned index, unsigned *, std::string, unsigned *,
                           std::float64_t *, Tensor<std::float64_t> *);
   void kernel_dispatch(std::float64_t **, unsigned *);
 
 public:
-  Opsmatmul() {}
+  Opsmatmul() = default;
+
+  ~Opsmatmul();
 
   void compute();
 
@@ -134,12 +142,14 @@ public:
   void printinputs();
 
   void printoutput();
+
+  void destory() override;
 };
 
 class Opspower : public Ops {
   unsigned exponent;
 
-  Tensor<std::float64_t> **inputs;
+  Tensor<std::float64_t> *inputs[1];
   Tensor<std::float64_t> *output;
   void recursive_iterator(unsigned index, unsigned *dimension_arr,
                           std::string function_name, unsigned *ui_arr,
@@ -149,6 +159,8 @@ class Opspower : public Ops {
   void kernel_dispatch(std::float64_t **, unsigned *);
 
 public:
+  Opspower() = default;
+  ~Opspower() {}
   void compute();
   void initilizeinputs(Tensor<std::float64_t> **inputs, unsigned exponent);
 
@@ -166,8 +178,9 @@ public:
 };
 
 class Opsreducesum : public Ops {
-  unsigned no_of_reduction_dim, *reduction_dims;
-  Tensor<std::float64_t> **inputs;
+  unsigned no_of_reduction_dim;
+  std::vector<unsigned> reduction_dims;
+  Tensor<std::float64_t> *inputs[1];
   Tensor<std::float64_t> *temp_output;
   Tensor<std::float64_t> *temp_input;
   Tensor<std::float64_t> *output;
@@ -175,6 +188,8 @@ class Opsreducesum : public Ops {
                      unsigned reduction_dim, std::float64_t *temp_arr);
 
 public:
+  Opsreducesum() = default;
+  ~Opsreducesum();
   void compute();
   void initilizeinputs(Tensor<std::float64_t> **inputs, unsigned n,
                        unsigned *arr);
@@ -196,7 +211,7 @@ public:
 class Opsscale : public Ops {
   std::float64_t scale_factor[1];
 
-  Tensor<std::float64_t> **inputs;
+  Tensor<std::float64_t> *inputs[1];
   Tensor<std::float64_t> *output;
   void recursive_iterator(unsigned index, unsigned *dimension_arr,
                           std::string function_name, unsigned *ui_arr,
@@ -205,6 +220,8 @@ class Opsscale : public Ops {
   void kernel_dispatch(std::float64_t **, unsigned *);
 
 public:
+  Opsscale() = default;
+  ~Opsscale() {}
   void compute();
   void initilizeinputs(Tensor<std::float64_t> **inputs,
                        std::float64_t scale_factor);
@@ -220,7 +237,7 @@ public:
 };
 
 class Opssqrt : public Ops {
-  Tensor<std::float64_t> **inputs;
+  Tensor<std::float64_t> *inputs[1];
   Tensor<std::float64_t> *output;
   void recursive_iterator(unsigned index, unsigned *dimension_arr,
                           std::string function_name, unsigned *ui_arr,
@@ -230,6 +247,8 @@ class Opssqrt : public Ops {
   void kernel_dispatch(std::float64_t **, unsigned *);
 
 public:
+  Opssqrt() = default;
+  ~Opssqrt(){};
   void compute();
   void initilizeinputs(Tensor<std::float64_t> **inputs, unsigned no_of_inputs);
   void initilizeoutput(Tensor<std::float64_t> *output);
@@ -243,7 +262,7 @@ public:
 class Opssub : public Ops {
   unsigned no_of_inputs;
 
-  Tensor<std::float64_t> **inputs;
+  Tensor<std::float64_t> *inputs[2];
   Tensor<std::float64_t> *output;
   void recursive_iterator(unsigned index, unsigned *dimension_arr,
                           std::string function_name, unsigned *ui_arr,
@@ -253,7 +272,8 @@ class Opssub : public Ops {
   void kernel_dispatch(std::float64_t **, unsigned *);
 
 public:
-  Opssub() {}
+  Opssub() = default;
+  ~Opssub() {}
   void compute();
   void initilizeinputs(Tensor<std::float64_t> **inputs, unsigned no_of_inputs);
   void initilizeoutput(Tensor<std::float64_t> *output);
@@ -269,7 +289,7 @@ public:
 };
 
 class Opsrelu : public Ops {
-  Tensor<std::float64_t> **inputs;
+  Tensor<std::float64_t> *inputs[1];
   Tensor<std::float64_t> *output;
   void recursive_iterator(unsigned index, unsigned *dimension_arr,
                           std::string function_name, unsigned *ui_arr,
@@ -277,7 +297,10 @@ class Opsrelu : public Ops {
                           Tensor<std::float64_t> *misc_arr);
 
   void kernel_dispatch(std::float64_t **, unsigned *);
+
 public:
+  Opsrelu() = default;
+  ~Opsrelu() {}
   void compute();
   void initilizeinputs(Tensor<std::float64_t> **inputs, unsigned no_of_inputs);
   void initilizeoutput(Tensor<std::float64_t> *output);
@@ -289,7 +312,7 @@ public:
 };
 
 class Opssigmoid : public Ops {
-  Tensor<std::float64_t> **inputs;
+  Tensor<std::float64_t> *inputs[1];
   Tensor<std::float64_t> *output;
   void recursive_iterator(unsigned index, unsigned *dimension_arr,
                           std::string function_name, unsigned *ui_arr,
@@ -297,7 +320,10 @@ class Opssigmoid : public Ops {
                           Tensor<std::float64_t> *misc_arr);
 
   void kernel_dispatch(std::float64_t **, unsigned *);
+
 public:
+  Opssigmoid() = default;
+  ~Opssigmoid() {}
   void compute();
   void initilizeinputs(Tensor<std::float64_t> **inputs, unsigned no_of_inputs);
   void initilizeoutput(Tensor<std::float64_t> *output);
@@ -309,7 +335,7 @@ public:
 };
 
 class Opssoftmax : public Ops {
-  Tensor<std::float64_t> **inputs;
+  Tensor<std::float64_t> *inputs[1];
   Tensor<std::float64_t> *output;
   void recursive_iterator(unsigned index, unsigned *dimension_arr,
                           std::string function_name, unsigned *ui_arr,
@@ -317,7 +343,10 @@ class Opssoftmax : public Ops {
                           Tensor<std::float64_t> *misc_arr);
 
   void kernel_dispatch(std::float64_t **, unsigned *);
+
 public:
+  Opssoftmax() = default;
+  ~Opssoftmax() {}
   void compute();
   void initilizeinputs(Tensor<std::float64_t> **inputs, unsigned no_of_inputs);
   void initilizeoutput(Tensor<std::float64_t> *output);

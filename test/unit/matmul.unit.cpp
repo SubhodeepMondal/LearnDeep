@@ -40,7 +40,7 @@ TEST_F(MathTest, Eager_MatrixMultiplication_2D) {
   }
 }
 
-TEST_F(MathTest, MatrixMultiplication_2D) {
+TEST_F(MathTest, Graph_MatrixMultiplication_2D) {
 
   std::float64_t a[] = {0.42602198, 0.51120308, 0.66381781, 0.79000792,
                         0.73980886, 0.1366799,  0.3818528,  0.40564105,
@@ -57,8 +57,6 @@ TEST_F(MathTest, MatrixMultiplication_2D) {
                             0.59757409, 0.8184194,  1.72745414, 1.39738902,
                             0.39987468, 0.28514178, 1.27826852, 1.00611498};
 
-  A.print_data();
-
   tf::tensor A, B, C;
   A.tf_create(tf_float64, 4, 4);
   B.tf_create(tf_float64, 4, 4);
@@ -70,17 +68,12 @@ TEST_F(MathTest, MatrixMultiplication_2D) {
   tf::graph g_matmul;
   g_matmul.tf_create_graph();
 
-  // g_matmul.graph_start_recording_session();
-
   C = A.matmul(g_matmul, B);
-
-  // g_matmul.graph_end_recording_session();
   g_matmul.graph_execute();
-
-  g_matmul.graph_clear();
 
   auto *tensorC_matmul = static_cast<Tensor<std::float64_t> *>(C.ptr);
   for (int i = 0; i < 16; i++) {
     EXPECT_NEAR(tensorC_matmul->getData()[i], c_mul[i], 0.0001);
   }
+  g_matmul.graph_clear();
 }

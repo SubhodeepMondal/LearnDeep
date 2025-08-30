@@ -10,6 +10,8 @@
 #include <omp.h>
 #include <thread>
 
+#include <absl/log/log.h>
+
 void avx2::avx2_matmul_conventional_f64(std::float64_t **ptr, unsigned *arr) {
   // x output row size
   // y k row
@@ -27,8 +29,8 @@ void avx2::avx2_matmul_conventional_f64(std::float64_t **ptr, unsigned *arr) {
   x = arr[0];
   y = arr[1];
   z = arr[2];
-  std::cout << "avx256 kernel for conventional matmul is running....\n";
-// std::cout << omp_get_max_threads() << "\n";
+  LOG(INFO) << "avx256 kernel for conventional matmul is running....\n";
+// LOG(INFO) << omp_get_max_threads() << "\n";
 #pragma omp parallel for
   for (int j = 0; j < z; j++) {
     for (int i = 0; i < x; i++) {
@@ -70,8 +72,8 @@ void avx2::avx2_matmul_f64(std::float64_t **ptr, unsigned *arr) {
   x = arr[0];
   y = arr[1];
   z = arr[2];
-  std::cout << "avx256 kernel for matmul is running....\n";
-  // std::cout << omp_get_max_threads() << "\n";
+  LOG(INFO) << "avx256 kernel for matmul is running....\n";
+  // LOG(INFO) << omp_get_max_threads() << "\n";
   memset(c, 0, sizeof(std::float64_t) * x * z);
 #pragma omp parallel proc_bind(close)
   {
@@ -110,7 +112,7 @@ void avx2::avx2_add_f64(std::float64_t **ptr, unsigned *arr) {
 
   n_elements = m_size * n_size;
   omp_set_num_threads(std::thread::hardware_concurrency());
-  std::cout << "avx256 kernel for add is running....\n";
+  LOG(INFO) << "avx256 kernel for add is running....\n";
 #pragma omp parallel for
   for (i = 0; i <= n_elements - 4; i += 4) {
     __m256d c_arr =
@@ -137,7 +139,7 @@ void avx2::avx2_sub_f64(std::float64_t **ptr, unsigned *arr) {
 
   n_elements = m_size * n_size;
   omp_set_num_threads(std::thread::hardware_concurrency());
-  std::cout << "avx256 kernel for sub is running....\n";
+  LOG(INFO) << "avx256 kernel for sub is running....\n";
 
 #pragma omp parallel for
   for (i = 0; i <= n_elements - 4; i += 4) {
@@ -165,7 +167,7 @@ void avx2::avx2_mul_f64(std::float64_t **ptr, unsigned *arr) {
   n_elements = m_size * n_size;
   omp_set_num_threads(std::thread::hardware_concurrency());
 
-  std::cout << "avx256 kernel for mul is running....\n";
+  LOG(INFO) << "avx256 kernel for mul is running....\n";
 
 #pragma omp parallel for
   for (i = 0; i <= n_elements - 4; i += 4) {
@@ -193,7 +195,7 @@ void avx2::avx2_scale_f64(std::float64_t **ptr, unsigned *arr) {
   n_elements = m_size * n_size;
   omp_set_num_threads(std::thread::hardware_concurrency());
 
-  std::cout << "avx256 kernel for scale is running....\n";
+  LOG(INFO) << "avx256 kernel for scale is running....\n";
 
 #pragma omp parallel for
   for (i = 0; i <= n_elements - 4; i += 4) {
@@ -220,7 +222,7 @@ void avx2::avx2_sqrt_f64(std::float64_t **ptr, unsigned *arr) {
   n_elements = m_size * n_size;
   omp_set_num_threads(std::thread::hardware_concurrency());
 
-  std::cout << "avx256 kernel for sqrt is running....\n";
+  LOG(INFO) << "avx256 kernel for sqrt is running....\n";
 #pragma omp parallel for
   for (i = 0; i <= n_elements - 4; i += 4) {
     __m256d c_arr =
@@ -243,7 +245,7 @@ void avx2::avx2_relu_f64(std::float64_t **ptr, unsigned *arr) {
   n_elements = m_size * n_size;
   omp_set_num_threads(std::thread::hardware_concurrency());
 
-  std::cout << "avx256 kernel for relu is running....\n";
+  LOG(INFO) << "avx256 kernel for relu is running....\n";
 #pragma omp parallel for
   for (i = 0; i <= n_elements - 4; i += 4) {
     __m256d zero = _mm256_setzero_pd();
@@ -286,7 +288,7 @@ void avx2::avx2_sigmoid_f64(std::float64_t **ptr, unsigned *arr) {
   n_elements = m_size * n_size;
   omp_set_num_threads(std::thread::hardware_concurrency());
 
-  std::cout << "avx256 kernel for sigmoid is running....\n";
+  LOG(INFO) << "avx256 kernel for sigmoid is running....\n";
 #pragma omp parallel for
   for (i = 0; i <= n_elements - 4; i += 4) {
     __m256d one = _mm256_set1_pd(1.0);
@@ -313,7 +315,7 @@ void avx2::avx2_softmax_f64(std::float64_t **ptr, unsigned *arr) {
   n_elements = m_size * n_size;
   omp_set_num_threads(std::thread::hardware_concurrency());
 
-  std::cout << "avx256 kernel for softmax is running....\n";
+  LOG(INFO) << "avx256 kernel for softmax is running....\n";
 #pragma omp parallel for
   for (i = 0; i <= n_elements - 4; i += 4) {
     __m256d one = _mm256_set1_pd(1.0);

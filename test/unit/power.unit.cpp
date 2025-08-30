@@ -27,7 +27,7 @@ TEST_F(MathTest, Eager_MatrixPower_2D) {
   }
 }
 
-TEST_F(MathTest, MatrixPower_2D) {
+TEST_F(MathTest, Graph_MatrixPower_2D) {
 
   std::float64_t a[] = {0.37454012, 0.95071431, 0.73199394, 0.59865848,
                         0.15601864, 0.15599452, 0.05808361, 0.86617615,
@@ -55,10 +55,10 @@ TEST_F(MathTest, MatrixPower_2D) {
   // g_power.graph_end_recording_session();
 
   g_power.graph_execute();
-  g_power.graph_clear();
 
   auto *tensorC_power = static_cast<Tensor<std::float64_t> *>(C.ptr);
   for (int i = 0; i < 16; i++) {
     EXPECT_NEAR(tensorC_power->getData()[i], c_power[i], 0.0001);
   }
+  g_power.graph_clear();
 }

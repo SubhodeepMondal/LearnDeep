@@ -3,6 +3,7 @@
 #include <absl/log/log.h>
 #include <framework/MathLibrary.h>
 #include <kernel/opskernel.h>
+#include <memory>
 
 void node::setInputNode(node *input_node) {
   if (input_node) {
@@ -30,21 +31,34 @@ void node::execute() {
     // Execution logic for compute nodes
     LOG(INFO) << "Executing node with ID: " << node_id;
     // Add actual execution logic here
-    ops->compute(); // Assuming Ops has an execute method
+    ops->compute();
   } else {
     LOG(INFO) << "Node with ID: " << node_id << " is not a compute node.";
   }
 }
 
 void node::print_data() {
-  if (type::data == node_type) {
+  if (type::data == this->node_type) {
     LOG(INFO) << "Node ID: " << node_id << ", Node Type: Data";
     if (input_node) {
       input_node->printData(); // Assuming Tensor has a print_data method
     }
-  } else if (type::compute == node_type) {
+  } else if (type::compute == this->node_type) {
     LOG(INFO) << "Node ID: " << node_id << ", Node Type: Compute";
   } else {
     LOG(INFO) << "Node ID: " << node_id << ", Node Type: Root";
+  }
+}
+
+void node::release_resources() {
+  switch (this->node_type) {
+  case type::data:
+    delete input_node;
+    break;
+  case type::compute:
+    delete ops;
+    break;
+  default:
+    break;
   }
 }

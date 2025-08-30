@@ -373,6 +373,8 @@ void tf::graph::graph_travarse_data_node() {
 }
 
 void tf::graph::graph_clear() {
+
+  static_cast<Graph *> (this->ptr)->release_resources();
   if (ptr) {
     delete static_cast<Graph *>(ptr);
     ptr = nullptr;

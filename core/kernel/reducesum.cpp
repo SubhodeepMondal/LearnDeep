@@ -4,9 +4,14 @@
 
 #include <LAS/CPULibrary.h>
 #include <LAS/avx2_micro_kernels.h>
+#include <absl/log/log.h>
 #include <framework/MathLibrary.h>
 #include <kernel/opskernel.h>
 
+Opsreducesum::~Opsreducesum() {
+  delete temp_input;
+  delete temp_output;
+}
 void Opsreducesum::recursive_sum(unsigned index, unsigned *dimension_arr,
                                  unsigned reduction_dim,
                                  std::float64_t *temp_arr) {
@@ -106,10 +111,9 @@ void Opsreducesum::recursive_sum(unsigned index, unsigned *dimension_arr,
         stride = x_axis * y_axis;
         temp_arr = input_ptr + (stride * k + input_index);
         ptr[1] = temp_arr;
-        
+
         kernel_dispatch(ptr, a);
       }
-      temp_output->printData();
       break;
     }
     default: {
@@ -138,20 +142,19 @@ void Opsreducesum::recursive_sum(unsigned index, unsigned *dimension_arr,
 void Opsreducesum::compute() {
   unsigned i, k, resulting_no_of_dims;
   unsigned *resulting_dims, *arr_dims;
-  std::float64_t *intermediate_input;
+  unsigned nElements = 1;
+  for (i = 0; i < this->inputs[0]->getNoOfDimensions() && i < 3; i++)
+    nElements *= this->inputs[0]->getDimensions()[i];
+  std::float64_t *intermediate_input = new std::float64_t[nElements];
 
-  intermediate_input = new std::float64_t[this->inputs[0]->getDimensions()[0] *
-                                          this->inputs[0]->getDimensions()[1] *
-                                          this->inputs[0]->getDimensions()[2]];
-
-  resulting_dims = new unsigned(inputs[0]->getNoOfDimensions());
-  arr_dims = new unsigned(inputs[0]->getNoOfDimensions());
+  resulting_dims = new unsigned[inputs[0]->getNoOfDimensions()];
+  arr_dims = new unsigned[inputs[0]->getNoOfDimensions()];
   temp_input = new Tensor<std::float64_t>(*this->inputs[0]);
   temp_output = new Tensor<std::float64_t>(*this->output);
   temp_input->initData(this->inputs[0]->getData());
 
   for (i = 0; i < no_of_reduction_dim; i++) {
-    std::cout << "Reducing on dimension: " << reduction_dims[i] - i << "\n";
+    LOG(INFO) << "Reducing on dimension: " << reduction_dims[i] - i << "\n";
     resulting_no_of_dims = temp_input->getNoOfDimensions() - 1;
 
     if (temp_input->getNoOfDimensions() > 1) {
@@ -172,9 +175,11 @@ void Opsreducesum::compute() {
 
     temp_input->reshape(resulting_no_of_dims, resulting_dims);
     temp_input->initData(temp_output->getData());
-
   }
   this->output->initData(temp_output->getData());
+  delete[] intermediate_input;
+  delete[] resulting_dims;
+  delete[] arr_dims;
 }
 
 void Opsreducesum::initilizeinputs(Tensor<std::float64_t> **inputs, unsigned n,
@@ -182,45 +187,42 @@ void Opsreducesum::initilizeinputs(Tensor<std::float64_t> **inputs, unsigned n,
   unsigned i;
   this->no_of_reduction_dim = n;
 
-  reduction_dims = new unsigned[n];
+  // reduction_dims = new unsigned[n];
   for (i = 0; i < n; i++)
-    reduction_dims[i] = arr[i];
+    reduction_dims.push_back(arr[i]);
 
-  this->inputs = new Tensor<std::float64_t> *[1];
   this->inputs[0] = inputs[0];
 }
 
 void Opsreducesum::initilizeoutput(Tensor<std::float64_t> *output) {
-  unsigned no_of_resultent_dims, *resultent_dims;
+  unsigned no_of_resultent_dims;
+  std::vector<unsigned> resultent_dims;
   unsigned i, j;
   this->output = output;
 
   no_of_resultent_dims = inputs[0]->getNoOfDimensions() - no_of_reduction_dim;
-  resultent_dims = new unsigned[no_of_reduction_dim];
+  // resultent_dims = new unsigned[no_of_reduction_dim];
 
   j = 0;
   for (unsigned i = 0; i < inputs[0]->getNoOfDimensions(); i++)
     if (i != reduction_dims[j])
-      resultent_dims[j++] = inputs[0]->getDimensions()[i];
+      resultent_dims.push_back(inputs[0]->getDimensions()[i]);
 
-  this->output->reshape(no_of_resultent_dims, resultent_dims);
-  this->output->printDimensions();
-
-  delete[] resultent_dims;
+  this->output->reshape(no_of_resultent_dims, resultent_dims.data());
 }
 
 void Opsreducesum::printinputs() {
   unsigned i;
   for (i = 0; i < 1; i++) {
-    std::cout << "Input: " << i << "\n";
+    LOG(INFO) << "Input: " << i << "\n";
     inputs[i]->printData();
   }
 }
 
 void Opsreducesum::printoutput() {
-  std::cout << "output:\n";
+  LOG(INFO) << "output:\n";
   output->printData();
-  std::cout << "\n";
+  LOG(INFO) << "\n";
 }
 
 void Opsreducesum::kernel_dispatch(std::float64_t **ptr, unsigned *arr) {
