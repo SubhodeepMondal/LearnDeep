@@ -74,13 +74,15 @@ public:
 
   Tensor<T> *relu();
 
+  Tensor<T> *sigmoid();
+
+  Tensor<T> *softmax(const unsigned axis);
+
   Tensor<T> *mean(const unsigned);
 
   Ops *add(Graph &g, Tensor<T> &input, bool &flag);
 
   Ops *mean(Graph &g, unsigned dim, bool &flag);
-
-  // Ops *mul(Tensor<T> &input, bool &flag);
 
   Ops *mul(Graph &g, Tensor<T> &input, bool &flag);
 
@@ -93,6 +95,10 @@ public:
   Ops *relu(Graph &g, bool &flag);
 
   Ops *scale(Graph &g, const std::float64_t scaleFactor, bool &flag);
+
+  Ops *sigmoid(Graph &g,bool &flag);
+
+  Ops *softmax(Graph &g,  unsigned axis, bool &flag);
 
   Ops *sqrt(Graph &g, bool &flag);
 

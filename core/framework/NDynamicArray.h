@@ -5,6 +5,7 @@
 #include <cstring>
 #include <iostream>
 #include <random>
+#include <array>
 
 #include "type.h"
 

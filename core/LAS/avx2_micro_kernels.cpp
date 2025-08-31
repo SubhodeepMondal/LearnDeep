@@ -225,8 +225,8 @@ void avx2::avx2_sqrt_f64(std::float64_t **ptr, unsigned *arr) {
   LOG(INFO) << "avx256 kernel for sqrt is running....\n";
 #pragma omp parallel for
   for (i = 0; i <= n_elements - 4; i += 4) {
-    __m256d c_arr =
-        _mm256_sqrt_pd(_mm256_loadu_pd(reinterpret_cast<const double *>(a + i)));
+    __m256d c_arr = _mm256_sqrt_pd(
+        _mm256_loadu_pd(reinterpret_cast<const double *>(a + i)));
     _mm256_storeu_pd(reinterpret_cast<double *>(c + i), c_arr);
   }
   for (i = n_elements - (n_elements % 4); i < n_elements; i++)
@@ -257,23 +257,74 @@ void avx2::avx2_relu_f64(std::float64_t **ptr, unsigned *arr) {
     c[i] = std::fmax(a[i], 0.0);
 }
 
-__m256d exp256_pd(__m256d x) {
-    const __m256d one = _mm256_set1_pd(1.0);
-    const __m256d c1 = _mm256_set1_pd(1.0);
-    const __m256d c2 = _mm256_set1_pd(0.5);
-    const __m256d c3 = _mm256_set1_pd(1.0/6.0);
-    const __m256d c4 = _mm256_set1_pd(1.0/24.0);
+// #include <immintrin.h>
 
-    __m256d x2 = _mm256_mul_pd(x, x);
-    __m256d x3 = _mm256_mul_pd(x2, x);
-    __m256d x4 = _mm256_mul_pd(x2, x2);
+// scale "a" by 2^k, where k is a double vector (integer values stored as
+// double)
+static inline __m256d mul_pow2_pd(__m256d a, __m256d k_real) {
+    alignas(32) double tmp[4];
+    _mm256_storeu_pd(tmp, k_real);   // dump vector to array
 
-    __m256d res = _mm256_add_pd(one,
-                  _mm256_add_pd(_mm256_mul_pd(c1, x),
-                  _mm256_add_pd(_mm256_mul_pd(c2, x2),
-                  _mm256_add_pd(_mm256_mul_pd(c3, x3),
-                                _mm256_mul_pd(c4, x4)))));
-    return res;
+    int64_t i0 = (int64_t)tmp[0];
+    int64_t i1 = (int64_t)tmp[1];
+    int64_t i2 = (int64_t)tmp[2];
+    int64_t i3 = (int64_t)tmp[3];
+
+    uint64_t e0 = (uint64_t)(i0 + 1023) << 52;
+    uint64_t e1 = (uint64_t)(i1 + 1023) << 52;
+    uint64_t e2 = (uint64_t)(i2 + 1023) << 52;
+    uint64_t e3 = (uint64_t)(i3 + 1023) << 52;
+
+    alignas(32) uint64_t powbits[4] = { e0, e1, e2, e3 };
+    __m256d pow2k = _mm256_castsi256_pd(_mm256_load_si256((__m256i*)powbits));
+
+    return _mm256_mul_pd(a, pow2k);
+}
+
+// vectorized exp for 4 doubles using AVX2
+inline __m256d exp256_pd(__m256d x) {
+  const __m256d ln2 = _mm256_set1_pd(0.6931471805599453);
+  const __m256d inv_ln2 = _mm256_set1_pd(1.4426950408889634); // 1/ln(2)
+
+  // Range reduction: k = round(x / ln2)
+  __m256d k_real = _mm256_round_pd(
+      _mm256_mul_pd(x, inv_ln2), _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC);
+
+  // r = x - k * ln2
+  __m256d r = _mm256_sub_pd(x, _mm256_mul_pd(k_real, ln2));
+
+  // Polynomial approximation for exp(r), r in [-0.35,0.35]
+  const __m256d c1 = _mm256_set1_pd(1.0);
+  const __m256d c2 = _mm256_set1_pd(1.0 / 2.0);
+  const __m256d c3 = _mm256_set1_pd(1.0 / 6.0);
+  const __m256d c4 = _mm256_set1_pd(1.0 / 24.0);
+  const __m256d c5 = _mm256_set1_pd(1.0 / 120.0);
+  const __m256d c6 = _mm256_set1_pd(1.0 / 720.0);
+  const __m256d c7 = _mm256_set1_pd(1.0 / 5040.0);
+
+  __m256d r2 = _mm256_mul_pd(r, r);
+  __m256d r3 = _mm256_mul_pd(r2, r);
+  __m256d r4 = _mm256_mul_pd(r2, r2);
+  __m256d r5 = _mm256_mul_pd(r4, r);
+  __m256d r6 = _mm256_mul_pd(r3, r3);
+  __m256d r7 = _mm256_mul_pd(r6, r);
+
+  __m256d poly = _mm256_add_pd(
+      c1,
+      _mm256_add_pd(
+          r,
+          _mm256_add_pd(
+              _mm256_mul_pd(c2, r2),
+              _mm256_add_pd(
+                  _mm256_mul_pd(c3, r3),
+                  _mm256_add_pd(
+                      _mm256_mul_pd(c4, r4),
+                      _mm256_add_pd(_mm256_mul_pd(c5, r5),
+                                    _mm256_add_pd(_mm256_mul_pd(c6, r6),
+                                                  _mm256_mul_pd(c7, r7))))))));
+
+  // scale by 2^k
+  return mul_pow2_pd(poly, k_real);
 }
 
 void avx2::avx2_sigmoid_f64(std::float64_t **ptr, unsigned *arr) {
@@ -286,6 +337,10 @@ void avx2::avx2_sigmoid_f64(std::float64_t **ptr, unsigned *arr) {
   n_size = arr[1];
 
   n_elements = m_size * n_size;
+  // unsigned num_threads = (n_elements / 4) >=
+  // std::thread::hardware_concurrency()
+  //                            ? std::thread::hardware_concurrency()
+  //                            : (n_elements / 4) - 1;
   omp_set_num_threads(std::thread::hardware_concurrency());
 
   LOG(INFO) << "avx256 kernel for sigmoid is running....\n";
@@ -328,5 +383,5 @@ void avx2::avx2_softmax_f64(std::float64_t **ptr, unsigned *arr) {
   }
   for (i = n_elements - (n_elements % 4); i < n_elements; i++)
     c[i] = std::exp(a[i]) / (std::exp(a[i]) + std::exp(a[i - 1]) +
-                            std::exp(a[i -  2]) + std::exp(a[i - 3]));
+                             std::exp(a[i - 2]) + std::exp(a[i - 3]));
 }

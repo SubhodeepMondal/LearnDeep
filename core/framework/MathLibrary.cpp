@@ -362,7 +362,7 @@ template <typename T> Tensor<T> *Tensor<T>::reducesum(std::vector<unsigned> n) {
     ops->initilizeoutput(output);
     ops->compute();
   }
-
+  delete ops;
   return output;
 }
 
@@ -481,6 +481,42 @@ template <typename T> Tensor<T> *Tensor<T>::relu() {
   return output;
 }
 
+template <typename T> Tensor<T> *Tensor<T>::sigmoid() {
+
+  Tensor<T> *output;
+  Ops *ops = new Opssigmoid;
+  DataType d_type = tf_float64;
+
+  output =
+      new Tensor<T>(this->getNoOfDimensions(), this->getDimensions(), d_type);
+  Tensor<T> *inputs[1];
+  inputs[0] = this;
+  ops->initilizeinputs(inputs, (unsigned)1);
+  ops->initilizeoutput(output);
+  ops->compute();
+
+  delete ops;
+  return output;
+}
+
+template <typename T> Tensor<T> *Tensor<T>::softmax(const unsigned axis) {
+
+  Tensor<T> *output;
+  Ops *ops = new Opssoftmax;
+  DataType d_type = tf_float64;
+
+  output =
+      new Tensor<T>(this->getNoOfDimensions(), this->getDimensions(), d_type);
+  Tensor<T> *inputs[1];
+  inputs[0] = this;
+  ops->initilizeinputs(inputs, (unsigned)1);
+  ops->initilizeoutput(output);
+  ops->compute();
+
+  delete ops;
+  return output;
+}
+
 template <typename T> Tensor<T> *Tensor<T>::mean(const unsigned dim) {
   Tensor<T> *output;
   Tensor<T> *temp_reducesum;
@@ -510,6 +546,7 @@ template <typename T> Tensor<T> *Tensor<T>::mean(const unsigned dim) {
   ops->initilizeinputs(&temp_reducesum, scale_factor);
   ops->initilizeoutput(output);
   ops->compute();
+  delete temp_reducesum;
   delete ops;
 
   return output;
@@ -737,6 +774,29 @@ template <typename T> Ops *Tensor<T>::relu(Graph &g, bool &flag) {
   Tensor<T> *inputs[1];
   inputs[0] = this;
   ops->initilizeinputs(inputs, (unsigned)1);
+  g.addNode(this);
+  g.addNode(ops);
+  g.addEdge(this, ops);
+  return ops;
+}
+
+template <typename T> Ops *Tensor<T>::sigmoid(Graph &g, bool &flag) {
+  Ops *ops = new Opssigmoid;
+  Tensor<T> *inputs[1];
+  inputs[0] = this;
+  ops->initilizeinputs(inputs, (unsigned)1);
+  g.addNode(this);
+  g.addNode(ops);
+  g.addEdge(this, ops);
+  return ops;
+}
+
+template <typename T>
+Ops *Tensor<T>::softmax(Graph &g, const unsigned axis, bool &flag) {
+  Ops *ops = new Opssoftmax;
+  Tensor<T> *inputs[1];
+  inputs[0] = this;
+  ops->initilizeinputs(inputs, axis);
   g.addNode(this);
   g.addNode(ops);
   g.addEdge(this, ops);

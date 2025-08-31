@@ -1,7 +1,8 @@
 
 # Unit test suite for deeplearingLA
 
-add_executable(deeplearingLA_test unit/main.cpp
+add_executable(deeplearingLA_test
+    unit/main.cpp
     unit/addition.unit.cpp
     unit/gemm.unit.cpp
     unit/graph.unit.cpp
@@ -15,7 +16,7 @@ add_executable(deeplearingLA_test unit/main.cpp
     unit/reducesum.unit.cpp
     unit/relu.unit.cpp
     unit/scale.unit.cpp
-    # unit/sigmoid.unit.cpp
+    unit/sigmoid.unit.cpp
     # unit/softmax.unit.cpp
     unit/sqrt.unit.cpp
     unit/sub.unit.cpp
@@ -45,7 +46,7 @@ add_executable(benchmark_test
     # benchmark/sigmoid.benchmark.cpp
     # benchmark/relu.benchmark.cpp
     # benchmark/sub.benchmark.cpp
-    # benchmark/sqrt.benchmark.cpp
+    benchmark/sqrt.benchmark.cpp
 )
 
 target_include_directories(benchmark_test PRIVATE ${CMAKE_SOURCE_DIR}/api

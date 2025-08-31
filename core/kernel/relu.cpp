@@ -93,10 +93,9 @@ void Opsrelu::printoutput() {
 
 void Opsrelu::kernel_dispatch(std::float64_t **ptr, unsigned *arr) {
 #ifdef CUDA_ENABLED
-  double *d_arr[3];
+  double *d_arr[2];
   d_arr[0] = reinterpret_cast<double *>(ptr[0]);
   d_arr[1] = reinterpret_cast<double *>(ptr[1]);
-  d_arr[2] = reinterpret_cast<double *>(ptr[2]);
 
   gpu::gpu_mat_relu_f64(d_arr, arr);
 #else

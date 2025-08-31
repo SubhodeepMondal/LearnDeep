@@ -45,8 +45,7 @@ void Opssigmoid::recursive_iterator(unsigned index, unsigned *dimension_arr,
     a[1] = inpA_y;
 
     ptr[0] = inputs[0]->getData() + a_index;
-    ptr[1] = dl_arr;
-    ptr[2] = output->getData() + c_index;
+    ptr[1] = output->getData() + c_index;
 
     kernel_dispatch(ptr, a);
   } else {
@@ -97,7 +96,7 @@ void Opssigmoid::kernel_dispatch(std::float64_t **ptr, unsigned *arr) {
   double *d_arr[3];
   d_arr[0] = reinterpret_cast<double *>(ptr[0]);
   d_arr[1] = reinterpret_cast<double *>(ptr[1]);
-  d_arr[2] = reinterpret_cast<double *>(ptr[2]);
+  // d_arr[2] = reinterpret_cast<double *>(ptr[2]);
 
   gpu::gpu_mat_sigmoid_f64(d_arr, arr);
 #else

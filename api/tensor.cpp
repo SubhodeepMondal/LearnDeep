@@ -1,5 +1,11 @@
 #include "tensor.h"
 #include <absl/log/log.h>
+
+tf::tensor::tensor(){};
+void tf::tensor::assign_ptr() {
+  tensor_nodes.push_back(static_cast<void *>(this));
+}
+
 void tf::tensor::tensor_of(double low_limit, double upper_limit) {
 
   switch (dt_type) {
@@ -8,7 +14,7 @@ void tf::tensor::tensor_of(double low_limit, double upper_limit) {
                                                              upper_limit);
     break;
   default:
-    LOG(ERROR)<< "Invalid data type!";
+    LOG(ERROR) << "Invalid data type!";
   }
 }
 
@@ -18,7 +24,7 @@ void tf::tensor::tensor_of(std::float64_t *data) {
     static_cast<Tensor<std::float64_t> *>(ptr)->initData(data);
     break;
   default:
-    LOG(ERROR)<< "Invalid data type!";
+    LOG(ERROR) << "Invalid data type!";
   }
 }
 
@@ -28,7 +34,7 @@ void tf::tensor::print_data() {
     static_cast<Tensor<std::float64_t> *>(ptr)->printData();
     break;
   default:
-    LOG(ERROR)<< "Invalid data type!";
+    LOG(ERROR) << "Invalid data type!";
   }
 }
 
@@ -38,12 +44,12 @@ void tf::tensor::print_dimension() {
     static_cast<Tensor<std::float64_t> *>(ptr)->printDimensions();
     break;
   default:
-    LOG(ERROR)<< "Invalid data type!";
+    LOG(ERROR) << "Invalid data type!";
   }
 }
 
 void tf::tensor::operator=(graph &g) {
-  if (g.input_a.dt_type == this->dt_type) {
+  if (g.input_a->dt_type == this->dt_type) {
     switch (this->dt_type) {
     case tf_float64:
       static_cast<Tensor<std::float64_t> *>(this->ptr)->assign(g.ops);
@@ -51,10 +57,14 @@ void tf::tensor::operator=(graph &g) {
           static_cast<Tensor<std::float64_t> *>(this->ptr));
       static_cast<Graph *>(g.ptr)->addEdge(
           g.ops, static_cast<Tensor<std::float64_t> *>(this->ptr));
+      g.output = this;
+      // g.input_a->ptr = nullptr;
+      // g.input_b->ptr = nullptr;
+      // g.ops = nullptr;
 
       break;
     default:
-      LOG(ERROR)<< "Invalid data type!";
+      LOG(ERROR) << "Invalid data type!";
     }
   }
 }
@@ -62,8 +72,8 @@ void tf::tensor::operator=(graph &g) {
 tf::graph &tf::tensor::add(graph &g, tensor &input_b) {
 
   bool flag = true;
-  g.input_a = *this;
-  g.input_b = input_b;
+  g.input_a = this;
+  g.input_b = &input_b;
   g.ops = reinterpret_cast<Tensor<std::float64_t> *>(this->ptr)->add(
       *(static_cast<Graph *>(g.ptr)),
       *(reinterpret_cast<Tensor<std::float64_t> *>(input_b.ptr)), flag);
@@ -73,7 +83,7 @@ tf::graph &tf::tensor::add(graph &g, tensor &input_b) {
 
 tf::graph &tf::tensor::mean(graph &g, unsigned dim) {
   bool flag = true;
-  g.input_a = *this;
+  g.input_a = this;
   g.ops = reinterpret_cast<Tensor<std::float64_t> *>(this->ptr)->mean(
       *(static_cast<Graph *>(g.ptr)), dim, flag);
 
@@ -82,8 +92,8 @@ tf::graph &tf::tensor::mean(graph &g, unsigned dim) {
 
 tf::graph &tf::tensor::mul(graph &g, tensor &input_b) {
   bool flag = true;
-  g.input_a = *this;
-  g.input_b = input_b;
+  g.input_a = this;
+  g.input_b = &input_b;
   g.ops = reinterpret_cast<Tensor<std::float64_t> *>(this->ptr)->mul(
       *(static_cast<Graph *>(g.ptr)),
       *(reinterpret_cast<Tensor<std::float64_t> *>(input_b.ptr)), flag);
@@ -94,9 +104,7 @@ tf::graph &tf::tensor::mul(graph &g, tensor &input_b) {
 tf::graph &tf::tensor::getReductionGraph(graph &g,
                                          std::vector<unsigned> reduction_dims,
                                          bool &flag) {
-
-  // bool flag = true;
-  g.input_a = *this;
+  g.input_a = this;
   g.ops = reinterpret_cast<Tensor<std::float64_t> *>(this->ptr)->reducesum(
       *(static_cast<Graph *>(g.ptr)), reduction_dims, flag);
 
@@ -107,8 +115,8 @@ tf::graph &tf::tensor::matmul(graph &g, tensor &input_b) {
   switch (dt_type) {
   case tf_float64: {
     bool flag = true;
-    g.input_a = *this;
-    g.input_b = input_b;
+    g.input_a = this;
+    g.input_b = &input_b;
     g.ops = reinterpret_cast<Tensor<std::float64_t> *>(this->ptr)->matmul(
         *(static_cast<Graph *>(g.ptr)),
         *(reinterpret_cast<Tensor<std::float64_t> *>(input_b.ptr)), flag);
@@ -124,7 +132,7 @@ tf::graph &tf::tensor::pow(graph &g, unsigned exponent) {
   case tf_float64: {
     bool flag = true;
 
-    g.input_a = *this;
+    g.input_a = this;
     g.ops = static_cast<Tensor<std::float64_t> *>(this->ptr)->pow(
         *(static_cast<Graph *>(g.ptr)), exponent, flag);
   } break;
@@ -137,8 +145,21 @@ tf::graph &tf::tensor::relu(graph &g) {
   switch (dt_type) {
   case tf_float64: {
     bool flag = true;
-    g.input_a = *this;
+    g.input_a = this;
     g.ops = reinterpret_cast<Tensor<std::float64_t> *>(this->ptr)->relu(
+        *(static_cast<Graph *>(g.ptr)), flag);
+    break;
+  }
+  }
+  return g;
+}
+
+tf::graph &tf::tensor::sigmoid(graph &g) {
+  switch (dt_type) {
+  case tf_float64: {
+    bool flag = true;
+    g.input_a = this;
+    g.ops = reinterpret_cast<Tensor<std::float64_t> *>(this->ptr)->sigmoid(
         *(static_cast<Graph *>(g.ptr)), flag);
     break;
   }
@@ -150,7 +171,7 @@ tf::graph &tf::tensor::scale(graph &g, std::float64_t scaleFactor) {
   switch (dt_type) {
   case tf_float64: {
     bool flag = true;
-    g.input_a = *this;
+    g.input_a = this;
     g.ops = reinterpret_cast<Tensor<std::float64_t> *>(this->ptr)->scale(
         *(static_cast<Graph *>(g.ptr)), scaleFactor, flag);
     break;
@@ -163,7 +184,7 @@ tf::graph &tf::tensor::sqrt(graph &g) {
   switch (dt_type) {
   case tf_float64: {
     bool flag = true;
-    g.input_a = *this;
+    g.input_a = this;
     g.ops = reinterpret_cast<Tensor<std::float64_t> *>(this->ptr)->sqrt(
         *(static_cast<Graph *>(g.ptr)), flag);
     break;
@@ -174,8 +195,8 @@ tf::graph &tf::tensor::sqrt(graph &g) {
 
 tf::graph &tf::tensor::sub(graph &g, tensor &input_b) {
   bool flag = true;
-  g.input_a = *this;
-  g.input_b = input_b;
+  g.input_a = this;
+  g.input_b = &input_b;
   g.ops = reinterpret_cast<Tensor<std::float64_t> *>(this->ptr)->sub(
       *(static_cast<Graph *>(g.ptr)),
       *(reinterpret_cast<Tensor<std::float64_t> *>(input_b.ptr)), flag);
@@ -195,7 +216,7 @@ tf::tensor tf::tensor::matmul(tensor &input_b) {
       break;
     }
     default:
-      LOG(ERROR)<< "Invalid data type!";
+      LOG(ERROR) << "Invalid data type!";
     }
   }
   return output;
@@ -213,7 +234,7 @@ tf::tensor tf::tensor::add(tensor &input_b) {
       break;
     }
     default:
-      LOG(ERROR)<< "Invalid data type!";
+      LOG(ERROR) << "Invalid data type!";
     }
   }
   return output;
@@ -230,7 +251,7 @@ tf::tensor tf::tensor::operator+(tensor &input_b) {
       break;
     }
     default:
-      LOG(ERROR)<< "Invalid data type!";
+      LOG(ERROR) << "Invalid data type!";
     }
   }
   return output;
@@ -248,9 +269,24 @@ tf::tensor tf::tensor::operator*(tensor &input_b) {
       break;
     }
     default:
-      LOG(ERROR)<< "Invalid data type!";
+      LOG(ERROR) << "Invalid data type!";
     }
   }
+  return output;
+}
+
+tf::tensor tf::tensor::sigmoid() {
+  tensor output;
+
+  switch (dt_type) {
+  case tf_float64:
+    output.dt_type = this->dt_type;
+    output.ptr = static_cast<Tensor<std::float64_t> *>(this->ptr)->sigmoid();
+    break;
+  default:
+    LOG(ERROR) << "Invalid data type!";
+  }
+
   return output;
 }
 
@@ -264,7 +300,7 @@ tf::tensor tf::tensor::scale(const std::float64_t scaleFactor) {
         static_cast<Tensor<std::float64_t> *>(this->ptr)->scale(scaleFactor);
     break;
   default:
-    LOG(ERROR)<< "Invalid data type!";
+    LOG(ERROR) << "Invalid data type!";
   }
 
   return output;
@@ -279,7 +315,7 @@ tf::tensor tf::tensor::sqrt() {
     output.ptr = static_cast<Tensor<std::float64_t> *>(this->ptr)->sqrt();
     break;
   default:
-    LOG(ERROR)<< "Invalid data type!";
+    LOG(ERROR) << "Invalid data type!";
   }
 
   return output;
@@ -296,7 +332,7 @@ tf::tensor tf::tensor::sub(tensor &input_b) {
       break;
     }
     default:
-      LOG(ERROR)<< "Invalid data type!";
+      LOG(ERROR) << "Invalid data type!";
     }
   }
   return output;
@@ -312,7 +348,7 @@ tf::tensor tf::tensor::pow(const unsigned exponent) {
         static_cast<Tensor<std::float64_t> *>(this->ptr)->pow(exponent);
     break;
   default:
-    LOG(ERROR)<< "Invalid data type!";
+    LOG(ERROR) << "Invalid data type!";
   }
 
   return output;
@@ -327,11 +363,11 @@ tf::tensor tf::tensor::relu() {
     output.ptr = static_cast<Tensor<std::float64_t> *>(this->ptr)->relu();
     break;
   default:
-    LOG(ERROR)<< "Invalid data type!";
+    LOG(ERROR) << "Invalid data type!";
   }
 
   return output;
-} 
+}
 
 tf::tensor tf::tensor::mean(const unsigned dim) {
   tensor output;
@@ -342,7 +378,7 @@ tf::tensor tf::tensor::mean(const unsigned dim) {
     output.ptr = static_cast<Tensor<std::float64_t> *>(this->ptr)->mean(dim);
     break;
   default:
-    LOG(ERROR)<< "Invalid data type!";
+    LOG(ERROR) << "Invalid data type!";
   }
 
   return output;
@@ -364,6 +400,15 @@ tf::tensor tf::tensor::getReduction(std::vector<unsigned> reduction_dims) {
   return output;
 }
 
+void tf::tensor::destory() {
+  if (this->ptr) {
+    tensor_nodes.erase(
+        std::remove(tensor_nodes.begin(), tensor_nodes.end(), this),
+        tensor_nodes.end());
+    delete static_cast<Tensor<std::float64_t> *>(this->ptr);
+    ptr = nullptr;
+  }
+}
 void tf::graph::tf_create_graph() { ptr = new Graph(); }
 
 void tf::graph::graph_execute() { static_cast<Graph *>(this->ptr)->compute(); }
@@ -374,14 +419,19 @@ void tf::graph::graph_travarse_data_node() {
 
 void tf::graph::graph_clear() {
 
-  static_cast<Graph *> (this->ptr)->release_resources();
+  std::vector<void *> data_nodes =
+      static_cast<Graph *>(this->ptr)->getDataNodes();
+
+  static_cast<Graph *>(this->ptr)->release_resources();
   if (ptr) {
     delete static_cast<Graph *>(ptr);
     ptr = nullptr;
   }
-  isSessionActive = false;
-  input_a.ptr = nullptr;
-  input_b.ptr = nullptr;
-  ops = nullptr;
-  // LOG(INFO)<< "Graph cleared and session ended.\n";
+
+  for (auto node : data_nodes)
+    for (auto tensor_node : tensor_nodes)
+      if (node == static_cast<tensor *>(tensor_node)->ptr)
+        static_cast<tensor *>(tensor_node)->isNodeCleared = true;
+
+  tensor_nodes.clear();
 }

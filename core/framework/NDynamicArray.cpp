@@ -1,5 +1,5 @@
-#include <framework/NDynamicArray.h>
 #include <absl/log/log.h>
+#include <framework/NDynamicArray.h>
 
 template <typename T> ndarray<T>::ndarray() {
   dim_iterator = 0;
@@ -38,7 +38,6 @@ ndarray<T>::ndarray(unsigned n, const unsigned *arr, DataType d_type) {
   this->arr_dim = new unsigned[this->nDim];
   this->isDimInitilized = true;
   this->tensor_type = d_type;
-#undef data_type
 
   for (int i = 0; i < this->nDim; i++) {
     this->dimension[i] = arr[i];
@@ -54,7 +53,7 @@ template <typename T>
 ndarray<T> &ndarray<T>::operator=(const ndarray<T> &ndarray) {
   if (this == &ndarray)
     return *this;
-  if (isInitilized)
+  if (this->isInitilized)
     destroy();
   isInitilized = true;
   isDimInitilized = true;
@@ -176,7 +175,7 @@ template <typename T> void ndarray<T>::printData() {
       std::cout << std::endl;
   }
   // std::cout << std::endl;
-  delete [] dim;
+  delete[] dim;
 }
 
 template <typename T> void ndarray<T>::printLinearData() {
@@ -282,7 +281,6 @@ template <typename T> void ndarray<T>::destroy() {
     delete[] arr_dim;
     arr_dim = nullptr;
   }
-  // std::cout << "destroyed!\n";
 }
 
 template <typename T> T ndarray<T>::operator()(unsigned n) {
@@ -313,7 +311,8 @@ template <typename T> void ndarray<T>::printNoOfElements() {
   std::cout << nElem << "\n";
 }
 
-template <typename T> void ndarray<T>::reshape(unsigned n,const unsigned *arr) {
+template <typename T>
+void ndarray<T>::reshape(unsigned n, const unsigned *arr) {
   if (this->nDim < n) {
     this->nDim = n;
     delete[] this->dimension;

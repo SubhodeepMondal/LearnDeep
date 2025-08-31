@@ -10,12 +10,7 @@
 #include <unordered_set>
 #include <vector>
 
-enum class Functions {
-  compute,
-  search,
-  travarse,
-  release_resource
-};
+enum class Functions { compute, search, travarse, release_resource };
 
 class Graph {
   std::unordered_set<Tensor<std::float64_t> *> data_nodes;
@@ -48,6 +43,8 @@ public:
   void addEdge(Ops *src, Tensor<std::float64_t> *dst);
 
   void compute();
+
+  std::vector<void *> getDataNodes();
 
   void traverse();
 

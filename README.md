@@ -16,10 +16,16 @@ Currently, a small set of operations are implemented:
 
 1. Matrix addition
 2. Matrix multiplication
-3. Matrix Hadamard multiplication
-4. Exponential operation (`x^e`, where *e* is an integer)
-5. Reduction sum along the *n*-th dimension
-6. Scaling operation
+3. Matrix Mean on n-th axis
+4. Matrix Hadamard multiplication (element-wise multiplication)
+5. Matrix Power
+6. Exponential operation (`x^e`, where *e* is an integer)
+7. Reduction sum along the *n*-th dimension
+8. Relu
+9. Scaling operation
+10. Sigmoid operation
+11. Sqrt
+12. Subtraction
 
 ---
 

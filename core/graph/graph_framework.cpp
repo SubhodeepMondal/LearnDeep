@@ -113,6 +113,14 @@ void Graph::compute() {
   dfs(root_node, visited, Functions::compute);
 }
 
+std::vector<void *> Graph::getDataNodes() {
+  std::vector<void *> dataNodes;
+  for (auto items : data_nodes) {
+    dataNodes.push_back(static_cast<void *>(items));
+  }
+  return dataNodes;
+}
+
 void Graph::traverse() {
   if (!is_valid_graph) {
     std::cerr << "Graph is not valid!";

@@ -12,8 +12,11 @@
 namespace tf {
 struct graph;
 
+static std::vector<void *> tensor_nodes;
+
 typedef struct tensor {
   void *ptr{nullptr};
+  bool isNodeCleared = false;
   DataType dt_type;
 
   void addDimensions(std::vector<unsigned> &dimensions, unsigned w) {
@@ -34,14 +37,17 @@ typedef struct tensor {
 
     switch (d_type) {
     case tf_float64:
-      ptr = new Tensor<std::float64_t>(dimensions.size(), dimensions.data(),
-                                       d_type);
+      this->ptr = new Tensor<std::float64_t>(dimensions.size(),
+                                             dimensions.data(), d_type);
       break;
     default:
       ptr = nullptr;
     }
     dt_type = d_type;
+    assign_ptr();
   }
+
+  void assign_ptr();
 
   unsigned getNoOfDimensions() {
     return static_cast<Tensor<std::float64_t> *>(ptr)->getNoOfDimensions();
@@ -76,6 +82,8 @@ typedef struct tensor {
   graph &pow(graph &g, unsigned exponent);
 
   graph &relu(graph &g);
+
+  graph &sigmoid(graph &g);
 
   graph &scale(graph &g, std::float64_t scaleFactor);
 
@@ -116,6 +124,8 @@ typedef struct tensor {
 
   tensor operator*(tensor &input_b);
 
+  tensor sigmoid();
+
   tensor scale(const std::float64_t scaleFactor);
 
   tensor sqrt();
@@ -123,10 +133,15 @@ typedef struct tensor {
   tensor sub(tensor &input_b);
 
   // --- Default constructor
-  tensor() = default;
+  tensor();
 
   // --- Destructor
-  ~tensor() { /*destory();*/ }
+  ~tensor() {
+    if (!isNodeCleared) {
+      isNodeCleared = true;
+      destory();
+    }
+  }
 
   // --- Copy constructor
   tensor(const tensor &other) {
@@ -142,11 +157,9 @@ typedef struct tensor {
     if (this != &other) {
       dt_type = other.dt_type;
       if (other.ptr) {
-        if (this->ptr) {
-          // delete static_cast<Tensor<std::float64_t> *>(this->ptr);
-          this->ptr = nullptr;
-        }
-        this->ptr = other.ptr;
+        *static_cast<Tensor<std::float64_t> *>(this->ptr) =
+            *static_cast<Tensor<std::float64_t> *>(other.ptr);
+        // this->ptr = other.ptr;
       } else {
         ptr = nullptr;
       }
@@ -164,7 +177,7 @@ typedef struct tensor {
   // --- Move assignment
   tensor &operator=(tensor &&other) noexcept {
     if (this != &other) {
-      // destory();
+      destory();
       dt_type = other.dt_type;
       ptr = other.ptr;
       other.ptr = nullptr;
@@ -173,13 +186,7 @@ typedef struct tensor {
   }
 
   // --- Destroy function
-  void destory() {
-    if (ptr) {
-      static_cast<Tensor<std::float64_t> *>(ptr)->destroy();
-      delete static_cast<Tensor<std::float64_t> *>(ptr);
-      ptr = nullptr;
-    }
-  }
+  void destory();
 
   graph &getReductionGraph(graph &g, std::vector<unsigned> reduction_dims,
                            bool &flag);
@@ -207,9 +214,10 @@ typedef struct tensor {
 
 typedef struct graph {
   void *ptr;
-  bool isSessionActive = bool(false);
-  tensor input_a;
-  tensor input_b;
+  bool isGraphCleared = bool(false);
+  tensor *input_a = nullptr;
+  tensor *input_b = nullptr;
+  tensor *output = nullptr;
   Ops *ops;
   void tf_create_graph();
 
