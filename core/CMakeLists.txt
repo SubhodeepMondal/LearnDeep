@@ -89,6 +89,6 @@ if(ENABLE_CUDA AND CMAKE_CUDA_COMPILER)
     target_compile_definitions(core PUBLIC CUDA_ENABLED)
 
 else()
-    message(WARNING "CUDA not found: building CPU-only fallback")
+    message(STATUS "CUDA not found: building CPU-only fallback")
 endif()
 
