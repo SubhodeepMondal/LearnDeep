@@ -1,0 +1,32 @@
+name: C++ CI
+
+on:
+  push:
+    branches: [ master]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Checkout code
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      # Install dependencies (if you use FetchContent for gtest/benchmark, this may be optional)
+      - name: Install dependencies
+        run: sudo apt-get update && sudo apt-get install -y cmake ninja-build g++
+
+      # Configure CMake (Debug build for testing)
+      - name: Configure
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Debug -DENABLE_CUDA=OFF
+
+      # Build
+      - name: Build
+        run: cmake --build build -j 4
+
+      # Run tests (Google Test)
+      - name: Run unit tests
+        run: ctest --test-dir build --output-on-failure
