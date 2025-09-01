@@ -27,7 +27,7 @@ target_include_directories(deeplearingLA_test PRIVATE ${CMAKE_SOURCE_DIR}/api)
 
 target_link_libraries(deeplearingLA_test PRIVATE
     tensor_api
-    thirdparty::gtest_main
+    GTest::gtest_main
     absl::log
     absl::log_initialize
     absl::flags_parse
@@ -54,7 +54,7 @@ target_include_directories(benchmark_test PRIVATE ${CMAKE_SOURCE_DIR}/api
 
 target_link_libraries(benchmark_test PRIVATE
     tensor_api
-    thirdparty::benchmark
+    benchmark::benchmark
     absl::log
     absl::log_initialize
     absl::flags_parse

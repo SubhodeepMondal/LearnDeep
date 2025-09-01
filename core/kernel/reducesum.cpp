@@ -146,11 +146,9 @@ void Opsreducesum::compute() {
   for (i = 0; i < this->inputs[0]->getNoOfDimensions() && i < 3; i++)
     nElements *= this->inputs[0]->getDimensions()[i];
   std::float64_t *intermediate_input = new std::float64_t[nElements];
-
   resulting_dims = new unsigned[inputs[0]->getNoOfDimensions()];
   arr_dims = new unsigned[inputs[0]->getNoOfDimensions()];
-  temp_input = new Tensor<std::float64_t>(*this->inputs[0]);
-  temp_output = new Tensor<std::float64_t>(*this->output);
+
   temp_input->initData(this->inputs[0]->getData());
 
   for (i = 0; i < no_of_reduction_dim; i++) {
@@ -192,6 +190,8 @@ void Opsreducesum::initilizeinputs(Tensor<std::float64_t> **inputs, unsigned n,
     reduction_dims.push_back(arr[i]);
 
   this->inputs[0] = inputs[0];
+
+  temp_input = new Tensor<std::float64_t>(*this->inputs[0]);
 }
 
 void Opsreducesum::initilizeoutput(Tensor<std::float64_t> *output) {
@@ -209,6 +209,8 @@ void Opsreducesum::initilizeoutput(Tensor<std::float64_t> *output) {
       resultent_dims.push_back(inputs[0]->getDimensions()[i]);
 
   this->output->reshape(no_of_resultent_dims, resultent_dims.data());
+
+  temp_output = new Tensor<std::float64_t>(*this->output);
 }
 
 void Opsreducesum::printinputs() {

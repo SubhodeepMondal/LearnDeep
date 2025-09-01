@@ -26,7 +26,52 @@ option(USE_SYSTEM_GTEST "Use system-installed GoogleTest" OFF)
 option(USE_SYSTEM_BENCHMARK "Use system-installed Google Benchmark" OFF)
 
 
-add_subdirectory(thirdparty)
+# ---------------- GoogleTest ----------------
+if(USE_SYSTEM_GTEST)
+  find_package(GTest REQUIRED)
+else()
+  include(FetchContent)
+  set(BUILD_GMOCK OFF CACHE BOOL "" FORCE)
+  set(INSTALL_GTEST OFF CACHE BOOL "" FORCE)
+  FetchContent_Declare(
+    googletest
+    GIT_REPOSITORY https://github.com/google/googletest.git
+    GIT_TAG v1.15.2
+  )
+  FetchContent_MakeAvailable(googletest)
+endif()
+
+
+# ---------------- Google Benchmark ----------------
+if(USE_SYSTEM_BENCHMARK)
+  find_package(benchmark REQUIRED)
+else()
+  include(FetchContent)
+  set(BENCHMARK_ENABLE_TESTING OFF CACHE BOOL "" FORCE)
+  set(BENCHMARK_ENABLE_GTEST_TESTS OFF CACHE BOOL "" FORCE)
+  set(BENCHMARK_ENABLE_WERROR OFF CACHE BOOL "" FORCE)
+  set(BENCHMARK_DOWNLOAD_DEPENDENCIES OFF CACHE BOOL "" FORCE)
+  FetchContent_Declare(
+    benchmark
+    GIT_REPOSITORY https://github.com/google/benchmark.git
+    GIT_TAG v1.8.5
+  )
+
+  set(BENCHMARK_ENABLE_TESTING OFF)
+  set(CMAKE_BUILD_TYPE Release CACHE STRING "" FORCE)
+  FetchContent_MakeAvailable(benchmark)
+endif()
+
+
+# ----------------- ABSL Logging --------------------
+set(BUILD_SHARED_LIBS ON)
+include(FetchContent)
+FetchContent_Declare(
+  abseil
+  GIT_REPOSITORY https://github.com/abseil/abseil-cpp.git
+  GIT_TAG 20240722.0 # example: stable release
+)
+FetchContent_MakeAvailable(abseil)
 
 add_subdirectory(core)
 
