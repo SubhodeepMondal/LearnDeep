@@ -19,13 +19,15 @@ jobs:
       - name: Install dependencies
         run: sudo apt-get update && sudo apt-get install -y cmake ninja-build g++
 
+
       # Configure CMake (Debug build for testing)
-      - name: Configure
-        run: cmake -B build -DCMAKE_BUILD_TYPE=Debug -DENABLE_CUDA=OFF
+      - name: Configure (using preset)
+        run: cmake --preset debug_cpu
+
 
       # Build
       - name: Build
-        run: cmake --build build -j 4
+        run: cmake --build --preset debug_cpu
 
       # Run tests (Google Test)
       - name: Run unit tests
