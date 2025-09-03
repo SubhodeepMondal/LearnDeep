@@ -94,8 +94,8 @@ void gpu::gpu_mat_mul_f64(double **ptr, unsigned *arr) {
 
   dim3 block;
   dim3 grid;
-  block.x = (32 > x) ? x : 32;
-  block.y = (32 > z) ? z : 32;
+  block.x = (16 > x) ? x : 16;
+  block.y = (16 > z) ? z : 16;
   grid.x = (x + block.x - 1) / block.x;
   grid.y = (z + block.y - 1) / block.y;
 
