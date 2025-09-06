@@ -405,18 +405,16 @@ __global__ void gpu_kernel::matrixRelu(double *input_A, double *output, int x,
   }
 }
 
-__global__ void gpu_kernel::matrixSigmoid(double *a, double *d_a, int x,
+__global__ void gpu_kernel::matrixSigmoid(double *a, double *output, int x,
                                           int y) {
   // x: neuron, y: feature. m: max_neuron.
   unsigned id_x, id_y, lin_idx;
   id_x = threadIdx.x + (blockDim.x * blockIdx.x);
   id_y = threadIdx.y + (blockDim.y * blockIdx.y);
 
-  if (id_x < x && id_y < y) {
-
+  if (id_x < x && id_y < y) {s
     lin_idx = id_x + id_y * x;
-    a[lin_idx] = 1.0f / (1 + exp(-1 * a[lin_idx]));
-    d_a[lin_idx] = a[lin_idx] * (1 - a[lin_idx]);
+    output[lin_idx] = 1.0f / (1 + exp(-1 * a[lin_idx]));
   }
 }
 
