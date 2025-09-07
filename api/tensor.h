@@ -103,6 +103,8 @@ typedef struct tensor {
 
   tensor getReduction(std::vector<unsigned> reduction_dims);
 
+  void gradient_required(bool is_grad_required);
+
   template <typename... Args> tensor reducesum(Args... args) {
     std::vector<unsigned> dimensions;
     bool flag = true;
@@ -225,8 +227,13 @@ typedef struct graph {
 
   void graph_travarse_data_node();
 
+  void graph_traverse_gradient();
+
   void graph_clear();
 
+  void graph_initialize_gradient();
+
+  void graph_compute_gradient();
 } graph;
 
 } // namespace tf

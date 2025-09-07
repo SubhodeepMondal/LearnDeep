@@ -7,6 +7,8 @@
 #include <framework/MathLibrary.h>
 #include <kernel/opskernel.h>
 
+Opspower::~Opspower() {}
+
 void Opspower::recursive_iterator(unsigned index, unsigned *dimension_arr,
                                   std::string function_name, unsigned *ui_arr,
                                   std::float64_t *dl_arr,
@@ -86,20 +88,78 @@ void Opspower::compute() {
   }
 }
 
-void Opspower::initilizeinputs(Tensor<std::float64_t> **inputs,
-                               unsigned exponent) {
-  // unsigned i;
-  this->exponent = exponent;
+void Opspower::addGradGraph(Graph *gradient_graph) {
 
-  // this->inputs = new Tensor<std::float64_t> *[1];
-  this->inputs[0] = inputs[0];
+  if (this->inputs[0]->isGradRequired()) {
+    // initializing temp variables for grad calculation
+    this->grads = new Tensor<std::float64_t>(*inputs[0]);
+    this->outgoing_gradient = new Tensor<std::float64_t>(*inputs[0]);
+    this->temp_grad_tensors[0] = new Tensor<std::float64_t>(*inputs[0]);
 
-  // for (i = 0; i < 1; i++) {
-    this->inputs[0] = inputs[0];
-  // }
+    // graph setup for calculating derivation temp_grad_tensorsf power
+    // operations graph setup for x ^ (n-1)
+    Ops *ops_power = new Opspower;
+    ops_power->initializeinputs(this->inputs, exponent - 1);
+    ops_power->initializeoutput(this->temp_grad_tensors[0]);
+
+    gradient_graph->addGradientNode(this->inputs[0]);
+    gradient_graph->addGradientNode(this->temp_grad_tensors[0]);
+    gradient_graph->addGradientNode(ops_power);
+
+    gradient_graph->addGradientEdge(this->inputs[0], ops_power);
+    gradient_graph->addGradientEdge(ops_power, this->temp_grad_tensors[0]);
+
+    // graph setup for  m * x  ^ (n - 1)
+    Ops *ops_scale = new Opsscale;
+    ops_scale->initializeinputs(&this->temp_grad_tensors[0],
+                                (std::float64_t)exponent);
+    ops_scale->initializeoutput(this->grads);
+
+    gradient_graph->addGradientNode(this->temp_grad_tensors[0]);
+    gradient_graph->addGradientNode(this->grads);
+    gradient_graph->addGradientNode(ops_scale);
+
+    gradient_graph->addGradientEdge(this->temp_grad_tensors[0], ops_scale);
+    gradient_graph->addGradientEdge(ops_scale, this->grads);
+
+    Tensor<std::float64_t> *incoming_gradient =
+        gradient_graph->getGradient(this);
+
+    Tensor<std::float64_t> *tensor_ptr[2];
+    if (incoming_gradient) {
+      tensor_ptr[0] = incoming_gradient;
+    } else {
+      tensor_ptr[0] = new Tensor<std::float64_t>(
+          this->inputs[0]->getNoOfDimensions(),
+          this->inputs[0]->getDimensions(), this->inputs[0]->getDataType());
+      tensor_ptr[0]->initData(1.0);
+    }
+
+    Ops *ops_mul = new Opsmul;
+    tensor_ptr[1] = grads;
+    ops_mul->initializeinputs(tensor_ptr, (unsigned)2);
+    ops_mul->initializeoutput(outgoing_gradient);
+
+    gradient_graph->addGradientNode(incoming_gradient);
+    gradient_graph->addGradientNode(grads);
+    gradient_graph->addGradientNode(outgoing_gradient);
+    gradient_graph->addGradientNode(ops_mul);
+
+    gradient_graph->addGradientEdge(incoming_gradient, ops_mul);
+    gradient_graph->addGradientEdge(grads, ops_mul);
+    gradient_graph->addGradientEdge(ops_mul, outgoing_gradient);
+  }
 }
 
-void Opspower::initilizeoutput(Tensor<std::float64_t> *output) {
+void Opspower::initializeinputs(Tensor<std::float64_t> **inputs,
+                                unsigned exponent) {
+  this->exponent = exponent;
+  this->inputs[0] = inputs[0];
+
+  // addGradGraph();
+}
+
+void Opspower::initializeoutput(Tensor<std::float64_t> *output) {
   this->output = output;
 
   *(this->output) = *(inputs[0]);

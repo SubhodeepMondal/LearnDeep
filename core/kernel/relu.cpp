@@ -67,12 +67,12 @@ void Opsrelu::compute() {
   delete[] arr;
 }
 
-void Opsrelu::initilizeinputs(Tensor<std::float64_t> **inputs,
+void Opsrelu::initializeinputs(Tensor<std::float64_t> **inputs,
                                unsigned no_of_inputs) {
   this->inputs[0] = inputs[0];
 }
 
-void Opsrelu::initilizeoutput(Tensor<std::float64_t> *outputs) {
+void Opsrelu::initializeoutput(Tensor<std::float64_t> *outputs) {
   this->output = outputs;
   *(this->output) = *(inputs[0]);
 }

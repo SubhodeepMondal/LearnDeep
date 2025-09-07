@@ -68,15 +68,17 @@ void Opsscale::compute() {
   delete[] arr;
 }
 
-void Opsscale::initilizeinputs(Tensor<std::float64_t> **inputs,
-                               std::float64_t scale_factor) {
+void Opsscale::initializeinputs(Tensor<std::float64_t> **inputs,
+                                std::float64_t scale_factor) {
   this->scale_factor[0] = scale_factor;
   this->inputs[0] = inputs[0];
 }
 
-void Opsscale::initilizeoutput(Tensor<std::float64_t> *outputs) {
+void Opsscale::initializeoutput(Tensor<std::float64_t> *outputs) {
   this->output = outputs;
-  *(this->output) = *(inputs[0]);
+  // *(this->output) = *(inputs[0]);
+  this->output->reshape(this->inputs[0]->getNoOfDimensions(),
+                        this->inputs[0]->getDimensions());
 }
 
 void Opsscale::printinputs() {
@@ -109,4 +111,3 @@ void Opsscale::kernel_dispatch(std::float64_t **ptr, unsigned *arr) {
   }
 #endif
 }
-

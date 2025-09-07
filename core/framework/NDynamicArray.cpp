@@ -11,10 +11,10 @@ template <typename T> ndarray<T>::ndarray() {
 }
 
 template <typename T> ndarray<T>::ndarray(const ndarray<T> &ndarray) {
-  if (isInitilized)
+  if (isinitialized)
     destroy();
-  isInitilized = true;
-  isDimInitilized = true;
+  isinitialized = true;
+  isDiminitialized = true;
   this->nDim = ndarray.getNoOfDimensions();
 
   dimension = new unsigned[nDim];
@@ -25,7 +25,7 @@ template <typename T> ndarray<T>::ndarray(const ndarray<T> &ndarray) {
 
   nElem = ndarray.getNoOfElem();
   data = new T[nElem];
-  if (ndarray.isInitilized)
+  if (ndarray.isinitialized)
     this->initData(ndarray.getData());
 }
 
@@ -36,7 +36,7 @@ ndarray<T>::ndarray(unsigned n, const unsigned *arr, DataType d_type) {
   this->nElem = 1;
   this->dimension = new unsigned[this->nDim];
   this->arr_dim = new unsigned[this->nDim];
-  this->isDimInitilized = true;
+  this->isDiminitialized = true;
   this->tensor_type = d_type;
 
   for (int i = 0; i < this->nDim; i++) {
@@ -45,18 +45,41 @@ ndarray<T>::ndarray(unsigned n, const unsigned *arr, DataType d_type) {
   }
 
   data = new T[nElem];
-  this->isInitilized = true;
+  this->isinitialized = true;
   std::memset(data, 0, nElem * sizeof(T));
+}
+
+template <typename T>
+ndarray<T>::ndarray(unsigned n, const unsigned *arr, DataType d_type,
+                    bool is_grad_required) {
+
+  this->nDim = n;
+  this->nElem = 1;
+  this->dimension = new unsigned[this->nDim];
+  this->arr_dim = new unsigned[this->nDim];
+  this->isDiminitialized = true;
+  this->tensor_type = d_type;
+
+  for (int i = 0; i < this->nDim; i++) {
+    this->dimension[i] = arr[i];
+    nElem *= dimension[i];
+  }
+
+  data = new T[nElem];
+  this->isinitialized = true;
+  std::memset(data, 0, nElem * sizeof(T));
+
+  this->is_grad_required = is_grad_required;
 }
 
 template <typename T>
 ndarray<T> &ndarray<T>::operator=(const ndarray<T> &ndarray) {
   if (this == &ndarray)
     return *this;
-  if (this->isInitilized)
+  if (this->isinitialized)
     destroy();
-  isInitilized = true;
-  isDimInitilized = true;
+  isinitialized = true;
+  isDiminitialized = true;
 
   this->nDim = ndarray.nDim;
   dimension = new unsigned[nDim];
@@ -67,7 +90,7 @@ ndarray<T> &ndarray<T>::operator=(const ndarray<T> &ndarray) {
   nElem = ndarray.nElem;
 
   data = new T[nElem];
-  if (ndarray.isInitilized)
+  if (ndarray.isinitialized)
     this->initData(ndarray.getData());
   return *this;
 }
@@ -78,8 +101,8 @@ template <typename T> ndarray<T>::ndarray(ndarray<T> &&ndarray) noexcept {
   dimension = ndarray.dimension;
   arr_dim = ndarray.arr_dim;
   dim_iterator = ndarray.dim_iterator;
-  isDimInitilized = ndarray.isDimInitilized;
-  isInitilized = ndarray.isInitilized;
+  isDiminitialized = ndarray.isDiminitialized;
+  isinitialized = ndarray.isinitialized;
   data = ndarray.data;
   ndarray.dimension = nullptr;
   ndarray.arr_dim = nullptr;
@@ -89,15 +112,15 @@ template <typename T> ndarray<T>::ndarray(ndarray<T> &&ndarray) noexcept {
 template <typename T>
 ndarray<T> &ndarray<T>::operator=(ndarray<T> &&ndarray) noexcept {
   if (this != &ndarray) {
-    if (isInitilized)
+    if (isinitialized)
       destroy();
     nDim = ndarray.nDim;
     nElem = ndarray.nElem;
     dimension = ndarray.dimension;
     arr_dim = ndarray.arr_dim;
     dim_iterator = ndarray.dim_iterator;
-    isDimInitilized = ndarray.isDimInitilized;
-    isInitilized = ndarray.isInitilized;
+    isDiminitialized = ndarray.isDiminitialized;
+    isinitialized = ndarray.isinitialized;
     data = ndarray.data;
     ndarray.dimension = nullptr;
     ndarray.arr_dim = nullptr;
@@ -112,6 +135,10 @@ template <typename T> ndarray<T>::~ndarray() {
   destroy();
 }
 
+template <typename T> T *ndarray<T>::getData() const { return data; }
+
+template <typename T> DataType ndarray<T>::getDataType() { return tensor_type; }
+
 template <typename T> const unsigned *ndarray<T>::getDimensions() const {
   return dimension;
 }
@@ -123,8 +150,6 @@ template <typename T> unsigned ndarray<T>::getNoOfDimensions() const {
 template <typename T> const unsigned ndarray<T>::getNoOfElem() const {
   return nElem;
 }
-
-template <typename T> T *ndarray<T>::getData() const { return data; }
 
 template <typename T> void ndarray<T>::printDimensions() const {
   std::cout << "[ ";
@@ -242,8 +267,12 @@ void ndarray<T>::initRandData(double lower_limit, double upper_limit) {
   }
 }
 
-template <typename T> void ndarray<T>::initPreinitilizedData(T *Data) {
+template <typename T> void ndarray<T>::initPreinitializedData(T *Data) {
   this->data = Data;
+}
+
+template <typename T> bool ndarray<T>::isGradRequired() {
+  return this->is_grad_required;
 }
 
 template <typename T> void ndarray<T>::copyData(T *data) {

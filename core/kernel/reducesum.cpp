@@ -180,7 +180,7 @@ void Opsreducesum::compute() {
   delete[] arr_dims;
 }
 
-void Opsreducesum::initilizeinputs(Tensor<std::float64_t> **inputs, unsigned n,
+void Opsreducesum::initializeinputs(Tensor<std::float64_t> **inputs, unsigned n,
                                    unsigned *arr) {
   unsigned i;
   this->no_of_reduction_dim = n;
@@ -194,7 +194,7 @@ void Opsreducesum::initilizeinputs(Tensor<std::float64_t> **inputs, unsigned n,
   temp_input = new Tensor<std::float64_t>(*this->inputs[0]);
 }
 
-void Opsreducesum::initilizeoutput(Tensor<std::float64_t> *output) {
+void Opsreducesum::initializeoutput(Tensor<std::float64_t> *output) {
   unsigned no_of_resultent_dims;
   std::vector<unsigned> resultent_dims;
   unsigned i, j;

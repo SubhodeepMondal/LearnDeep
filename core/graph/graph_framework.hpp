@@ -2,24 +2,32 @@
 #define GRAPH_FRAMEWORK_HPP
 
 #include <graph/graph_node.hpp>
+
 #include <iostream>
-#include <memory>
 #include <queue>
 #include <stdfloat>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
 
-enum class Functions { compute, search, travarse, release_resource };
+enum class Functions {
+  compute,
+  search,
+  traverse,
+  release_resource,
+  reverse_mode_autodiff
+};
+std::string functionsToString(Functions func);
 
 class Graph {
   std::unordered_set<Tensor<std::float64_t> *> data_nodes;
+  std::unordered_set<Tensor<std::float64_t> *> grad_data_nodes;
   std::unordered_map<unsigned long, node *> graph;
-
+  std::unordered_map<unsigned long, node *> auto_diff_graph;
+  std::stack<node *> ops_stack;
   bool is_valid_graph;
-
   node *root_node;
-  unsigned long root_node_id;
+  node *gradient_root_node;
 
   void dfs(node *start_node, std::unordered_set<node *> &visited,
            Functions func);
@@ -28,25 +36,44 @@ class Graph {
            Functions func);
 
 public:
-  Graph() : is_valid_graph(true) {
-    root_node_id = 0;
+  Graph() {
+    is_valid_graph = true;
     root_node = new node(0, type::root);
-    graph[root_node_id] = root_node;
+    gradient_root_node = new node(0, type::root);
+
+    graph[0] = root_node;                    // 0 is root node id
+    auto_diff_graph[0] = gradient_root_node; // 0 is gradient root node id
   }
 
   void addNode(Tensor<std::float64_t> *input_node);
 
   void addNode(Ops *ops);
 
+  void addGradientNode(Tensor<std::float64_t> *input_node);
+
+  void addGradientNode(Ops *ops);
+
   void addEdge(Tensor<std::float64_t> *src, Ops *dst);
 
   void addEdge(Ops *src, Tensor<std::float64_t> *dst);
 
+  void addGradientEdge(Tensor<std::float64_t> *src, Ops *dst);
+
+  void addGradientEdge(Ops *src, Tensor<std::float64_t> *dst);
+
+  void createGradientGraph();
+
+  Tensor<std::float64_t> *getGradient(Ops *ops);
+
   void compute();
+
+  void computeGradient();
 
   std::vector<void *> getDataNodes();
 
   void traverse();
+
+  void traverseGradientGraph();
 
   void release_resources();
 };

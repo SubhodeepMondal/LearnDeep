@@ -44,7 +44,7 @@ public:
     // this->~ndarray();
   }
 
-  void assign(Ops *ops) { ops->initilizeoutput(this); }
+  void assign(Ops *ops) { ops->initializeoutput(this); }
 
   Tensor<T> *add(Tensor<T> &);
 

@@ -1,58 +1,32 @@
 #ifndef NDYNAMIC_ARRAY
 #define NDYNAMIC_ARRAY
 
+#include <array>
 #include <cstdarg>
 #include <cstring>
 #include <iostream>
 #include <random>
-#include <array>
 
 #include "type.h"
 
-/*
-...............Dynamically allocated memories................
-
-dimension(unsigned)
-arr_dim(unsigned)
-head(dim_node)
-ptr(dim_node)
-prev(dim_node)
-data(template)
-
-............................End..............................
-
-*/
-
-typedef struct dim_node {
-  unsigned value;
-  struct dim_node *next;
-} dim_node;
-
 template <typename T> class ndarray {
   std::string obj_name;
-  // dim_node *head = NULL;
-  // dim_node *ptr = NULL;
-  // dim_node *prev = NULL;
   DataType tensor_type;
-  using data_type = float;
   unsigned nDim, nElem;
   unsigned *dimension, *arr_dim;
   unsigned dim_iterator;
-  bool isDimInitilized = false;
-  bool isInitilized = false;
+  bool isDiminitialized = false;
+  bool isinitialized = false;
+  bool is_grad_required = false;
   T *data;
   void *data_ptr;
-
-  // void addDimensions(){};
-
-  // void addDimensions(unsigned);
-
-  // void addDimensions(const unsigned *);
 
 public:
   ndarray();
 
-  ndarray(unsigned , const unsigned *, DataType);
+  ndarray(unsigned, const unsigned *, DataType);
+
+  ndarray(unsigned, const unsigned *, DataType, bool);
 
   // copy constructor.
   ndarray(const ndarray<T> &ndarray);
@@ -61,12 +35,23 @@ public:
   ndarray<T> &operator=(const ndarray<T> &ndarray);
 
   // Move constructor (steal resources).
-  ndarray(ndarray<T> &&ndarray) noexcept ;
+  ndarray(ndarray<T> &&ndarray) noexcept;
 
   // Move assignment (steal resources).
   ndarray<T> &operator=(ndarray<T> &&ndarray) noexcept;
 
   ~ndarray();
+
+  /// @brief returns pointer to the first address of the tensor
+  /// @tparam None
+  /// @return returns pointer to the first address of the tensor.
+  T *getData() const;
+
+  DataType getDataType();
+
+  void gradientRequired(bool is_gradient_required) {
+    this->is_grad_required = is_gradient_required;
+  }
 
   /// @brief returns unsigned array of dimension vector
   /// @tparam None
@@ -83,11 +68,6 @@ public:
   /// @return returns unsigned array of dimension vector.
   const unsigned getNoOfElem() const;
 
-  /// @brief returns pointer to the first address of the tensor
-  /// @tparam None
-  /// @return returns pointer to the first address of the tensor.
-  T *getData() const;
-
   DataType getType();
 
   void initData(T data);
@@ -100,7 +80,9 @@ public:
 
   void initRandData(double lower_limit, double upper_limit);
 
-  void initPreinitilizedData(T *Data);
+  void initPreinitializedData(T *Data);
+
+  bool isGradRequired();
 
   void copyData(T *);
 

@@ -67,12 +67,12 @@ void Opssqrt::compute() {
   delete[] arr;
 }
 
-void Opssqrt::initilizeinputs(Tensor<std::float64_t> **inputs,
+void Opssqrt::initializeinputs(Tensor<std::float64_t> **inputs,
                               unsigned no_of_inputs) {
   this->inputs[0] = inputs[0];
 }
 
-void Opssqrt::initilizeoutput(Tensor<std::float64_t> *outputs) {
+void Opssqrt::initializeoutput(Tensor<std::float64_t> *outputs) {
   this->output = outputs;
   *(this->output) = *(inputs[0]);
 }

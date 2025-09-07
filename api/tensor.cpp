@@ -1,7 +1,7 @@
 #include "tensor.h"
 #include <absl/log/log.h>
 
-tf::tensor::tensor(){};
+tf::tensor::tensor() {};
 void tf::tensor::assign_ptr() {
   tensor_nodes.push_back(static_cast<void *>(this));
 }
@@ -400,6 +400,12 @@ tf::tensor tf::tensor::getReduction(std::vector<unsigned> reduction_dims) {
   return output;
 }
 
+void tf::tensor::gradient_required(bool is_grad_required){
+  if(ptr){
+    static_cast<Tensor<std::float64_t> *>(this->ptr)->gradientRequired(is_grad_required);
+  }
+}
+
 void tf::tensor::destory() {
   if (this->ptr) {
     tensor_nodes.erase(
@@ -434,4 +440,16 @@ void tf::graph::graph_clear() {
         static_cast<tensor *>(tensor_node)->isNodeCleared = true;
 
   tensor_nodes.clear();
+}
+
+void tf::graph::graph_initialize_gradient() {
+  static_cast<Graph *>(this->ptr)->createGradientGraph();
+}
+
+void tf::graph::graph_compute_gradient() {
+  static_cast<Graph *>(this->ptr)->computeGradient();
+}
+
+void tf::graph::graph_traverse_gradient(){
+  static_cast<Graph *>(this->ptr)->traverseGradientGraph();
 }

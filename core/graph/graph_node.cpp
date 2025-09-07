@@ -3,7 +3,17 @@
 #include <absl/log/log.h>
 #include <framework/MathLibrary.h>
 #include <kernel/opskernel.h>
-#include <memory>
+
+void node::addGradient(Graph *autodiff_graph) {
+  if (type::compute == node_type) {
+    // Execution logic for compute nodes
+    LOG(INFO) << "Executing node with ID: " << node_id;
+    // Add actual execution logic here
+    ops->addGradGraph(autodiff_graph);
+  } else {
+    LOG(INFO) << "Node with ID: " << node_id << " is not a compute node.";
+  }
+}
 
 void node::setInputNode(node *input_node) {
   if (input_node) {
@@ -15,6 +25,14 @@ void node::setOutputNode(node *output_node) {
   if (output_node) {
     output_nodes.push_back(output_node);
   }
+}
+
+Tensor<std::float64_t> *node::getIncomingGradientForOpsNode() {
+  unsigned no_of_output = output_nodes[0]->output_nodes.size();
+  if (output_nodes[0]->output_nodes.size()) {
+    return output_nodes[0]->output_nodes[0]->ops->getGradientTensor();
+  }
+  return NULL;
 }
 
 void node::eraseNodeFromOutput(node *n) {

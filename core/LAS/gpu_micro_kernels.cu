@@ -199,8 +199,6 @@ __global__ void gpu_kernel::matrixHadamardMul(double *a, double *b, double *c,
     c[lin_idx] = a[lin_idx] * b[lin_idx];
 }
 
-#define TILE_SIZE_DOUBLE 16
-
 __global__ void gpu_kernel::matrixMul(double *a, double *b, double *c,
                                       unsigned x, unsigned y, unsigned z) {
     __shared__ double A[TILE_SIZE_DOUBLE][TILE_SIZE_DOUBLE];
@@ -412,7 +410,7 @@ __global__ void gpu_kernel::matrixSigmoid(double *a, double *output, int x,
   id_x = threadIdx.x + (blockDim.x * blockIdx.x);
   id_y = threadIdx.y + (blockDim.y * blockIdx.y);
 
-  if (id_x < x && id_y < y) {s
+  if (id_x < x && id_y < y) {
     lin_idx = id_x + id_y * x;
     output[lin_idx] = 1.0f / (1 + exp(-1 * a[lin_idx]));
   }

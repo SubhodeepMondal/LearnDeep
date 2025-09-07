@@ -92,7 +92,7 @@ void Opsmatmul::compute() {
   delete[] arr;
 }
 
-void Opsmatmul::initilizeinputs(Tensor<std::float64_t> **inputs,
+void Opsmatmul::initializeinputs(Tensor<std::float64_t> **inputs,
                                 unsigned no_of_inputs) {
   unsigned i;
   this->no_of_inputs = no_of_inputs;
@@ -104,7 +104,7 @@ void Opsmatmul::initilizeinputs(Tensor<std::float64_t> **inputs,
   }
 }
 
-void Opsmatmul::initilizeoutput(Tensor<std::float64_t> *output) {
+void Opsmatmul::initializeoutput(Tensor<std::float64_t> *output) {
   this->output = output;
 
   unsigned i, dim_x, dim_y, no_of_dimensions;

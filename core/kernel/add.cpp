@@ -84,7 +84,7 @@ void Opsadd::compute() {
   delete[] arr;
 }
 
-void Opsadd::initilizeinputs(Tensor<std::float64_t> **inputs,
+void Opsadd::initializeinputs(Tensor<std::float64_t> **inputs,
                              unsigned no_of_inputs) {
   unsigned i;
   this->no_of_inputs = no_of_inputs;
@@ -93,7 +93,7 @@ void Opsadd::initilizeinputs(Tensor<std::float64_t> **inputs,
   }
 }
 
-void Opsadd::initilizeoutput(Tensor<std::float64_t> *output) {
+void Opsadd::initializeoutput(Tensor<std::float64_t> *output) {
   this->output = output;
 
   this->output->reshape(inputs[0]->getNoOfDimensions(), inputs[0]->getDimensions());

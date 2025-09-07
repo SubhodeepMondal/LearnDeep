@@ -83,7 +83,7 @@ void Opsmul::compute() {
   delete[] arr;
 }
 
-void Opsmul::initilizeinputs(Tensor<std::float64_t> **inputs,
+void Opsmul::initializeinputs(Tensor<std::float64_t> **inputs,
                              unsigned no_of_inputs) {
   unsigned i;
   this->no_of_inputs = no_of_inputs;
@@ -95,7 +95,7 @@ void Opsmul::initilizeinputs(Tensor<std::float64_t> **inputs,
   }
 }
 
-void Opsmul::initilizeoutput(Tensor<std::float64_t> *output) {
+void Opsmul::initializeoutput(Tensor<std::float64_t> *output) {
   this->output = output;
   this->output->reshape(this->inputs[0]->getNoOfDimensions(), this->inputs[0]->getDimensions());
 
