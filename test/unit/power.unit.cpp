@@ -75,7 +75,13 @@ TEST_F(MathTest, Eager_MatrixPower_Grad_2D) {
                               0.36133926, 0.50136678, 0.00042372, 0.94072512,
                               0.69296075, 0.0450879,  0.03306032, 0.03363721};
 
-  tf::tensor A, C;
+  std::float64_t c_grad[] = {0.749080, 1.90143,  1.46399,   1.19732,
+                             0.312037, 0.311989, 0.116167,  1.73235,
+                             1.20223,  1.41615,  0.0411690, 1.93982,
+                             1.66489,  0.424678, 0.363650,  0.366809};
+
+  tf::tensor A,
+                 C;
   A.tf_create(tf_float64, 4, 4);
   C.tf_create(tf_float64, 4, 4);
 
@@ -94,10 +100,10 @@ TEST_F(MathTest, Eager_MatrixPower_Grad_2D) {
   for (int i = 0; i < 16; i++) {
     EXPECT_NEAR(tensorC_power->getData()[i], c_power[i], 0.0001);
   }
-  g_power.graph_travarse_data_node();
+  // g_power.graph_travarse_data_node();
   g_power.graph_initialize_gradient();
   g_power.graph_compute_gradient();
-  std::cout << "Gradient traverse\n";
-  g_power.graph_traverse_gradient();
+  // std::cout << "Gradient traverse\n";
+  // g_power.graph_traverse_gradient();
   g_power.graph_clear();
 }

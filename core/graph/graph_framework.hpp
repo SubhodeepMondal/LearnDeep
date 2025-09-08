@@ -19,13 +19,21 @@ enum class Functions {
 };
 std::string functionsToString(Functions func);
 
+
+template <typename T> class Tensor;
+class Ops;
+
 class Graph {
   std::unordered_set<Tensor<std::float64_t> *> data_nodes;
+  std::unordered_set<Ops *> ops_nodes;
   std::unordered_set<Tensor<std::float64_t> *> grad_data_nodes;
+  std::unordered_set<Ops *> grad_ops_nodes;
   std::unordered_map<unsigned long, node *> graph;
   std::unordered_map<unsigned long, node *> auto_diff_graph;
   std::stack<node *> ops_stack;
   bool is_valid_graph;
+  bool release_graph_resource;
+  bool release_autograd_graph_resoruce;
   node *root_node;
   node *gradient_root_node;
 

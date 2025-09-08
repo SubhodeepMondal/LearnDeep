@@ -1,5 +1,7 @@
 #include <absl/log/log.h>
+#include <cstddef>
 #include <graph/graph_framework.hpp>
+#include <iostream>
 #include <stack>
 
 std::string functionsToString(Functions func) {
@@ -36,9 +38,12 @@ void Graph::addNode(Tensor<std::float64_t> *input_node) {
   }
 }
 void Graph::addNode(Ops *ops) {
-  node *new_node = new node(reinterpret_cast<unsigned long>(ops), type::compute,
-                            nullptr, ops);
-  graph[reinterpret_cast<unsigned long>(ops)] = new_node;
+  if (ops_nodes.count(ops) == 0) {
+    ops_nodes.insert(ops);
+    node *new_node = new node(reinterpret_cast<unsigned long>(ops),
+                              type::compute, nullptr, ops);
+    graph[reinterpret_cast<unsigned long>(ops)] = new_node;
+  }
 }
 
 void Graph::addEdge(Tensor<std::float64_t> *src, Ops *dst) {
@@ -72,9 +77,12 @@ void Graph::addGradientNode(Tensor<std::float64_t> *input_node) {
 }
 
 void Graph::addGradientNode(Ops *ops) {
-  node *new_node = new node(reinterpret_cast<unsigned long>(ops), type::compute,
-                            nullptr, ops);
-  auto_diff_graph[reinterpret_cast<unsigned long>(ops)] = new_node;
+  if (grad_ops_nodes.count(ops) == 0) {
+    grad_ops_nodes.insert(ops);
+    node *new_node = new node(reinterpret_cast<unsigned long>(ops),
+                              type::compute, nullptr, ops);
+    auto_diff_graph[reinterpret_cast<unsigned long>(ops)] = new_node;
+  }
 }
 
 void Graph::addGradientEdge(Tensor<std::float64_t> *src, Ops *dst) {
@@ -212,7 +220,6 @@ void Graph::createGradientGraph() {
   dfs(root_node, visited, Functions::reverse_mode_autodiff);
 
   while (!ops_stack.empty()) {
-    // node *temp _node = ops_stack.top();
     ops_stack.top()->addGradient(this);
     ops_stack.pop();
   }
@@ -222,8 +229,10 @@ Tensor<std::float64_t> *Graph::getGradient(Ops *ops) {
   if (graph[reinterpret_cast<unsigned long>(ops)]->node_type == type::compute)
     return graph[reinterpret_cast<unsigned long>(ops)]
         ->getIncomingGradientForOpsNode();
-  else
-    LOG(ERROR) << "Fatal! Not a compute node to get a gradient tensor.\n";
+  else {
+    LOG(FATAL) << "Fatal! Not a compute node to get a gradient tensor.\n";
+    return NULL;
+  }
 }
 
 void Graph::traverse() {
@@ -257,7 +266,25 @@ void Graph::release_resources() {
     delete nodes.second;
 
   std::unordered_set<node *> grad_visited;
+  for (Tensor<std::float64_t> *grad_data_node : grad_data_nodes) {
+    if (data_nodes.count(grad_data_node)) {
+      std::cout << grad_data_node << " is already present.\n";
+      grad_visited.insert(
+          auto_diff_graph[reinterpret_cast<unsigned long>(grad_data_node)]);
+    }
+  }
   dfs(gradient_root_node, grad_visited, Functions::release_resource);
+  // for (Tensor<std::float64_t> *grad_data_node : grad_data_nodes) {
+  //   if (!data_nodes.count(grad_data_node)) {
+  //     std::cout << "Deleting data node at: " << grad_data_node << "\n";
+  //     delete grad_data_node;
+  //   }
+  // }
+
+  // for (Ops *grad_ops_node : grad_ops_nodes) {
+  //   std::cout << "Deleting ops node at: " << grad_ops_node << "\n";
+  //   delete grad_ops_node;
+  // }
 
   for (auto nodes : auto_diff_graph)
     delete nodes.second;

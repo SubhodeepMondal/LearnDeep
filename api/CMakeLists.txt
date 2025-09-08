@@ -1,6 +1,5 @@
 
 enable_language(CXX)
-enable_language(CUDA OPTIONAL)
 
 add_library(tensor_api SHARED
     tensor.h

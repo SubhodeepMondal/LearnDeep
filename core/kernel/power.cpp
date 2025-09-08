@@ -109,7 +109,7 @@ void Opspower::addGradGraph(Graph *gradient_graph) {
     gradient_graph->addGradientEdge(this->inputs[0], ops_power);
     gradient_graph->addGradientEdge(ops_power, this->temp_grad_tensors[0]);
 
-    // graph setup for  m * x  ^ (n - 1)
+    // graph setup for  n * x  ^ (n - 1)
     Ops *ops_scale = new Opsscale;
     ops_scale->initializeinputs(&this->temp_grad_tensors[0],
                                 (std::float64_t)exponent);
@@ -136,16 +136,16 @@ void Opspower::addGradGraph(Graph *gradient_graph) {
     }
 
     Ops *ops_mul = new Opsmul;
-    tensor_ptr[1] = grads;
+    tensor_ptr[1] = this->grads;
     ops_mul->initializeinputs(tensor_ptr, (unsigned)2);
     ops_mul->initializeoutput(outgoing_gradient);
 
-    gradient_graph->addGradientNode(incoming_gradient);
-    gradient_graph->addGradientNode(grads);
+    gradient_graph->addGradientNode(tensor_ptr[0]);
+    gradient_graph->addGradientNode(this->grads);
     gradient_graph->addGradientNode(outgoing_gradient);
     gradient_graph->addGradientNode(ops_mul);
 
-    gradient_graph->addGradientEdge(incoming_gradient, ops_mul);
+    gradient_graph->addGradientEdge(tensor_ptr[0], ops_mul);
     gradient_graph->addGradientEdge(grads, ops_mul);
     gradient_graph->addGradientEdge(ops_mul, outgoing_gradient);
   }
