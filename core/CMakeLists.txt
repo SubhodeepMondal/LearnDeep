@@ -39,8 +39,12 @@ set(COMBINED_RESORCES
 add_library(core SHARED ${COMBINED_RESORCES})
 target_link_libraries(core PUBLIC OpenMP::OpenMP_CXX absl::log)
 target_include_directories(core PUBLIC ${CMAKE_SOURCE_DIR}/core)
+target_include_directories(core SYSTEM PRIVATE ${CMAKE_BINARY_DIR}/_deps/abseil-src)
 
+if(ENABLE_CUDA)
 enable_language(CUDA)
+endif()
+
 if(ENABLE_CUDA AND CMAKE_CUDA_COMPILER)
     set(CMAKE_CUDA_STANDARD 17)
     set(CMAKE_CUDA_STANDARD_REQUIRED ON)

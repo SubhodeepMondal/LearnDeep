@@ -1,7 +1,8 @@
 #include <absl/log/log.h>
 #include <cstddef>
+#include <framework/MathLibrary.h>
 #include <graph/graph_framework.hpp>
-#include <iostream>
+#include <kernel/opskernel.h>
 #include <stack>
 
 std::string functionsToString(Functions func) {
@@ -256,35 +257,32 @@ void Graph::traverseGradientGraph() {
 
 void Graph::release_resources() {
   if (!is_valid_graph) {
-    std::cerr << "Graph is not valid!";
+    LOG(ERROR) << "Graph is not valid!";
     return;
   }
-  std::unordered_set<node *> visited;
-  dfs(root_node, visited, Functions::release_resource);
+
+  LOG(INFO) << "Total data node in graph: " << data_nodes.size() << "\n";
+  for (Tensor<std::float64_t> *data_node : data_nodes)
+    delete data_node;
+
+  LOG(INFO) << "Total ops node in graph: " << ops_nodes.size() << "\n";
+  for (Ops *ops_node : ops_nodes)
+    delete ops_node;
 
   for (auto nodes : graph)
     delete nodes.second;
 
-  std::unordered_set<node *> grad_visited;
-  for (Tensor<std::float64_t> *grad_data_node : grad_data_nodes) {
-    if (data_nodes.count(grad_data_node)) {
-      std::cout << grad_data_node << " is already present.\n";
-      grad_visited.insert(
-          auto_diff_graph[reinterpret_cast<unsigned long>(grad_data_node)]);
-    }
-  }
-  dfs(gradient_root_node, grad_visited, Functions::release_resource);
-  // for (Tensor<std::float64_t> *grad_data_node : grad_data_nodes) {
-  //   if (!data_nodes.count(grad_data_node)) {
-  //     std::cout << "Deleting data node at: " << grad_data_node << "\n";
-  //     delete grad_data_node;
-  //   }
-  // }
+  // deleting gradient graph
+  LOG(INFO) << "Total data node in gradient graph: " << grad_data_nodes.size()
+            << "\n";
+  for (Tensor<std::float64_t> *grad_data_node : grad_data_nodes)
+    if (!data_nodes.count(grad_data_node))
+      delete grad_data_node;
 
-  // for (Ops *grad_ops_node : grad_ops_nodes) {
-  //   std::cout << "Deleting ops node at: " << grad_ops_node << "\n";
-  //   delete grad_ops_node;
-  // }
+  LOG(INFO) << "Total ops node in gradient graph: " << grad_ops_nodes.size()
+            << "\n";
+  for (Ops *grad_ops_node : grad_ops_nodes)
+    delete grad_ops_node;
 
   for (auto nodes : auto_diff_graph)
     delete nodes.second;

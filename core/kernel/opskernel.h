@@ -25,9 +25,9 @@ class Ops {
 public:
   virtual ~Ops() = 0;
   virtual void compute() = 0;
-
-  virtual void addGradGraph(Graph *gradient_graph){};
   virtual void initializeoutput(Tensor<std::float64_t> *) = 0;
+
+  virtual void addGradGraph(Graph *gradient_graph) {};
   virtual void initializeinputs(Tensor<std::float64_t> **input_a,
                                 unsigned no_of_inputs) {}
   virtual void initializeinputs(Tensor<std::float64_t> **input_a,

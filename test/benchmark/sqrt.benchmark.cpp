@@ -24,9 +24,8 @@ BENCHMARK(mat_sqrt_eager_tensor)
     ->Arg(1 << 8)   // 256 elements
     ->Arg(1 << 9)   // 512 elements
     ->Arg(1 << 10)  // 1024 elements
-    ->Arg(1 << 12);  // 4192 eleements
-    // ->Arg(1 << 14); // 16K elements
-
+    ->Arg(1 << 12)  // 4192 eleements
+    ->Arg(1 << 14); // 16K elements
 
 // -------- Benchmark Graph sqrtition --------
 static void mat_sqrt_graph_tensor(benchmark::State &state) {
@@ -43,11 +42,10 @@ static void mat_sqrt_graph_tensor(benchmark::State &state) {
   C = A.sqrt(g_sqrt);
 
   for (auto _ : state) {
-    g_sqrt.graph_execute();                // Perform matrix sqrtition
+    g_sqrt.graph_execute();      // Perform matrix sqrtition
     benchmark::DoNotOptimize(C); // Prevent compiler optimization
   }
   g_sqrt.graph_clear();
-
 
   state.SetItemsProcessed(int64_t(state.iterations()) * N * N);
 }
@@ -68,5 +66,3 @@ BENCHMARK(mat_sqrt_graph_tensor)
     ->Arg(1 << 12)  // 4192 eleements
     ->Arg(1 << 14); // 16K elements
 #endif
-
-
