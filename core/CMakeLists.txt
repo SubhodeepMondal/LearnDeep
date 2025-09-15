@@ -74,6 +74,8 @@ if(ENABLE_CUDA AND CMAKE_CUDA_COMPILER)
     target_include_directories(gpu PRIVATE ${CMAKE_SOURCE_DIR}/core/
         /usr/local/cuda/include)
 
+    target_include_directories(gpu SYSTEM PRIVATE ${CMAKE_BINARY_DIR}/_deps/abseil-src)
+
     target_link_libraries(gpu PUBLIC
         absl::log
         absl::log_initialize

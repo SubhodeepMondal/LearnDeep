@@ -209,6 +209,9 @@ std::vector<void *> Graph::getDataNodes() {
   for (auto items : data_nodes) {
     dataNodes.push_back(static_cast<void *>(items));
   }
+  for (auto grad_data_node : grad_data_nodes)
+    if (!data_nodes.count(grad_data_node))
+      dataNodes.push_back(static_cast<void *>(grad_data_node));
   return dataNodes;
 }
 
@@ -226,14 +229,56 @@ void Graph::createGradientGraph() {
   }
 }
 
-Tensor<std::float64_t> *Graph::getGradient(Ops *ops) {
-  if (graph[reinterpret_cast<unsigned long>(ops)]->node_type == type::compute)
-    return graph[reinterpret_cast<unsigned long>(ops)]
-        ->getIncomingGradientForOpsNode();
-  else {
+std::vector<Tensor<std::float64_t> *> Graph::getGradient(Ops *ops) {
+  std::vector<Tensor<std::float64_t> *> gradient_tensors;
+  if (graph[reinterpret_cast<unsigned long>(ops)]->node_type == type::compute) {
+    this->getIncomingGradientForOpsNode(
+        graph[reinterpret_cast<unsigned long>(ops)], gradient_tensors);
+  } else {
     LOG(FATAL) << "Fatal! Not a compute node to get a gradient tensor.\n";
-    return NULL;
   }
+  return gradient_tensors;
+}
+
+void Graph::getIncomingGradientForOpsNode(
+    node *ops_node, std::vector<Tensor<std::float64_t> *> &gradient_tensors) {
+
+  //   [ node:data ]
+  //         |
+  // [output_nodes:ops]
+
+  node *output_node_for_ops =
+      ops_node->output_nodes[0]; // As ops node has only one output node
+
+  if (output_node_for_ops->output_nodes.size())
+    for (node *output : output_node_for_ops->output_nodes)
+      if (output->node_type == type::compute)
+        gradient_tensors.push_back(
+            output->ops->getGradientTensor(output_node_for_ops->input_node));
+}
+
+std::vector<Tensor<std::float64_t> *>
+Graph::getGradientTensor(Tensor<std::float64_t> *input_tensor) {
+  std::vector<Tensor<std::float64_t> *> gradient_tensors;
+  // auto it_1 = graph.find(reinterpret_cast<unsigned long>(input_tensor));
+  // if (it_1 != graph.end()) {
+  node *input_node = graph[reinterpret_cast<unsigned long>(input_tensor)];
+
+  auto it = std::find(root_node->output_nodes.begin(),
+                      root_node->output_nodes.end(), input_node);
+
+  if (it != root_node->output_nodes.end()) {
+    LOG(WARNING) << "This is end node gradient might be inconsistent.\n";
+    node *ops_node = input_node->output_nodes[0];
+    gradient_tensors.push_back(ops_node->ops->getGradientTensor(input_tensor));
+  } else {
+    node *ops_node = input_node->output_nodes[0];
+    gradient_tensors.push_back(ops_node->ops->getGradientTensor(input_tensor));
+  }
+  // } else {
+  //   LOG(ERROR) << "This tensor doesn't exist in the graph\n";
+  // }
+  return gradient_tensors;
 }
 
 void Graph::traverse() {

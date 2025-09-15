@@ -27,13 +27,13 @@ void node::setOutputNode(node *output_node) {
   }
 }
 
-Tensor<std::float64_t> *node::getIncomingGradientForOpsNode() {
-  unsigned no_of_output = output_nodes[0]->output_nodes.size();
-  if (output_nodes[0]->output_nodes.size()) {
-    return output_nodes[0]->output_nodes[0]->ops->getGradientTensor();
-  }
-  return NULL;
-}
+// Tensor<std::float64_t> *node::getIncomingGradientForOpsNode() {
+//   unsigned no_of_output = output_nodes[0]->output_nodes.size();
+//   if (output_nodes[0]->output_nodes.size()) {
+//     return output_nodes[0]->output_nodes[0]->ops->getGradientTensor();
+//   }
+//   return NULL;
+// }
 
 void node::eraseNodeFromOutput(node *n) {
   if (type::root == node_type) {

@@ -12,8 +12,6 @@
 namespace tf {
 struct graph;
 
-static std::vector<void *> tensor_nodes;
-
 typedef struct tensor {
   void *ptr{nullptr};
   bool isNodeCleared = false;
@@ -44,7 +42,6 @@ typedef struct tensor {
       ptr = nullptr;
     }
     dt_type = d_type;
-    assign_ptr();
   }
 
   void assign_ptr();
@@ -135,13 +132,13 @@ typedef struct tensor {
   tensor sub(tensor &input_b);
 
   // --- Default constructor
-  tensor();
+  tensor() { assign_ptr(); };
 
   // --- Destructor
   ~tensor() {
     if (!isNodeCleared) {
-      isNodeCleared = true;
       destory();
+      isNodeCleared = true;
     }
   }
 
@@ -157,11 +154,14 @@ typedef struct tensor {
   // --- Copy assignment
   tensor &operator=(const tensor &other) {
     if (this != &other) {
-      dt_type = other.dt_type;
       if (other.ptr) {
-        *static_cast<Tensor<std::float64_t> *>(this->ptr) =
-            *static_cast<Tensor<std::float64_t> *>(other.ptr);
-        // this->ptr = other.ptr;
+        if (this->ptr) {
+          delete static_cast<Tensor<std::float64_t> *>(this->ptr);
+          this->ptr = nullptr;
+        }
+        this->ptr = new Tensor<std::float64_t>(
+            *static_cast<Tensor<std::float64_t> *>(other.ptr));
+        this->dt_type = other.dt_type;
       } else {
         ptr = nullptr;
       }
@@ -179,16 +179,21 @@ typedef struct tensor {
   // --- Move assignment
   tensor &operator=(tensor &&other) noexcept {
     if (this != &other) {
-      destory();
-      dt_type = other.dt_type;
-      ptr = other.ptr;
+      if (this->ptr)
+        delete static_cast<Tensor<std::float64_t> *>(this->ptr);
+      this->dt_type = other.dt_type;
+      this->ptr = other.ptr;
+
       other.ptr = nullptr;
+      other.isNodeCleared = true;
+      other.eraseRecord();
     }
     return *this;
   }
 
   // --- Destroy function
   void destory();
+  void eraseRecord();
 
   graph &getReductionGraph(graph &g, std::vector<unsigned> reduction_dims,
                            bool &flag);
@@ -214,6 +219,8 @@ typedef struct tensor {
   }
 } tensor;
 
+static std::vector<tensor *> tensor_nodes;
+
 typedef struct graph {
   void *ptr;
   bool isGraphCleared = bool(false);
@@ -226,6 +233,8 @@ typedef struct graph {
   void graph_execute();
 
   void graph_travarse_data_node();
+
+  tensor graph_get_gradient(const tensor &a);
 
   void graph_traverse_gradient();
 

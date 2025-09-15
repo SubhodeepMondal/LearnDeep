@@ -14,8 +14,8 @@
 //                       0.19244527, 0.8450769,  0.84808829, 0.6912999};
 
 class MathTest : public testing::Test {
-  public:
-  tf::tensor A, B, C;
+  // public:
+  // tf::tensor A, B, C;
   // tf::graph g;  
 
   protected:

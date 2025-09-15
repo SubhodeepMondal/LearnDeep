@@ -3,6 +3,7 @@
 
 #include <graph/graph_node.hpp>
 
+#include <algorithm>
 #include <iostream>
 #include <queue>
 #include <stdfloat>
@@ -18,7 +19,6 @@ enum class Functions {
   reverse_mode_autodiff
 };
 std::string functionsToString(Functions func);
-
 
 template <typename T> class Tensor;
 class Ops;
@@ -71,13 +71,19 @@ public:
 
   void createGradientGraph();
 
-  Tensor<std::float64_t> *getGradient(Ops *ops);
+  std::vector<Tensor<std::float64_t> *> getGradient(Ops *ops);
 
   void compute();
 
   void computeGradient();
 
   std::vector<void *> getDataNodes();
+
+  void getIncomingGradientForOpsNode(
+      node *ops, std::vector<Tensor<std::float64_t> *> &gradient_tensors);
+
+  std::vector<Tensor<std::float64_t> *>
+  getGradientTensor(Tensor<std::float64_t> *input_tensor);
 
   void traverse();
 

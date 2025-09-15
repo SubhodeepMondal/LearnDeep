@@ -19,7 +19,7 @@ TEST_F(MathTest, Eager_MatrixReductionSum_2D) {
   tf::tensor A, B, C, D;
   A.tf_create(tf_float64, 4, 4);
   B.tf_create(tf_float64, 4, 4);
-  C.tf_create(tf_float64, 4, 4);
+  // C.tf_create(tf_float64, 4, 4);
 
   A.tensor_of(a);
   B.tensor_of(b);

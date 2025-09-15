@@ -83,8 +83,63 @@ void Opsmul::compute() {
   delete[] arr;
 }
 
+void Opsmul::addGradGraph(Graph *gradient_graph) {
+
+  // Tensor<std::float64_t> *tensor_ptr[2];
+
+  // // Checking for incoming gradient if not then
+  // std::vector<Tensor<std::float64_t> *> incoming_gradient =
+  //     gradient_graph->getGradient(this);
+  // if (incoming_gradient) {
+  //   tensor_ptr[0] = incoming_gradient;
+  // } else {
+  //   tensor_ptr[0] = new Tensor<std::float64_t>(*inputs[0]);
+  //   tensor_ptr[0]->initData(1.0);
+  // }
+
+  // // For mul(xy) d/dx = y, d/dy = x
+  // grads[0] = new Tensor<std::float64_t>(*inputs[1]);
+  // grads[1] = new Tensor<std::float64_t>(*inputs[0]);
+
+  // grads[0]->initData(inputs[1]->getData());
+  // grads[1]->initData(inputs[0]->getData());
+
+  // // Createing back prop graph for 'input a'
+  // Ops *ops_mul_a = new Opsmul;
+  // tensor_ptr[0] = input_gradient;
+  // tensor_ptr[1] = grad[0];
+
+  // ops_mul_a->initializeinputs(tensor_ptr, 2);
+  // ops_mul_a->initializeoutput(this->outgoing_gradient[0]);
+
+  // gradient_graph->addGradientNode(tensor_ptr[0]);
+  // gradient_graph->addGradientNode(tensor_ptr[1]);
+  // gradient_graph->addGradientNode(this->outgoing_grads[0]);
+  // gradient_graph->addGradientNode(ops_mul_a);
+
+  // gradient_graph->addGradientEdge(tensor_ptr[0], ops_mul_a);
+  // gradient_graph->addGradientEdge(tensor_ptr[1], ops_mul_a);
+  // gradient_graph->addGradientEdge(ops_mul_a, this->outgoing_grads[0]);
+
+  // // Createing back prop graph for 'input b'
+  // Ops *ops_mul_b = new Opsmul;
+  // tensor_ptr[1] = grads[1];
+
+  // ops_mul_b->initializeinputs(tensor_ptr, 2);
+  // ops_mul_b->initializeoutput(this->outgoing_gradient[1]);
+
+  // gradient_graph->addGradientNode(tensor_ptr[0]);
+  // gradient_graph->addGradientNode(tensor_ptr[1]);
+  // gradient_graph->addGradientNode(this->outgoing_grads[1]);
+  // gradient_graph->addGradientNode(ops_mul_b);
+
+  // gradient_graph->addGradientEdge(tensor_ptr[0], ops_mul_b);
+  // gradient_graph->addGradientEdge(tensor_ptr[1], ops_mul_b);
+  // gradient_graph->addGradientEdge(ops_mul_b, this->outgoing_grads[1]);
+}
+
 void Opsmul::initializeinputs(Tensor<std::float64_t> **inputs,
-                             unsigned no_of_inputs) {
+                              unsigned no_of_inputs) {
   unsigned i;
   this->no_of_inputs = no_of_inputs;
 
@@ -97,7 +152,8 @@ void Opsmul::initializeinputs(Tensor<std::float64_t> **inputs,
 
 void Opsmul::initializeoutput(Tensor<std::float64_t> *output) {
   this->output = output;
-  this->output->reshape(this->inputs[0]->getNoOfDimensions(), this->inputs[0]->getDimensions());
+  this->output->reshape(this->inputs[0]->getNoOfDimensions(),
+                        this->inputs[0]->getDimensions());
 
   // *(this->output) = *(inputs[0]);
 }
@@ -114,6 +170,25 @@ void Opsmul::printoutput() {
   std::cout << "output:\n";
   output->printData();
   std::cout << "\n";
+}
+
+Tensor<std::float64_t> *
+Opsmul::getGradientTensor(Tensor<std::float64_t> *gradient_input) {
+  int i;
+  bool flag = false;
+  for (i = 0; i < 2; i++)
+    if (this->inputs[i] == gradient_input) {
+      flag = true;
+      break;
+    }
+
+  if (flag) {
+    LOG(INFO) << "Requested gradint for the tensor found.\n";
+    return this->outgoing_gradients[i];
+  } else {
+    LOG(FATAL) << "Requested gradint for the tensor doesn't exist.\n";
+    return NULL;
+  }
 }
 
 void Opsmul::kernel_dispatch(std::float64_t **ptr, unsigned *arr) {

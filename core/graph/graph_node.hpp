@@ -37,7 +37,7 @@ public:
 
   void setOutputNode(node *output_node); // Setting output
 
-  Tensor<std::float64_t> *getIncomingGradientForOpsNode();
+  // Tensor<std::float64_t> *getIncomingGradientForOpsNode();
 
   void execute(); // Execution logic
 

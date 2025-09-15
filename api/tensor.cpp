@@ -1,10 +1,7 @@
 #include "tensor.h"
 #include <absl/log/log.h>
 
-tf::tensor::tensor() {};
-void tf::tensor::assign_ptr() {
-  tensor_nodes.push_back(static_cast<void *>(this));
-}
+void tf::tensor::assign_ptr() { tensor_nodes.push_back(this); }
 
 void tf::tensor::tensor_of(double low_limit, double upper_limit) {
 
@@ -400,24 +397,51 @@ tf::tensor tf::tensor::getReduction(std::vector<unsigned> reduction_dims) {
   return output;
 }
 
-void tf::tensor::gradient_required(bool is_grad_required){
-  if(ptr){
-    static_cast<Tensor<std::float64_t> *>(this->ptr)->gradientRequired(is_grad_required);
+void tf::tensor::gradient_required(bool is_grad_required) {
+  if (ptr) {
+    static_cast<Tensor<std::float64_t> *>(this->ptr)->gradientRequired(
+        is_grad_required);
   }
 }
 
 void tf::tensor::destory() {
+  tensor_nodes.erase(
+      std::remove(tensor_nodes.begin(), tensor_nodes.end(), this),
+      tensor_nodes.end());
   if (this->ptr) {
-    tensor_nodes.erase(
-        std::remove(tensor_nodes.begin(), tensor_nodes.end(), this),
-        tensor_nodes.end());
     delete static_cast<Tensor<std::float64_t> *>(this->ptr);
     ptr = nullptr;
   }
 }
+
+void tf::tensor::eraseRecord() {
+  tensor_nodes.erase(
+      std::remove(tensor_nodes.begin(), tensor_nodes.end(), this),
+      tensor_nodes.end());
+}
+
 void tf::graph::tf_create_graph() { ptr = new Graph(); }
 
 void tf::graph::graph_execute() { static_cast<Graph *>(this->ptr)->compute(); }
+
+tf::tensor tf::graph::graph_get_gradient(const tensor &a) {
+  std::vector<Tensor<std::float64_t> *> grads;
+  tensor output;
+  if (this->ptr) {
+    grads = static_cast<Graph *>(this->ptr)->getGradientTensor(
+        reinterpret_cast<Tensor<std::float64_t> *>(a.ptr));
+  }
+  unsigned grad_size = grads.size();
+  if (grads.empty()) {
+    output.dt_type = a.dt_type;
+    output.ptr = nullptr;
+  } else {
+    output.dt_type = a.dt_type;
+    void *ptr = static_cast<void *>(grads[0]);
+    output.ptr = ptr;
+  }
+  return output;
+}
 
 void tf::graph::graph_travarse_data_node() {
   static_cast<Graph *>(this->ptr)->traverse();
@@ -428,16 +452,25 @@ void tf::graph::graph_clear() {
   std::vector<void *> data_nodes =
       static_cast<Graph *>(this->ptr)->getDataNodes();
 
-  static_cast<Graph *>(this->ptr)->release_resources();
-  if (ptr) {
-    delete static_cast<Graph *>(ptr);
-    ptr = nullptr;
+  for (auto tensor_node : tensor_nodes)
+    std::cout << tensor_node << " tensor " << tensor_node->ptr << "\n";
+
+  for (auto tensor_node : tensor_nodes) {
+    // std::cout << tensor_node << " tensor " << tensor_node->ptr << "\n";
+    for (auto node : data_nodes) {
+      if (node == tensor_node->ptr) {
+        tensor_node->isNodeCleared = true;
+        tensor_node->ptr = nullptr;
+        break;
+      }
+    }
   }
 
-  for (auto node : data_nodes)
-    for (auto tensor_node : tensor_nodes)
-      if (node == static_cast<tensor *>(tensor_node)->ptr)
-        static_cast<tensor *>(tensor_node)->isNodeCleared = true;
+  static_cast<Graph *>(this->ptr)->release_resources();
+  if (ptr) {
+    delete static_cast<Graph *>(this->ptr);
+    this->ptr = nullptr;
+  }
 
   tensor_nodes.clear();
 }
@@ -450,6 +483,6 @@ void tf::graph::graph_compute_gradient() {
   static_cast<Graph *>(this->ptr)->computeGradient();
 }
 
-void tf::graph::graph_traverse_gradient(){
+void tf::graph::graph_traverse_gradient() {
   static_cast<Graph *>(this->ptr)->traverseGradientGraph();
 }
