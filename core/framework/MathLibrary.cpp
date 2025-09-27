@@ -75,7 +75,7 @@ template <typename T> Tensor<T> *Tensor<T>::operator*(Tensor<T> &input) {
     Tensor<T> *inputs[2];
     inputs[0] = this;
     inputs[1] = &input;
-    ops->initializeinputs(inputs, (unsigned)2);
+    ops->initializeinputs(inputs);
     ops->initializeoutput(output);
     ops->compute();
 
@@ -113,7 +113,7 @@ template <typename T> Tensor<T> *Tensor<T>::mul(Tensor<T> &input) {
     Tensor<T> *inputs[2];
     inputs[0] = this;
     inputs[1] = &input;
-    ops->initializeinputs(inputs, (unsigned)2);
+    ops->initializeinputs(inputs);
     ops->initializeoutput(output);
     ops->compute();
 
@@ -149,7 +149,7 @@ template <typename T> Tensor<T> *Tensor<T>::add(Tensor<T> &input) {
     Tensor<T> *inputs[2];
     inputs[0] = this;
     inputs[1] = &input;
-    ops->initializeinputs(inputs, (unsigned)2);
+    ops->initializeinputs(inputs);
     ops->initializeoutput(output);
     ops->compute();
 
@@ -573,7 +573,7 @@ Ops *Tensor<T>::add(Graph &g, Tensor<T> &input, bool &flag) {
       inputs[0] = this;
       inputs[1] = &input;
 
-      ops->initializeinputs(inputs, (unsigned)2);
+      ops->initializeinputs(inputs);
 
       g.addNode(this);
       g.addNode(&input);
@@ -653,7 +653,7 @@ Ops *Tensor<T>::mul(Graph &g, Tensor<T> &input, bool &flag) {
       Tensor<T> *inputs[2];
       inputs[0] = this;
       inputs[1] = &input;
-      ops->initializeinputs(inputs, (unsigned)2);
+      ops->initializeinputs(inputs);
 
       g.addNode(this);
       g.addNode(&input);

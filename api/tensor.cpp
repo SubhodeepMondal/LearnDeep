@@ -1,5 +1,6 @@
 #include "tensor.h"
 #include <absl/log/log.h>
+#include <cstddef>
 
 void tf::tensor::assign_ptr() { tensor_nodes.push_back(this); }
 
@@ -425,21 +426,16 @@ void tf::graph::tf_create_graph() { ptr = new Graph(); }
 void tf::graph::graph_execute() { static_cast<Graph *>(this->ptr)->compute(); }
 
 tf::tensor tf::graph::graph_get_gradient(const tensor &a) {
-  std::vector<Tensor<std::float64_t> *> grads;
   tensor output;
-  if (this->ptr) {
-    grads = static_cast<Graph *>(this->ptr)->getGradientTensor(
-        reinterpret_cast<Tensor<std::float64_t> *>(a.ptr));
-  }
-  unsigned grad_size = grads.size();
-  if (grads.empty()) {
-    output.dt_type = a.dt_type;
-    output.ptr = nullptr;
-  } else {
-    output.dt_type = a.dt_type;
-    void *ptr = static_cast<void *>(grads[0]);
-    output.ptr = ptr;
-  }
+  output.dt_type = a.dt_type;
+  Tensor<std::float64_t> *temp_ptr =
+      static_cast<Graph *>(this->ptr)->getGradientTensor(
+          reinterpret_cast<Tensor<std::float64_t> *>(a.ptr));
+
+  if (temp_ptr)
+    output.ptr = temp_ptr;
+
+  // static_cast<Tensor<std::float64_t> *>(output.ptr)->printData();
   return output;
 }
 
@@ -452,11 +448,7 @@ void tf::graph::graph_clear() {
   std::vector<void *> data_nodes =
       static_cast<Graph *>(this->ptr)->getDataNodes();
 
-  for (auto tensor_node : tensor_nodes)
-    std::cout << tensor_node << " tensor " << tensor_node->ptr << "\n";
-
   for (auto tensor_node : tensor_nodes) {
-    // std::cout << tensor_node << " tensor " << tensor_node->ptr << "\n";
     for (auto node : data_nodes) {
       if (node == tensor_node->ptr) {
         tensor_node->isNodeCleared = true;

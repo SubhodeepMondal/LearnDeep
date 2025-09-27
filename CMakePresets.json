@@ -51,7 +51,7 @@
                 "USE_SYSTEM_GTEST": "OFF",
                 "USE_SYSTEM_BENCHMARK ": "OFF",
                 "CMAKE_EXPORT_COMPILE_COMMANDS": true,
-                "CMAKE_CXX_FLAGS": "-g -O0" //  -fsanitize=address -g
+                "CMAKE_CXX_FLAGS": "-g -O0 -fsanitize=address -g " // 
             }
         },
         {

@@ -183,7 +183,6 @@ typedef struct tensor {
         delete static_cast<Tensor<std::float64_t> *>(this->ptr);
       this->dt_type = other.dt_type;
       this->ptr = other.ptr;
-
       other.ptr = nullptr;
       other.isNodeCleared = true;
       other.eraseRecord();

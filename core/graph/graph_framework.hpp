@@ -82,7 +82,7 @@ public:
   void getIncomingGradientForOpsNode(
       node *ops, std::vector<Tensor<std::float64_t> *> &gradient_tensors);
 
-  std::vector<Tensor<std::float64_t> *>
+  Tensor<std::float64_t> *
   getGradientTensor(Tensor<std::float64_t> *input_tensor);
 
   void traverse();

@@ -257,11 +257,8 @@ void Graph::getIncomingGradientForOpsNode(
             output->ops->getGradientTensor(output_node_for_ops->input_node));
 }
 
-std::vector<Tensor<std::float64_t> *>
+Tensor<std::float64_t> *
 Graph::getGradientTensor(Tensor<std::float64_t> *input_tensor) {
-  std::vector<Tensor<std::float64_t> *> gradient_tensors;
-  // auto it_1 = graph.find(reinterpret_cast<unsigned long>(input_tensor));
-  // if (it_1 != graph.end()) {
   node *input_node = graph[reinterpret_cast<unsigned long>(input_tensor)];
 
   auto it = std::find(root_node->output_nodes.begin(),
@@ -270,15 +267,14 @@ Graph::getGradientTensor(Tensor<std::float64_t> *input_tensor) {
   if (it != root_node->output_nodes.end()) {
     LOG(WARNING) << "This is end node gradient might be inconsistent.\n";
     node *ops_node = input_node->output_nodes[0];
-    gradient_tensors.push_back(ops_node->ops->getGradientTensor(input_tensor));
+    return ops_node->ops->getGradientTensor(input_tensor);
+  } else if (!input_node->output_nodes.size()) {
+    LOG(INFO) << "This is an end node, this doesn't have any gradient\n";
+    return nullptr;
   } else {
     node *ops_node = input_node->output_nodes[0];
-    gradient_tensors.push_back(ops_node->ops->getGradientTensor(input_tensor));
+    return ops_node->ops->getGradientTensor(input_tensor);
   }
-  // } else {
-  //   LOG(ERROR) << "This tensor doesn't exist in the graph\n";
-  // }
-  return gradient_tensors;
 }
 
 void Graph::traverse() {
