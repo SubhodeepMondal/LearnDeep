@@ -134,19 +134,10 @@ TEST_F(MathTest, Graph_MatrixElementWiseMultiplication_Grad_2D) {
   g_mul.graph_initialize_gradient();
   g_mul.graph_compute_gradient();
 
-  std::cout << "Gradients\n";
-  // g_mul.graph_traverse_gradient();
-
   A_grad = g_mul.graph_get_gradient(A);
   B_grad = g_mul.graph_get_gradient(B);
   C_grad = g_mul.graph_get_gradient(C);
   E_grad = g_mul.graph_get_gradient(E);
-  // D_grad = g_mul.graph_get_gradient(D);
-
-  // A_grad.print_data();
-  // B_grad.print_data();
-  // C_grad.print_data();
-  // E_grad.print_data();
 
   auto *tensorA_grad = static_cast<Tensor<std::float64_t> *>(A_grad.ptr);
   for (int i = 0; i < 16; i++) {

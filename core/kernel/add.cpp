@@ -87,7 +87,7 @@ void Opsadd::initializeinputs(Tensor<std::float64_t> **inputs) {
   unsigned i;
   this->no_of_inputs = 2;
   for (i = 0; i < this->no_of_inputs; i++) {
-    this->inputs[i] = inputs[i];
+    this->inputs.push_back(inputs[i]);
   }
 }
 

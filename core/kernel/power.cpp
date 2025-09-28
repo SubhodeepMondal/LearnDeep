@@ -80,12 +80,12 @@ void Opspower::recursive_iterator(unsigned index, unsigned *dimension_arr,
 void Opspower::compute() {
   unsigned i, *arr;
 
-  if (exponent == 0)
+  if (this->exponent == 0)
     output->initData(1);
-  else if (exponent > 0) {
+  else if (this->exponent > 0) {
     output->initData(inputs[0]->getData());
     arr = new unsigned[inputs[0]->getNoOfDimensions()];
-    for (i = 1; i < exponent; i++)
+    for (i = 1; i < this->exponent; i++)
       recursive_iterator(inputs[0]->getNoOfDimensions() - 1, arr,
                          "matrix_power", NULL, NULL, NULL);
     delete[] arr;
@@ -117,11 +117,13 @@ void Opspower::addGradGraph(Graph *gradient_graph) {
   // initializing temp variables for grad calculation
   temp_grad_tensors[0] = new Tensor<std::float64_t>(*inputs[0]);
   temp_grad_tensors[1] = new Tensor<std::float64_t>(*inputs[0]);
+  temp_grad_tensors[1]->initData(1.0);
 
   // graph setup for calculating derivation temp_grad_tensorsf power
   // operations graph setup for x ^ (n-1)
   Ops *ops_power = new Opspower;
-  ops_power->initializeinputs(this->inputs, exponent - 1);
+  ops_power->initializeinputs(this->inputs.data());
+  ops_power->initializeExpoent(this->exponent - 1);
   ops_power->initializeoutput(temp_grad_tensors[0]);
 
   gradient_graph->addGradientNode(this->inputs[0]);
@@ -131,9 +133,10 @@ void Opspower::addGradGraph(Graph *gradient_graph) {
   gradient_graph->addGradientEdge(this->inputs[0], ops_power);
   gradient_graph->addGradientEdge(ops_power, temp_grad_tensors[0]);
 
-  // graph setup for  n * x  ^ (n - 1)
+  // graph setup for  n * x
   Ops *ops_scale = new Opsscale;
-  ops_scale->initializeinputs(&temp_grad_tensors[0], (std::float64_t)exponent);
+  ops_scale->initializeinputs(&temp_grad_tensors[0]);
+  ops_scale->initializeScale(this->exponent);
   ops_scale->initializeoutput(temp_grad_tensors[1]);
 
   gradient_graph->addGradientNode(temp_grad_tensors[0]);
@@ -149,26 +152,23 @@ void Opspower::addGradGraph(Graph *gradient_graph) {
 
   Tensor<std::float64_t> *tensor_ptr[2];
   Tensor<std::float64_t> **intermediate_gradients;
-  i = 0;
   if (incoming_gradient.size()) {
-    intermediate_gradients = new Tensor<std::float64_t>
-        *[incoming_gradient.size()]; // inter_inc_grad
-                                     // holding
-    // d/d(x) * incoming_grad
+    intermediate_gradients =
+        new Tensor<std::float64_t> *[incoming_gradient.size()];
+    // graph setup for  x' = z' * d/dx
     tensor_ptr[1] = temp_grad_tensors[1];
+    i = 0;
     for (Tensor<std::float64_t> *ptr : incoming_gradient) {
       if (ptr) {
         tensor_ptr[0] = ptr;
       } else {
-        tensor_ptr[0] = new Tensor<std::float64_t>(
-            this->inputs[0]->getNoOfDimensions(),
-            this->inputs[0]->getDimensions(), this->inputs[0]->getDataType());
+        tensor_ptr[0] = new Tensor<std::float64_t>(*this->inputs[0]);
         tensor_ptr[0]->initData(1.0);
       }
 
       Ops *ops_mul = new Opsmul;
-      ops_mul->initializeinputs(tensor_ptr, (unsigned)2);
-      intermediate_gradients[i] = new Tensor<std::float64_t>(*inputs[0]);
+      ops_mul->initializeinputs(tensor_ptr);
+      intermediate_gradients[i] = new Tensor<std::float64_t>(*this->inputs[0]);
       ops_mul->initializeoutput(intermediate_gradients[i]);
 
       gradient_graph->addGradientNode(tensor_ptr[0]);
@@ -181,48 +181,45 @@ void Opspower::addGradGraph(Graph *gradient_graph) {
       gradient_graph->addGradientEdge(ops_mul, intermediate_gradients[i]);
       i++;
     }
-  } else {
-    this->outgoing_gradient[0] = temp_grad_tensors[1];
-    return;
-  }
 
-  // graph setup for  x' = sum ( z' * d/dx )
-  Tensor<std::float64_t> **intermediate_gradientsum;
-  if (incoming_gradient.size() > 1) {
-    intermediate_gradientsum =
-        new Tensor<std::float64_t> *[incoming_gradient.size() - 2];
+    // graph setup for  x' = sum ( z' * d/dx )
+    Tensor<std::float64_t> *intermediate_gradient_sum;
 
-    tensor_ptr[0] = intermediate_gradients[0];
-    for (i = 0; i < incoming_gradient.size() - 2; i++) {
+    intermediate_gradient_sum = new Tensor<std::float64_t>(*this->output);
+    intermediate_gradient_sum->initData(0.0);
+    i = 0;
+    for (Tensor<std::float64_t> *inc_grad_tensor : incoming_gradient) {
+
+      // input initialization
+      tensor_ptr[0] = intermediate_gradient_sum;
+      tensor_ptr[1] = intermediate_gradients[i++];
+
       Ops *ops_add = new Opsadd;
-      intermediate_gradientsum[i] = new Tensor<std::float64_t>(*inputs[0]);
-      tensor_ptr[1] = intermediate_gradientsum[i];
+      ops_add->initializeinputs(tensor_ptr);
 
-      ops_add->initializeinputs(tensor_ptr, 2.0);
-      ops_add->initializeoutput(intermediate_gradientsum[i]);
-
+      gradient_graph->addGradientNode(ops_add);
       gradient_graph->addGradientNode(tensor_ptr[0]);
       gradient_graph->addGradientNode(tensor_ptr[1]);
-      gradient_graph->addGradientNode(intermediate_gradients[i]);
-      gradient_graph->addGradientNode(ops_add);
-
       gradient_graph->addGradientEdge(tensor_ptr[0], ops_add);
       gradient_graph->addGradientEdge(tensor_ptr[1], ops_add);
-      gradient_graph->addGradientEdge(ops_add, intermediate_gradientsum[i]);
 
-      tensor_ptr[0] = intermediate_gradientsum[i];
+      // output initialization
+      intermediate_gradient_sum = new Tensor<std::float64_t>(*this->output);
+      intermediate_gradient_sum->initData(0.0);
+
+      ops_add->initializeoutput(intermediate_gradient_sum);
+      gradient_graph->addGradientNode(intermediate_gradient_sum);
+      gradient_graph->addGradientEdge(ops_add, intermediate_gradient_sum);
     }
-    this->outgoing_gradient[0] = intermediate_gradientsum[i - 1];
-    return;
+    this->outgoing_gradients[0] = intermediate_gradient_sum;
+    delete[] intermediate_gradients;
+  } else {
+    this->outgoing_gradients[0] = temp_grad_tensors[1];
   }
 }
 
-void Opspower::initializeinputs(Tensor<std::float64_t> **inputs,
-                                unsigned exponent) {
-  this->exponent = exponent;
-  this->inputs[0] = inputs[0];
-
-  // addGradGraph();
+void Opspower::initializeinputs(Tensor<std::float64_t> **inputs) {
+  this->inputs.push_back(inputs[0]);
 }
 
 void Opspower::initializeoutput(Tensor<std::float64_t> *output) {
@@ -248,7 +245,7 @@ void Opspower::printoutput() {
 Tensor<std::float64_t> *
 Opspower::getGradientTensor(Tensor<std::float64_t> *gradient_input) {
   if (inputs[0] == gradient_input)
-    return outgoing_gradient[0];
+    return outgoing_gradients[0];
   else {
     LOG(FATAL) << "Requested gradint for the tensor doesn't exist.\n";
     return NULL;
@@ -257,7 +254,7 @@ Opspower::getGradientTensor(Tensor<std::float64_t> *gradient_input) {
 
 std::vector<Tensor<std::float64_t> *> Opspower::getAllGradientTensors() {
   std::vector<Tensor<std ::float64_t> *> gradient_tensors;
-  gradient_tensors.push_back(outgoing_gradient[0]);
+  gradient_tensors.push_back(outgoing_gradients[0]);
   return gradient_tensors;
 }
 

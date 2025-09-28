@@ -27,16 +27,16 @@ public:
   virtual ~Ops() = 0;
   virtual void compute() = 0;
   virtual void initializeoutput(Tensor<std::float64_t> *) = 0;
+  virtual void initializeinputs(Tensor<std::float64_t> **input_a) = 0;
+  virtual Tensor<std::float64_t> *getoutput() = 0;
+  virtual std::vector<Tensor<std::float64_t> *> getinputs() = 0;
+
+  virtual void initializeAxis(const unsigned axis) {}
+  virtual void initializeExpoent(const unsigned exponent) {}
+  virtual void initializeScale(const std::float64_t scale) {}
+  virtual void initializeReductionDims(const unsigned n, const unsigned *arr) {}
 
   virtual void addGradGraph(Graph *gradient_graph) {};
-  virtual void initializeinputs(Tensor<std::float64_t> **input_a) {}
-  virtual void initializeinputs(Tensor<std::float64_t> **input_a,
-                                unsigned no_of_inputs) {}
-  virtual void initializeinputs(Tensor<std::float64_t> **input_a,
-                                std::float64_t scale_factor) {}
-  virtual void initializeinputs(Tensor<std::float64_t> **input_a, unsigned n,
-                                unsigned *arr) {}
-  virtual unsigned getnoofinputs() { return 0; }
   virtual Tensor<std::float64_t> *
   getGradientTensor(Tensor<std::float64_t> *gradient_input) {
     return NULL;
@@ -45,8 +45,6 @@ public:
     std::vector<Tensor<std::float64_t> *> grads;
     return grads;
   }
-  virtual Tensor<std::float64_t> *getoutput() { return NULL; }
-  virtual Tensor<std::float64_t> **getinputs() { return NULL; }
   virtual void printinputs() {}
   virtual void printoutput() {}
   virtual void autograd() {}
@@ -70,7 +68,7 @@ public:
 class Opsmul : public Ops {
   unsigned no_of_inputs;
 
-  Tensor<std::float64_t> *inputs[2];
+  std::vector<Tensor<std::float64_t> *> inputs;
   Tensor<std::float64_t> *output;
   Tensor<std::float64_t> *outgoing_gradients[2];
   void recursive_iterator(unsigned index, unsigned *dimension_arr,
@@ -99,7 +97,7 @@ public:
 
   void initializeoutput(Tensor<std::float64_t> *output);
 
-  Tensor<std::float64_t> **getinputs() { return inputs; }
+  std::vector<Tensor<std::float64_t> *> getinputs() { return inputs; }
 
   Tensor<std::float64_t> *getoutput() { return output; }
 
@@ -113,7 +111,7 @@ public:
 class Opsadd : public Ops {
   unsigned no_of_inputs;
 
-  Tensor<std::float64_t> *inputs[2];
+  std::vector<Tensor<std::float64_t> *> inputs;
   Tensor<std::float64_t> *output;
   Tensor<std::float64_t> *outgoing_gradient;
   void recursive_iterator(unsigned index, unsigned *dimension_arr,
@@ -136,7 +134,7 @@ public:
   void initializeinputs(Tensor<std::float64_t> **inputs);
   void initializeoutput(Tensor<std::float64_t> *output);
 
-  Tensor<std::float64_t> **getinputs() { return inputs; }
+  std::vector<Tensor<std::float64_t> *> getinputs() { return inputs; }
 
   Tensor<std::float64_t> *getoutput() { return output; }
 
@@ -149,7 +147,7 @@ public:
 class Opsmatmul : public Ops {
   unsigned no_of_inputs;
 
-  Tensor<std::float64_t> *inputs[2];
+  std::vector<Tensor<std::float64_t> *> inputs;
   Tensor<std::float64_t> *output;
   Tensor<std::float64_t> *outgoing_gradient;
   void recursive_iterator(unsigned index, unsigned *, std::string, unsigned *,
@@ -174,11 +172,11 @@ public:
 
   void initializeoutput(Tensor<std::float64_t> *output);
 
-  Tensor<std::float64_t> **getinputs() { return inputs; }
+  std::vector<Tensor<std::float64_t> *> getinputs() { return inputs; }
 
   Tensor<std::float64_t> *getoutput() { return output; }
 
-  void initializeinputs(Tensor<std::float64_t> **, unsigned);
+  void initializeinputs(Tensor<std::float64_t> **);
 
   unsigned getnoofinputs() { return no_of_inputs; }
 
@@ -192,9 +190,9 @@ public:
 class Opspower : public Ops {
   unsigned exponent;
 
-  Tensor<std::float64_t> *inputs[1];
+  std::vector<Tensor<std::float64_t> *> inputs;
   Tensor<std::float64_t> *output;
-  Tensor<std::float64_t> *outgoing_gradient[1];
+  Tensor<std::float64_t> *outgoing_gradients[1];
   void recursive_iterator(unsigned index, unsigned *dimension_arr,
                           std::string function_name, unsigned *ui_arr,
                           std::float64_t *dl_arr,
@@ -213,11 +211,13 @@ public:
 
   void computeGrad();
 
-  void initializeinputs(Tensor<std::float64_t> **inputs, unsigned exponent);
+  void initializeinputs(Tensor<std::float64_t> **inputs);
+
+  void initializeExpoent(unsigned exponent) { this->exponent = exponent; }
 
   void initializeoutput(Tensor<std::float64_t> *output);
 
-  Tensor<std::float64_t> **getinputs() { return inputs; }
+  std::vector<Tensor<std::float64_t> *> getinputs() { return inputs; }
 
   Tensor<std::float64_t> *getoutput() { return output; }
 
@@ -236,7 +236,7 @@ public:
 class Opsreducesum : public Ops {
   unsigned no_of_reduction_dim;
   std::vector<unsigned> reduction_dims;
-  Tensor<std::float64_t> *inputs[1];
+  std::vector<Tensor<std::float64_t> *> inputs;
   Tensor<std::float64_t> *temp_output;
   Tensor<std::float64_t> *temp_input;
   Tensor<std::float64_t> *output;
@@ -256,27 +256,21 @@ public:
     std::vector<Tensor<std::float64_t> *> grads;
     return grads;
   }
-  void initializeinputs(Tensor<std::float64_t> **inputs, unsigned n,
-                        unsigned *arr);
+  void initializeinputs(Tensor<std::float64_t> **inputs);
+  void initializeReductionDims(const unsigned n, const unsigned *arr);
   void initializeoutput(Tensor<std::float64_t> *output);
-
-  Tensor<std::float64_t> **getinputs() { return inputs; }
-
+  std::vector<Tensor<std::float64_t> *> getinputs() { return inputs; }
   Tensor<std::float64_t> *getoutput() { return output; }
-
   unsigned getnoofinputs() { return 1; }
-
   void printinputs();
-
   void printoutput();
-
   void kernel_dispatch(std::float64_t **, unsigned *);
 };
 
 class Opsscale : public Ops {
   std::float64_t scale_factor[1];
 
-  Tensor<std::float64_t> *inputs[1];
+  std::vector<Tensor<std::float64_t> *> inputs;
   Tensor<std::float64_t> *output;
   Tensor<std::float64_t> *outgoing_gradient;
   void recursive_iterator(unsigned index, unsigned *dimension_arr,
@@ -296,11 +290,13 @@ public:
     std::vector<Tensor<std::float64_t> *> grads;
     return grads;
   }
-  void initializeinputs(Tensor<std::float64_t> **inputs,
-                        std::float64_t scale_factor);
+  void initializeinputs(Tensor<std::float64_t> **inputs);
+  void initializeScale(const std::float64_t scale) {
+    this->scale_factor[0] = scale;
+  }
   void initializeoutput(Tensor<std::float64_t> *outputs);
 
-  Tensor<std::float64_t> **getinputs() { return inputs; }
+  std::vector<Tensor<std::float64_t> *> getinputs() { return inputs; }
 
   Tensor<std::float64_t> *getoutput() { return output; }
 
@@ -310,7 +306,7 @@ public:
 };
 
 class Opssqrt : public Ops {
-  Tensor<std::float64_t> *inputs[1];
+  std::vector<Tensor<std::float64_t> *> inputs;
   Tensor<std::float64_t> *output;
   Tensor<std::float64_t> *outgoing_gradient;
   void recursive_iterator(unsigned index, unsigned *dimension_arr,
@@ -332,9 +328,9 @@ public:
     std::vector<Tensor<std::float64_t> *> grads;
     return grads;
   }
-  void initializeinputs(Tensor<std::float64_t> **inputs, unsigned no_of_inputs);
+  void initializeinputs(Tensor<std::float64_t> **inputs);
   void initializeoutput(Tensor<std::float64_t> *output);
-  Tensor<std::float64_t> **getinputs() { return inputs; }
+  std::vector<Tensor<std::float64_t> *> getinputs() { return inputs; }
   Tensor<std::float64_t> *getoutput() { return output; }
   unsigned getnoofinputs() { return 1; }
   void printinputs();
@@ -344,7 +340,7 @@ public:
 class Opssub : public Ops {
   unsigned no_of_inputs;
 
-  Tensor<std::float64_t> *inputs[2];
+  std::vector<Tensor<std::float64_t> *> inputs;
   Tensor<std::float64_t> *output;
   Tensor<std::float64_t> *outgoing_gradient;
   void recursive_iterator(unsigned index, unsigned *dimension_arr,
@@ -365,10 +361,10 @@ public:
     std::vector<Tensor<std::float64_t> *> grads;
     return grads;
   }
-  void initializeinputs(Tensor<std::float64_t> **inputs, unsigned no_of_inputs);
+  void initializeinputs(Tensor<std::float64_t> **inputs);
   void initializeoutput(Tensor<std::float64_t> *output);
 
-  Tensor<std::float64_t> **getinputs() { return inputs; }
+  std::vector<Tensor<std::float64_t> *> getinputs() { return inputs; }
 
   Tensor<std::float64_t> *getoutput() { return output; }
 
@@ -379,7 +375,7 @@ public:
 };
 
 class Opsrelu : public Ops {
-  Tensor<std::float64_t> *inputs[1];
+  std::vector<Tensor<std::float64_t> *> inputs;
   Tensor<std::float64_t> *output;
   Tensor<std::float64_t> *outgoing_gradient;
   void recursive_iterator(unsigned index, unsigned *dimension_arr,
@@ -400,9 +396,9 @@ public:
     std::vector<Tensor<std::float64_t> *> grads;
     return grads;
   }
-  void initializeinputs(Tensor<std::float64_t> **inputs, unsigned no_of_inputs);
+  void initializeinputs(Tensor<std::float64_t> **inputs);
   void initializeoutput(Tensor<std::float64_t> *output);
-  Tensor<std::float64_t> **getinputs() { return inputs; }
+  std::vector<Tensor<std::float64_t> *> getinputs() { return inputs; }
   Tensor<std::float64_t> *getoutput() { return output; }
   unsigned getnoofinputs() { return 1; }
   void printinputs();
@@ -410,7 +406,7 @@ public:
 };
 
 class Opssigmoid : public Ops {
-  Tensor<std::float64_t> *inputs[1];
+  std::vector<Tensor<std::float64_t> *> inputs;
   Tensor<std::float64_t> *output;
   Tensor<std::float64_t> *outgoing_gradient;
   void recursive_iterator(unsigned index, unsigned *dimension_arr,
@@ -431,9 +427,9 @@ public:
     std::vector<Tensor<std::float64_t> *> grads;
     return grads;
   }
-  void initializeinputs(Tensor<std::float64_t> **inputs, unsigned no_of_inputs);
+  void initializeinputs(Tensor<std::float64_t> **inputs);
   void initializeoutput(Tensor<std::float64_t> *output);
-  Tensor<std::float64_t> **getinputs() { return inputs; }
+  std::vector<Tensor<std::float64_t> *> getinputs() { return inputs; }
   Tensor<std::float64_t> *getoutput() { return output; }
   unsigned getnoofinputs() { return 1; }
   void printinputs();
@@ -441,7 +437,8 @@ public:
 };
 
 class Opssoftmax : public Ops {
-  Tensor<std::float64_t> *inputs[1];
+  std::vector<Tensor<std::float64_t> *> inputs;
+  int axis;
   Tensor<std::float64_t> *output;
   Tensor<std::float64_t> *outgoing_gradient;
   void recursive_iterator(unsigned index, unsigned *dimension_arr,
@@ -462,9 +459,10 @@ public:
     std::vector<Tensor<std::float64_t> *> grads;
     return grads;
   }
-  void initializeinputs(Tensor<std::float64_t> **inputs, unsigned no_of_inputs);
+  void initializeinputs(Tensor<std::float64_t> **inputs);
+  void initializeAxis(const unsigned axis) { this->axis = axis; }
   void initializeoutput(Tensor<std::float64_t> *output);
-  Tensor<std::float64_t> **getinputs() { return inputs; }
+  std::vector<Tensor<std::float64_t> *> getinputs() { return inputs; }
   Tensor<std::float64_t> *getoutput() { return output; }
   unsigned getnoofinputs() { return 1; }
   void printinputs();

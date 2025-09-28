@@ -22,26 +22,26 @@ public:
   std::vector<node *> output_nodes;
 
   // node atributes
-  Tensor<std::float64_t> *input_node;
+  Tensor<std::float64_t> *tensor;
   Ops *ops;
 
   type node_type;
 
   node(unsigned long id, type t, Tensor<std::float64_t> *input = nullptr,
        Ops *ops = nullptr)
-      : node_id(id), node_type(t), input_node(input), ops(ops) {};
+      : node_id(id), node_type(t), tensor(input), ops(ops) {};
 
-  void addGradient(Graph *autodiff_graph);
+  // void addGradient(Graph *autodiff_graph);
 
-  void setInputNode(node *input_node); // Setting input
+  // void setInputNode(node *input_node); // Setting input
 
-  void setOutputNode(node *output_node); // Setting output
+  // void setOutputNode(node *output_node); // Setting output
 
-  // Tensor<std::float64_t> *getIncomingGradientForOpsNode();
+  // // Tensor<std::float64_t> *getIncomingGradientForOpsNode();
 
-  void execute(); // Execution logic
+  // void execute(); // Execution logic
 
-  void print_data();
+  // void print_data();
 
   void eraseNodeFromOutput(node *n);
 

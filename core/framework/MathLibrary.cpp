@@ -29,7 +29,7 @@ template <typename T> Tensor<T> *Tensor<T>::matmul(Tensor<T> &input) {
         Tensor<T> *inputs[2];
         inputs[0] = this;
         inputs[1] = &input;
-        ops->initializeinputs(inputs, (unsigned)2);
+        ops->initializeinputs(inputs);
         ops->initializeoutput(output);
         ops->compute();
 
@@ -198,14 +198,9 @@ template <typename T> Tensor<T> Tensor<T>::vectoradd(const Tensor<T> input) {
       temp_input.initPartialData(i * dim_x, dim_x, input.getData());
 
     if (no_of_dimensions < 3) {
-      // cpu::__madd(this->getData(), temp_input.getData(), output.getData(),
-      //             dim_x, dim_y);
     } else {
       for (int i = 2; i < no_of_dimensions; i++)
         for (int j = 0; j < this->getDimensions()[i]; j++) {
-          // cpu::__madd(this->getData() + plane_offset,
-          //             temp_input.getData() + plane_offset,
-          //             output.getData() + plane_offset, dim_x, dim_y);
           plane_offset += dim_x * dim_y;
         }
     }
@@ -238,13 +233,9 @@ template <typename T> Tensor<T> Tensor<T>::operator+(const Tensor<T> input) {
         Tensor<T>(this->getNoOfDimensions(), this->getDimensions(), d_type);
 
     if (no_of_dimensions < 3) {
-      // cpu::__madd(this->getData(), input.getData(), output.getData(), dim_x,
-      // dim_y);
     } else {
       for (int i = 2; i < no_of_dimensions; i++)
         for (int j = 0; j < this->getDimensions()[i]; j++) {
-          // cpu::__madd(this->getData() + plane_offset, input.getData() +
-          // plane_offset, output.getData() + plane_offset, dim_x, dim_y);
           plane_offset += dim_x * dim_y;
         }
     }
@@ -285,25 +276,6 @@ template <typename T> Tensor<T> Tensor<T>::operator-(const Tensor<T> input) {
 
     unsigned *dimension_arr = new unsigned[this->getNoOfDimensions()];
 
-    // recursive_iterator(this->getNoOfDimensions() - 1, dimension_arr, input,
-    //                    output, cpu::__msub, "matrix_multiplication", NULL,
-    //                    NULL, NULL);
-
-    // if (no_of_dimensions < 3)
-    // {
-    //     cpu::__madd(this->getData(), input.getData(), output.getData(),
-    //     dim_x, dim_y);
-    // }
-    // else
-    // {
-    //     for (int i = 2; i < no_of_dimensions; i++)
-    //         for (int j = 0; j < this->getDimensions()[i]; j++)
-    //         {
-    //             cpu::__msub(this->getData() + plane_offset, input.getData() +
-    //             plane_offset, output.getData() + plane_offset, dim_x, dim_y);
-    //             plane_offset += dim_x * dim_y;
-    //         }
-    // }
 
     return output;
   } else {
@@ -358,7 +330,8 @@ template <typename T> Tensor<T> *Tensor<T>::reducesum(std::vector<unsigned> n) {
                            this->getDimensions(), this->getType());
     Tensor<T> *inputs[1];
     inputs[0] = this;
-    ops->initializeinputs(inputs, n.size(), n.data());
+    ops->initializeinputs(inputs);
+    ops->initializeReductionDims(n.size(), n.data());
     ops->initializeoutput(output);
     ops->compute();
   }
@@ -377,7 +350,8 @@ Tensor<T> *Tensor<T>::scale(const std::float64_t scaleFactor) {
       new Tensor<T>(this->getNoOfDimensions(), this->getDimensions(), d_type);
   Tensor<T> *inputs[1];
   inputs[0] = this;
-  ops->initializeinputs(inputs, scaleFactor);
+  ops->initializeinputs(inputs);
+  ops->initializeScale(scaleFactor);
   ops->initializeoutput(output);
   ops->compute();
 
@@ -394,7 +368,7 @@ template <typename T> Tensor<T> *Tensor<T>::sqrt() {
       new Tensor<T>(this->getNoOfDimensions(), this->getDimensions(), d_type);
   Tensor<T> *inputs[1];
   inputs[0] = this;
-  ops->initializeinputs(inputs, (unsigned)1);
+  ops->initializeinputs(inputs);
   ops->initializeoutput(output);
   ops->compute();
 
@@ -421,7 +395,7 @@ template <typename T> Tensor<T> *Tensor<T>::sub(Tensor<T> &input) {
     Tensor<T> *inputs[2];
     inputs[0] = this;
     inputs[1] = &input;
-    ops->initializeinputs(inputs, (unsigned)2);
+    ops->initializeinputs(inputs);
     ops->initializeoutput(output);
     ops->compute();
 
@@ -455,7 +429,8 @@ template <typename T> Tensor<T> *Tensor<T>::pow(const unsigned exponent) {
     Tensor<T> *inputs[1];
     inputs[0] = this;
 
-    ops->initializeinputs(inputs, exponent);
+    ops->initializeinputs(inputs);
+    ops->initializeExpoent(exponent);
     ops->initializeoutput(output);
     ops->compute();
 
@@ -473,7 +448,7 @@ template <typename T> Tensor<T> *Tensor<T>::relu() {
       new Tensor<T>(this->getNoOfDimensions(), this->getDimensions(), d_type);
   Tensor<T> *inputs[1];
   inputs[0] = this;
-  ops->initializeinputs(inputs, (unsigned)1);
+  ops->initializeinputs(inputs);
   ops->initializeoutput(output);
   ops->compute();
 
@@ -491,7 +466,7 @@ template <typename T> Tensor<T> *Tensor<T>::sigmoid() {
       new Tensor<T>(this->getNoOfDimensions(), this->getDimensions(), d_type);
   Tensor<T> *inputs[1];
   inputs[0] = this;
-  ops->initializeinputs(inputs, (unsigned)1);
+  ops->initializeinputs(inputs);
   ops->initializeoutput(output);
   ops->compute();
 
@@ -509,7 +484,7 @@ template <typename T> Tensor<T> *Tensor<T>::softmax(const unsigned axis) {
       new Tensor<T>(this->getNoOfDimensions(), this->getDimensions(), d_type);
   Tensor<T> *inputs[1];
   inputs[0] = this;
-  ops->initializeinputs(inputs, (unsigned)1);
+  ops->initializeinputs(inputs);
   ops->initializeoutput(output);
   ops->compute();
 
@@ -533,7 +508,8 @@ template <typename T> Tensor<T> *Tensor<T>::mean(const unsigned dim) {
                                ? (this->getNoOfDimensions() - dim - 1)
                                : 0;
   unsigned dims[1] = {reduction_dim};
-  ops->initializeinputs(inputs, 1, dims);
+  ops->initializeinputs(inputs);
+  ops->initializeReductionDims(1, dims);
   ops->initializeoutput(temp_reducesum);
   ops->compute();
   delete ops;
@@ -543,7 +519,8 @@ template <typename T> Tensor<T> *Tensor<T>::mean(const unsigned dim) {
   output = new Tensor<T>(temp_reducesum->getNoOfDimensions(),
                          temp_reducesum->getDimensions(), d_type);
   std::float64_t scale_factor = 1.0f / this->getDimensions()[reduction_dim];
-  ops->initializeinputs(&temp_reducesum, scale_factor);
+  ops->initializeinputs(&temp_reducesum);
+  ops->initializeScale(scale_factor);
   ops->initializeoutput(output);
   ops->compute();
   delete temp_reducesum;
@@ -609,7 +586,8 @@ template <typename T> Ops *Tensor<T>::mean(Graph &g, unsigned dim, bool &flag) {
   unsigned dims[1] = {reduction_dim};
 
   // initialize the inputs and add nodes and edges to the graph
-  ops->initializeinputs(inputs, 1, dims);
+  ops->initializeinputs(inputs);
+  ops->initializeReductionDims(1, dims);
   g.addNode(this);
   g.addNode(ops);
   g.addEdge(this, ops);
@@ -623,7 +601,8 @@ template <typename T> Ops *Tensor<T>::mean(Graph &g, unsigned dim, bool &flag) {
   // dimension
   ops = new Opsscale;
   std::float64_t scale_factor = 1.0f / this->getDimensions()[reduction_dim];
-  ops->initializeinputs(&temp_reducesum, scale_factor);
+  ops->initializeinputs(&temp_reducesum);
+  ops->initializeScale(scale_factor);
 
   g.addNode(temp_reducesum);
   g.addNode(ops);
@@ -696,7 +675,7 @@ Ops *Tensor<T>::matmul(Graph &g, Tensor<T> &input, bool &flag) {
         Tensor<T> *inputs[2];
         inputs[0] = this;
         inputs[1] = &input;
-        ops->initializeinputs(inputs, (unsigned)2);
+        ops->initializeinputs(inputs);
 
         g.addNode(this);   // Add the first input node to the graph
         g.addNode(&input); // Add the second input node to the graph
@@ -745,7 +724,8 @@ Ops *Tensor<T>::reducesum(Graph &g, std::vector<unsigned> n, bool &flag) {
     ops = new Opsreducesum;
     Tensor<T> *inputs[1];
     inputs[0] = this;
-    ops->initializeinputs(inputs, n.size(), n.data());
+    ops->initializeinputs(inputs);
+    ops->initializeReductionDims(n.size(), n.data());
 
     g.addNode(this);
     g.addNode(ops);
@@ -762,7 +742,8 @@ Ops *Tensor<T>::pow(Graph &g, const unsigned exponent, bool &flag) {
 
   Tensor<T> *inputs[1];
   inputs[0] = this;
-  ops->initializeinputs(inputs, exponent);
+  ops->initializeinputs(inputs);
+  ops->initializeExpoent(exponent);
   g.addNode(this);
   g.addNode(ops);
   g.addEdge(this, ops);
@@ -773,7 +754,7 @@ template <typename T> Ops *Tensor<T>::relu(Graph &g, bool &flag) {
   Ops *ops = new Opsrelu;
   Tensor<T> *inputs[1];
   inputs[0] = this;
-  ops->initializeinputs(inputs, (unsigned)1);
+  ops->initializeinputs(inputs);
   g.addNode(this);
   g.addNode(ops);
   g.addEdge(this, ops);
@@ -784,7 +765,7 @@ template <typename T> Ops *Tensor<T>::sigmoid(Graph &g, bool &flag) {
   Ops *ops = new Opssigmoid;
   Tensor<T> *inputs[1];
   inputs[0] = this;
-  ops->initializeinputs(inputs, (unsigned)1);
+  ops->initializeinputs(inputs);
   g.addNode(this);
   g.addNode(ops);
   g.addEdge(this, ops);
@@ -796,7 +777,7 @@ Ops *Tensor<T>::softmax(Graph &g, const unsigned axis, bool &flag) {
   Ops *ops = new Opssoftmax;
   Tensor<T> *inputs[1];
   inputs[0] = this;
-  ops->initializeinputs(inputs, axis);
+  ops->initializeinputs(inputs);
   g.addNode(this);
   g.addNode(ops);
   g.addEdge(this, ops);
@@ -810,8 +791,8 @@ Ops *Tensor<T>::scale(Graph &g, const std::float64_t scaleFactor,
   Tensor<T> *inputs[1];
   inputs[0] = this;
 
-  ops->initializeinputs(inputs, scaleFactor);
-
+  ops->initializeinputs(inputs);
+  ops->initializeScale(scaleFactor);
   g.addNode(this);
   g.addNode(ops);
 
@@ -824,7 +805,7 @@ template <typename T> Ops *Tensor<T>::sqrt(Graph &g, bool &flag) {
   Ops *ops = new Opssqrt;
   Tensor<T> *inputs[1];
   inputs[0] = this;
-  ops->initializeinputs(inputs, (unsigned)1);
+  ops->initializeinputs(inputs);
   g.addNode(this);
   g.addNode(ops);
   g.addEdge(this, ops);
@@ -852,7 +833,7 @@ Ops *Tensor<T>::sub(Graph &g, Tensor<T> &input, bool &flag) {
       inputs[0] = this;
       inputs[1] = &input;
 
-      ops->initializeinputs(inputs, (unsigned)2);
+      ops->initializeinputs(inputs);
 
       g.addNode(this);
       g.addNode(&input);

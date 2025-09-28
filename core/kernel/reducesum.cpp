@@ -1,3 +1,4 @@
+#include "opskernel.h"
 #ifdef CUDA_ENABLED
 #include <LAS/gpu_interface.cuh>
 #endif
@@ -180,18 +181,20 @@ void Opsreducesum::compute() {
   delete[] arr_dims;
 }
 
-void Opsreducesum::initializeinputs(Tensor<std::float64_t> **inputs, unsigned n,
-                                   unsigned *arr) {
+void Opsreducesum::initializeinputs(Tensor<std::float64_t> **inputs) {
+
+  this->inputs.push_back(inputs[0]);
+  temp_input = new Tensor<std::float64_t>(*this->inputs[0]);
+}
+
+void Opsreducesum::initializeReductionDims(const unsigned n,
+                                           const unsigned *arr) {
   unsigned i;
   this->no_of_reduction_dim = n;
 
   // reduction_dims = new unsigned[n];
   for (i = 0; i < n; i++)
     reduction_dims.push_back(arr[i]);
-
-  this->inputs[0] = inputs[0];
-
-  temp_input = new Tensor<std::float64_t>(*this->inputs[0]);
 }
 
 void Opsreducesum::initializeoutput(Tensor<std::float64_t> *output) {

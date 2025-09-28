@@ -35,7 +35,7 @@ void Graph::addNode(Tensor<std::float64_t> *input_node) {
     node *new_node = new node(reinterpret_cast<unsigned long>(input_node),
                               type::data, input_node);
     graph[reinterpret_cast<unsigned long>(input_node)] = new_node;
-    root_node->setOutputNode(new_node);
+    root_node->output_nodes.push_back(new_node);
   }
 }
 void Graph::addNode(Ops *ops) {
@@ -51,8 +51,9 @@ void Graph::addEdge(Tensor<std::float64_t> *src, Ops *dst) {
   node *src_node = graph[reinterpret_cast<unsigned long>(src)];
   node *dst_node = graph[reinterpret_cast<unsigned long>(dst)];
   if (src_node && dst_node) {
-    src_node->setOutputNode(dst_node);
-    dst_node->setInputNode(src_node);
+    src_node->output_nodes.push_back(dst_node);
+    dst_node->input_nodes.push_back(src_node);
+    root_node->eraseNodeFromOutput(dst_node); // Remove from root node's output
   }
 }
 
@@ -60,8 +61,8 @@ void Graph::addEdge(Ops *src, Tensor<std::float64_t> *dst) {
   node *src_node = graph[reinterpret_cast<unsigned long>(src)];
   node *dst_node = graph[reinterpret_cast<unsigned long>(dst)];
   if (src_node && dst_node) {
-    src_node->setOutputNode(dst_node);
-    dst_node->setInputNode(src_node);
+    src_node->output_nodes.push_back(dst_node);
+    dst_node->input_nodes.push_back(src_node);
     root_node->eraseNodeFromOutput(dst_node); // Remove from root node's output
   }
 }
@@ -73,7 +74,7 @@ void Graph::addGradientNode(Tensor<std::float64_t> *input_node) {
     node *new_node = new node(reinterpret_cast<unsigned long>(input_node),
                               type::data, input_node);
     auto_diff_graph[reinterpret_cast<unsigned long>(input_node)] = new_node;
-    gradient_root_node->setOutputNode(new_node);
+    gradient_root_node->output_nodes.push_back(new_node);
   }
 }
 
@@ -90,8 +91,10 @@ void Graph::addGradientEdge(Tensor<std::float64_t> *src, Ops *dst) {
   node *src_node = auto_diff_graph[reinterpret_cast<unsigned long>(src)];
   node *dst_node = auto_diff_graph[reinterpret_cast<unsigned long>(dst)];
   if (src_node && dst_node) {
-    src_node->setOutputNode(dst_node);
-    dst_node->setInputNode(src_node);
+    src_node->output_nodes.push_back(dst_node);
+    dst_node->input_nodes.push_back(src_node);
+    gradient_root_node->eraseNodeFromOutput(
+        dst_node); // Remove from root node's output
   }
 }
 
@@ -99,8 +102,8 @@ void Graph::addGradientEdge(Ops *src, Tensor<std::float64_t> *dst) {
   node *src_node = auto_diff_graph[reinterpret_cast<unsigned long>(src)];
   node *dst_node = auto_diff_graph[reinterpret_cast<unsigned long>(dst)];
   if (src_node && dst_node) {
-    src_node->setOutputNode(dst_node);
-    dst_node->setInputNode(src_node);
+    src_node->output_nodes.push_back(dst_node);
+    dst_node->input_nodes.push_back(src_node);
     gradient_root_node->eraseNodeFromOutput(
         dst_node); // Remove from root node's output
   }
@@ -119,11 +122,12 @@ void Graph::bfs(node *start_node, std::unordered_set<node *> &visited,
     switch (func) {
     case Functions::compute:
       if (current->node_type == type::compute) {
-        current->execute();
+        current->ops->compute();
       }
       break;
     case Functions::traverse:
-      current->print_data();
+      if (current->node_type == type::data)
+        current->tensor->printData();
       break;
     default:
       break;
@@ -146,7 +150,7 @@ void Graph::dfs(node *start_node, std::unordered_set<node *> &visited,
     case Functions::compute: {
       if (start_node->node_type == type::compute) {
         LOG(INFO) << "Computing node with ID: " << start_node->node_id;
-        start_node->execute(); // Execute the node's logic
+        start_node->ops->compute(); // Execute the node's logic
       } else {
         LOG(INFO) << "Skipping data node with ID: " << start_node->node_id;
       }
@@ -155,7 +159,7 @@ void Graph::dfs(node *start_node, std::unordered_set<node *> &visited,
     case Functions::traverse: {
       if (start_node->node_type == type::data) {
         LOG(INFO) << "Printing node with ID: " << start_node->node_id;
-        start_node->print_data();
+        start_node->tensor->printData();
       } else {
         LOG(INFO) << "Skipping compute node with ID: " << start_node->node_id;
       }
@@ -190,8 +194,11 @@ void Graph::compute() {
     return;
   }
 
-  std::unordered_set<node *> visited;
-  dfs(root_node, visited, Functions::compute);
+  topo_schedule_ops(ops_nodes, graph);
+  while (!ops_stack.empty()) {
+    ops_stack.top()->ops->compute();
+    ops_stack.pop();
+  }
 }
 
 void Graph::computeGradient() {
@@ -200,8 +207,12 @@ void Graph::computeGradient() {
     return;
   }
 
-  std::unordered_set<node *> visited;
-  dfs(gradient_root_node, visited, Functions::compute);
+  topo_schedule_ops(grad_ops_nodes, auto_diff_graph);
+
+  while (!ops_stack.empty()) {
+    ops_stack.top()->ops->compute();
+    ops_stack.pop();
+  }
 }
 
 std::vector<void *> Graph::getDataNodes() {
@@ -224,7 +235,7 @@ void Graph::createGradientGraph() {
   dfs(root_node, visited, Functions::reverse_mode_autodiff);
 
   while (!ops_stack.empty()) {
-    ops_stack.top()->addGradient(this);
+    ops_stack.top()->ops->addGradGraph(this);
     ops_stack.pop();
   }
 }
@@ -254,7 +265,7 @@ void Graph::getIncomingGradientForOpsNode(
     for (node *output : output_node_for_ops->output_nodes)
       if (output->node_type == type::compute)
         gradient_tensors.push_back(
-            output->ops->getGradientTensor(output_node_for_ops->input_node));
+            output->ops->getGradientTensor(output_node_for_ops->tensor));
 }
 
 Tensor<std::float64_t> *
@@ -275,6 +286,100 @@ Graph::getGradientTensor(Tensor<std::float64_t> *input_tensor) {
     node *ops_node = input_node->output_nodes[0];
     return ops_node->ops->getGradientTensor(input_tensor);
   }
+}
+
+void Graph::topo_schedule_ops(std::unordered_set<Ops *> ops_nodes,
+                              std::unordered_map<unsigned long, node *> graph) {
+
+  std::vector<Ops *> topo_order;
+  // Clear previous stack
+  while (!ops_stack.empty())
+    ops_stack.pop();
+
+  // Quick exit
+  if (ops_nodes.empty()) {
+    is_valid_graph = true;
+    return;
+  }
+
+  // Map each tensor to the op that produced it (producer). A tensor may be a
+  // data node (no producer).
+  std::unordered_map<Tensor<std::float64_t> *, Ops *> tensor_producer;
+  for (Ops *op : ops_nodes) {
+    // for (auto *out : op->outputs()) {
+    // If two ops produce the same tensor pointer it's an error; otherwise
+    // set producer.
+    tensor_producer[op->getoutput()] = op;
+    // }
+  }
+
+  // Build adjacency list between ops and indegree
+  std::unordered_map<Ops *, std::vector<Ops *>>
+      adj;                                 // op -> list of downstream ops
+  std::unordered_map<Ops *, int> indegree; // op -> indegree count
+
+  // initialize indegree to 0 for all ops
+  for (Ops *op : ops_nodes)
+    indegree[op] = 0;
+
+  // For each op, look at its inputs; if input has a producer op P,
+  // then add edge P -> op and increment indegree[op].
+  for (Ops *op : ops_nodes) {
+    for (auto *in_t : op->getinputs()) {
+      auto it = tensor_producer.find(in_t);
+      if (it != tensor_producer.end()) {
+        Ops *producer = it->second;
+        if (producer == op)
+          continue; // self-produced input (possible in-place) skip
+        adj[producer].push_back(op);
+        indegree[op] += 1;
+      } else {
+        // input is a data node (leaf), no producer — not counted in indegree
+      }
+    }
+  }
+
+  // Kahn: push all ops with indegree == 0
+  std::queue<Ops *> q;
+  for (auto &p : indegree) {
+    if (p.second == 0)
+      q.push(p.first);
+  }
+
+  topo_order.reserve(ops_nodes.size());
+
+  while (!q.empty()) {
+    Ops *cur = q.front();
+    q.pop();
+    topo_order.push_back(cur);
+
+    auto it = adj.find(cur);
+    if (it != adj.end()) {
+      for (Ops *nbr : it->second) {
+        indegree[nbr] -= 1;
+        if (indegree[nbr] == 0)
+          q.push(nbr);
+      }
+    }
+  }
+
+  if (topo_order.size() != ops_nodes.size()) {
+    // cycle detected
+    is_valid_graph = false;
+    throw std::runtime_error("topo_schedule_ops: cycle detected in ops graph");
+  }
+
+  // Put items into ops_stack in reverse order so top() gives the first op to
+  // execute if you prefer stack-based execution. If you prefer executing in
+  // order of topo_order[0] .. topo_order[n-1], skip reversal and push in that
+  // order.
+  for (auto it = topo_order.rbegin(); it != topo_order.rend(); ++it) {
+    ops_stack.push(graph[reinterpret_cast<unsigned long>(*it)]);
+  }
+
+  is_valid_graph = true;
+
+  // return topo_order;
 }
 
 void Graph::traverse() {

@@ -34,8 +34,10 @@ class Graph {
   bool is_valid_graph;
   bool release_graph_resource;
   bool release_autograd_graph_resoruce;
+
   node *root_node;
   node *gradient_root_node;
+  node *gradient_ops_root_node;
 
   void dfs(node *start_node, std::unordered_set<node *> &visited,
            Functions func);
@@ -84,6 +86,9 @@ public:
 
   Tensor<std::float64_t> *
   getGradientTensor(Tensor<std::float64_t> *input_tensor);
+
+  void topo_schedule_ops(std::unordered_set<Ops *> ops_nodes,
+                         std::unordered_map<unsigned long, node *> graph);
 
   void traverse();
 

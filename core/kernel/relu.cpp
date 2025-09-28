@@ -8,9 +8,9 @@
 #include <kernel/opskernel.h>
 
 void Opsrelu::recursive_iterator(unsigned index, unsigned *dimension_arr,
-                                  std::string function_name, unsigned *ui_arr,
-                                  std::float64_t *dl_arr,
-                                  Tensor<std::float64_t> *misc_arr) {
+                                 std::string function_name, unsigned *ui_arr,
+                                 std::float64_t *dl_arr,
+                                 Tensor<std::float64_t> *misc_arr) {
   if (index < 2) {
     unsigned i, inpA_x, inpA_y, inpB_x, inpB_y, out_x, out_y;
     unsigned a_plane_size, b_plane_size, c_plane_size, a_index, b_index,
@@ -67,9 +67,8 @@ void Opsrelu::compute() {
   delete[] arr;
 }
 
-void Opsrelu::initializeinputs(Tensor<std::float64_t> **inputs,
-                               unsigned no_of_inputs) {
-  this->inputs[0] = inputs[0];
+void Opsrelu::initializeinputs(Tensor<std::float64_t> **inputs) {
+  this->inputs.push_back(inputs[0]);
 }
 
 void Opsrelu::initializeoutput(Tensor<std::float64_t> *outputs) {
@@ -106,4 +105,3 @@ void Opsrelu::kernel_dispatch(std::float64_t **ptr, unsigned *arr) {
   }
 #endif
 }
-

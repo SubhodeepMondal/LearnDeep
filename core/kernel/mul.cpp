@@ -168,7 +168,7 @@ void Opsmul::addGradGraph(Graph *gradient_graph) {
         gradient_graph->addGradientEdge(ops_add, intermediate_gradient_sum);
       }
       this->outgoing_gradients[it] = intermediate_gradient_sum;
-      delete [] intermediate_gradients;
+      delete[] intermediate_gradients;
     } else {
       this->outgoing_gradients[it] = temp_grad_tensors;
     }
@@ -182,9 +182,7 @@ void Opsmul::initializeinputs(Tensor<std::float64_t> **inputs) {
   // this->inputs = new Tensor<std::float64_t> *[this->no_of_inputs];
 
   for (i = 0; i < this->no_of_inputs; i++) {
-    this->inputs[i] = inputs[i];
-    // this->outgoing_gradients[i] = new
-    // Tensor<std::float64_t>(*this->inputs[i]);
+    this->inputs.push_back(inputs[i]);
   }
 }
 

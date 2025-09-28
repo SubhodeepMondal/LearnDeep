@@ -84,11 +84,10 @@ void Opssub::compute() {
   delete[] arr;
 }
 
-void Opssub::initializeinputs(Tensor<std::float64_t> **inputs,
-                             unsigned no_of_inputs) {
+void Opssub::initializeinputs(Tensor<std::float64_t> **inputs) {
   this->no_of_inputs = no_of_inputs;
-  this->inputs[0] = inputs[0];
-  this->inputs[1] = inputs[1];
+  this->inputs.push_back(inputs[0]);
+  this->inputs.push_back(inputs[1]);
 }
 
 void Opssub::initializeoutput(Tensor<std::float64_t> *output) {
