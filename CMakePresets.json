@@ -12,8 +12,9 @@
             "generator": "Unix Makefiles",
             "binaryDir": "${sourceDir}/build",
             "cacheVariables": {
-                "CMAKE_BUILD_TYPE": "Debug",
-                "ENABLE_CUDA": "ON",
+                "BUILD_TESTING": "ON",
+                "CMAKE_BUILD_TYPE": "Release",
+                "ENABLE_CUDA": "OFF",
                 "USE_SYSTEM_GTEST": "OFF",
                 "USE_SYSTEM_BENCHMARK ": "OFF"
             }
@@ -23,6 +24,7 @@
             "generator": "Unix Makefiles",
             "binaryDir": "${sourceDir}/build/release",
             "cacheVariables": {
+                "BUILD_TESTING": "ON",
                 "CMAKE_BUILD_TYPE": "Release",
                 "ENABLE_CUDA": "OFF",
                 "USE_SYSTEM_GTEST": "OFF",
@@ -46,12 +48,12 @@
             "generator": "Unix Makefiles",
             "binaryDir": "${sourceDir}/build/debug",
             "cacheVariables": {
+                "BUILD_TESTING": "ON",
                 "CMAKE_BUILD_TYPE": "Debug",
                 "ENABLE_CUDA": "OFF",
                 "USE_SYSTEM_GTEST": "OFF",
-                "USE_SYSTEM_BENCHMARK ": "OFF",
                 "CMAKE_EXPORT_COMPILE_COMMANDS": true,
-                "CMAKE_CXX_FLAGS": "-g -O0 -fsanitize=address -g " // 
+                "CMAKE_CXX_FLAGS": "-g -O0" //  -fsanitize=address -g 
             }
         },
         {
@@ -60,6 +62,7 @@
             "generator": "Unix Makefiles",
             "binaryDir": "${sourceDir}/build/debug",
             "cacheVariables": {
+                "BUILD_TESTING": "ON",
                 "CMAKE_BUILD_TYPE": "Debug",
                 "ENABLE_CUDA": "ON",
                 "USE_SYSTEM_GTEST": "OFF",

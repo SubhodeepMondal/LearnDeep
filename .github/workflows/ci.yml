@@ -22,13 +22,13 @@ jobs:
 
       # Configure CMake (Debug build for testing)
       - name: Configure (using preset)
-        run: cmake --preset debug_cpu
+        run: cmake --preset default
 
 
       # Build
       - name: Build
-        run: cmake --build --preset debug_cpu
+        run: cmake --build --preset default -- -j$(nproc)
 
       # Run tests (Google Test)
       - name: Run unit tests
-        run: ctest --test-dir build --output-on-failure
+        run: ctest --test-dir build -R unit_test --output-on-failure

@@ -1,14 +1,13 @@
 
 # Unit test suite for deeplearingLA
 
-add_executable(deeplearingLA_test
+add_executable(unit_test
     unit/main.cpp
     unit/addition.unit.cpp
     unit/gemm.unit.cpp
     unit/graph.unit.cpp
     unit/LinearAlgebraFixtures.unit.hpp
     unit/LinearAlgebraFixtures.unit.cpp
-    unit/main.cpp
     unit/matmul.unit.cpp
     unit/mean.unit.cpp
     unit/multiplication.unit.cpp
@@ -23,9 +22,9 @@ add_executable(deeplearingLA_test
     unit/tensor.unit.cpp
 )
 
-target_include_directories(deeplearingLA_test PRIVATE ${CMAKE_SOURCE_DIR}/api)
+target_include_directories(unit_test PRIVATE ${CMAKE_SOURCE_DIR}/api)
 
-target_link_libraries(deeplearingLA_test PRIVATE
+target_link_libraries(unit_test PRIVATE
     tensor_api
     GTest::gtest_main
     absl::log
@@ -59,3 +58,11 @@ target_link_libraries(benchmark_test PRIVATE
     absl::log_initialize
     absl::flags_parse
 )
+
+add_test(NAME unit_test COMMAND unit_test)
+include(GoogleTest)            # provides gtest_discover_tests
+gtest_discover_tests(unit_test WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+
+add_test(NAME benchmark_test COMMAND benchmark_test)
+# set_tests_properties(benchmark_test PROPERTIES TIMEOUT 300) # Set a timeout of 300 seconds (5 minutes)
+

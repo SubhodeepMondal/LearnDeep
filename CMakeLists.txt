@@ -6,6 +6,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mavx2")
 find_package(OpenMP REQUIRED) # Find OpenMP package
 
+enable_testing()
+
 # Prefer relative rpaths (so executables find your .so’s next to them)
 set(CMAKE_BUILD_RPATH_USE_ORIGIN ON)
 set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
