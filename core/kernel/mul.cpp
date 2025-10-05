@@ -1,3 +1,4 @@
+#include <iterator>
 #ifdef CUDA_ENABLED
 #include <LAS/gpu_interface.cuh>
 #endif
@@ -95,83 +96,75 @@ void Opsmul::addGradGraph(Graph *gradient_graph) {
   //
   // ........................ End .....................
 
-  Tensor<std::float64_t> *temp_grad_tensors;
-  std::vector<Tensor<std::float64_t> *> incoming_gradient =
+  Tensor<std::float64_t> *tensor_ptr[2];
+  std::vector<Tensor<std::float64_t> *> incoming_gradients =
       gradient_graph->getGradient(this);
 
-  for (unsigned it = 0; it < 2; it++) {
-    temp_grad_tensors = new Tensor<std::float64_t>(*inputs[(2 - it - 1) % 2]);
+  // graph setup for accumulating incoming gradients y' = sum ( z' )
+  if (incoming_gradients.size()) {
+    Tensor<std::float64_t> *intermediate_gradient_sum;
 
-    // graph setup for d/dx * z' (i.e [incoming_grads ....])
-    Tensor<std::float64_t> *tensor_ptr[2];
-    Tensor<std::float64_t> **intermediate_gradients;
-    unsigned i = 0;
-    if (incoming_gradient.size()) {
-      intermediate_gradients =
-          new Tensor<std::float64_t> *[incoming_gradient.size()];
+    intermediate_gradient_sum = new Tensor<std::float64_t>(*this->output);
+    intermediate_gradient_sum->initData(0.0);
+    int i = 0;
+    for (Tensor<std::float64_t> *inc_grad_tensor : incoming_gradients) {
 
-      // d/d(x) * incoming_grad
-      tensor_ptr[1] = temp_grad_tensors;
-      for (Tensor<std::float64_t> *ptr : incoming_gradient) {
-        if (ptr) {
-          tensor_ptr[0] = ptr;
-        } else {
-          tensor_ptr[0] =
-              new Tensor<std::float64_t>(*this->inputs[(2 - it - 1) % 2]);
-          tensor_ptr[0]->initData(1.0);
-        }
+      // input initialization
+      tensor_ptr[0] = intermediate_gradient_sum;
+      tensor_ptr[1] = inc_grad_tensor;
 
-        Ops *ops_mul = new Opsmul;
-        ops_mul->initializeinputs(tensor_ptr);
-        intermediate_gradients[i] =
-            new Tensor<std::float64_t>(*inputs[(2 - it - 1) % 2]);
-        ops_mul->initializeoutput(intermediate_gradients[i]);
+      Ops *ops_add = new Opsadd;
+      ops_add->initializeinputs(tensor_ptr);
 
-        gradient_graph->addGradientNode(tensor_ptr[0]);
-        gradient_graph->addGradientNode(tensor_ptr[1]);
-        gradient_graph->addGradientNode(intermediate_gradients[i]);
-        gradient_graph->addGradientNode(ops_mul);
+      gradient_graph->addGradientNode(ops_add);
+      gradient_graph->addGradientNode(tensor_ptr[0]);
+      gradient_graph->addGradientNode(tensor_ptr[1]);
+      gradient_graph->addGradientEdge(tensor_ptr[0], ops_add);
+      gradient_graph->addGradientEdge(tensor_ptr[1], ops_add);
 
-        gradient_graph->addGradientEdge(tensor_ptr[0], ops_mul);
-        gradient_graph->addGradientEdge(tensor_ptr[1], ops_mul);
-        gradient_graph->addGradientEdge(ops_mul, intermediate_gradients[i]);
-        i++;
-      }
-
-      // graph setup for  x' = sum ( z' * d/dx )
-      Tensor<std::float64_t> *intermediate_gradient_sum;
-
+      // output initialization
       intermediate_gradient_sum = new Tensor<std::float64_t>(*this->output);
       intermediate_gradient_sum->initData(0.0);
-      i = 0;
-      for (Tensor<std::float64_t> *inc_grad_tensor : incoming_gradient) {
 
-        // input initialization
-        tensor_ptr[0] = intermediate_gradient_sum;
-        tensor_ptr[1] = intermediate_gradients[i++];
-
-        Ops *ops_add = new Opsadd;
-        ops_add->initializeinputs(tensor_ptr);
-
-        gradient_graph->addGradientNode(ops_add);
-        gradient_graph->addGradientNode(tensor_ptr[0]);
-        gradient_graph->addGradientNode(tensor_ptr[1]);
-        gradient_graph->addGradientEdge(tensor_ptr[0], ops_add);
-        gradient_graph->addGradientEdge(tensor_ptr[1], ops_add);
-
-        // output initialization
-        intermediate_gradient_sum = new Tensor<std::float64_t>(*this->output);
-        intermediate_gradient_sum->initData(0.0);
-
-        ops_add->initializeoutput(intermediate_gradient_sum);
-        gradient_graph->addGradientNode(intermediate_gradient_sum);
-        gradient_graph->addGradientEdge(ops_add, intermediate_gradient_sum);
-      }
-      this->outgoing_gradients[it] = intermediate_gradient_sum;
-      delete[] intermediate_gradients;
-    } else {
-      this->outgoing_gradients[it] = temp_grad_tensors;
+      ops_add->initializeoutput(intermediate_gradient_sum);
+      gradient_graph->addGradientNode(intermediate_gradient_sum);
+      gradient_graph->addGradientEdge(ops_add, intermediate_gradient_sum);
     }
+    this->incoming_gradient = intermediate_gradient_sum;
+  } else {
+    this->incoming_gradient = new Tensor<std::float64_t>(*this->output);
+    this->incoming_gradient->initData(1.0);
+  }
+
+  Tensor<std::float64_t> *temp_grad_tensors;
+  for (unsigned i = 0; i < 2; i++) {
+
+    // Finding d/dx[i] for multiplication operation
+    //  f(x[i]) = x[i] * x_b
+    //  f'(x[i]) = x_b
+    temp_grad_tensors =
+        new Tensor<std::float64_t>(*this->inputs[(2 - i - 1) % 2]);
+    // end of Finding d/dx[i]
+
+    // graph setup for d/dx[i] * z'
+    Ops *ops_mul = new Opsmul;
+    tensor_ptr[0] = temp_grad_tensors;
+    tensor_ptr[1] = this->incoming_gradient;
+
+    // input initialization
+    ops_mul->initializeinputs(tensor_ptr);
+    gradient_graph->addGradientNode(ops_mul);
+    gradient_graph->addGradientNode(tensor_ptr[0]);
+    gradient_graph->addGradientNode(tensor_ptr[1]);
+    gradient_graph->addGradientEdge(tensor_ptr[0], ops_mul);
+    gradient_graph->addGradientEdge(tensor_ptr[1], ops_mul);
+
+    // output initialization
+    this->outgoing_gradients[i] = new Tensor<std::float64_t>(*this->inputs[i]);
+    ops_mul->initializeoutput(this->outgoing_gradients[i]);
+    gradient_graph->addGradientNode(this->outgoing_gradients[i]);
+    gradient_graph->addGradientEdge(ops_mul, this->outgoing_gradients[i]);
+    // End of d/dx[i] * z'
   }
 }
 
@@ -206,7 +199,7 @@ void Opsmul::printoutput() {
 }
 
 Tensor<std::float64_t> *
-Opsmul::getGradientTensor(Tensor<std::float64_t> *gradient_input) {
+Opsmul::getOutgoingGradientTensor(Tensor<std::float64_t> *gradient_input) {
   int i, it;
   bool flag = false;
   for (i = 0; i < 2; i++)

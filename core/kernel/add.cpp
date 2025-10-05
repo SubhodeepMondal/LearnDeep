@@ -71,6 +71,61 @@ void Opsadd::recursive_iterator(unsigned index, unsigned *dimension_arr,
   }
 };
 
+void Opsadd::addGradGraph(Graph *gradient_graph) {
+  // .......... reverse mode autodiff graph .........
+  //
+  //             [inputs[n]]
+  //                 |
+  //             [[add]...]
+  //                 |
+  //          [output_gradient]
+  //
+  // ........................ End .....................
+
+  std::vector<Tensor<std::float64_t> *> incoming_gradient =
+      gradient_graph->getGradient(this);
+  Tensor<std::float64_t> *tensor_ptr[2];
+  
+  // graph setup for accumulating incoming gradients y' = sum ( z' )
+  if (incoming_gradient.size()) {
+    Tensor<std::float64_t> *intermediate_gradient_sum;
+
+    intermediate_gradient_sum = new Tensor<std::float64_t>(*this->output);
+    intermediate_gradient_sum->initData(0.0);
+    int i = 0;
+    for (Tensor<std::float64_t> *inc_grad_tensor : incoming_gradient) {
+
+      // input initialization
+      tensor_ptr[0] = intermediate_gradient_sum;
+      tensor_ptr[1] = inc_grad_tensor;
+
+      Ops *ops_add = new Opsadd;
+      ops_add->initializeinputs(tensor_ptr);
+
+      gradient_graph->addGradientNode(ops_add);
+      gradient_graph->addGradientNode(tensor_ptr[0]);
+      gradient_graph->addGradientNode(tensor_ptr[1]);
+      gradient_graph->addGradientEdge(tensor_ptr[0], ops_add);
+      gradient_graph->addGradientEdge(tensor_ptr[1], ops_add);
+
+      // output initialization
+      intermediate_gradient_sum = new Tensor<std::float64_t>(*this->output);
+      intermediate_gradient_sum->initData(0.0);
+
+      ops_add->initializeoutput(intermediate_gradient_sum);
+      gradient_graph->addGradientNode(intermediate_gradient_sum);
+      gradient_graph->addGradientEdge(ops_add, intermediate_gradient_sum);
+    }
+    this->incoming_gradient = intermediate_gradient_sum;
+  } else {
+    this->incoming_gradient = new Tensor<std::float64_t>(*this->output);
+    this->incoming_gradient->initData(1.0);
+  }
+
+  for (unsigned i = 0; i < 2; i++)
+    this->outgoing_gradients[i] = this->incoming_gradient;
+}
+
 void Opsadd::compute() {
   unsigned dim_x, dim_y;
   dim_x = inputs[0]->getDimensions()[0];
@@ -83,6 +138,7 @@ void Opsadd::compute() {
 
   delete[] arr;
 }
+
 void Opsadd::initializeinputs(Tensor<std::float64_t> **inputs) {
   unsigned i;
   this->no_of_inputs = 2;
@@ -126,6 +182,31 @@ void Opsadd::printoutput() {
   std::cout << "output:\n";
   output->printData();
   std::cout << "\n";
+}
+
+Tensor<std::float64_t> *
+Opsadd::getOutgoingGradientTensor(Tensor<std::float64_t> *gradient_input) {
+  int i, it;
+  bool flag = false;
+  for (i = 0; i < 2; i++)
+    if (this->inputs[i] == gradient_input) {
+      it = i;
+      flag = true;
+      break;
+    }
+
+  if (flag) {
+    // LOG(INFO) << "Requested gradint for the tensor found.\n";
+    return this->outgoing_gradients[it];
+  } else {
+    // LOG(FATAL) << "Requested gradint for the tensor doesn't exist.\n";
+    return NULL;
+  }
+}
+
+Tensor<std::float64_t> *
+Opsadd::getIncomingGradientTensor(Tensor<std::float64_t> *tensor) {
+  return incoming_gradient;
 }
 
 void Opsadd::kernel_dispatch(std::float64_t **ptr, unsigned *arr) {

@@ -13,3 +13,5 @@
 
 thirdparty/*
 !thirdparty/.gitkeep
+
+Testing/
