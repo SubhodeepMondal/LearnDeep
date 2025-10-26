@@ -264,8 +264,8 @@ void Graph::getIncomingGradientForOpsNode(
   if (output_node_for_ops->output_nodes.size())
     for (node *output : output_node_for_ops->output_nodes)
       if (output->node_type == type::compute)
-        gradient_tensors.push_back(
-            output->ops->getGradientTensor(output_node_for_ops->tensor));
+        gradient_tensors.push_back(output->ops->getOutgoingGradientTensor(
+            output_node_for_ops->tensor));
 }
 
 Tensor<std::float64_t> *
@@ -276,15 +276,16 @@ Graph::getGradientTensor(Tensor<std::float64_t> *input_tensor) {
                       root_node->output_nodes.end(), input_node);
 
   if (it != root_node->output_nodes.end()) {
-    LOG(WARNING) << "This is end node gradient might be inconsistent.\n";
+    LOG(WARNING) << "This is parent data node,\nthere is no gradient "
+                    "accumulation.\nso, gradient might be inconsistent.\n";
     node *ops_node = input_node->output_nodes[0];
-    return ops_node->ops->getGradientTensor(input_tensor);
+    return ops_node->ops->getOutgoingGradientTensor(input_tensor);
   } else if (!input_node->output_nodes.size()) {
     LOG(INFO) << "This is an end node, this doesn't have any gradient\n";
     return nullptr;
   } else {
-    node *ops_node = input_node->output_nodes[0];
-    return ops_node->ops->getGradientTensor(input_tensor);
+    node *ops_node = input_node->input_nodes[0];
+    return ops_node->ops->getIncomingGradientTensor(input_tensor);
   }
 }
 

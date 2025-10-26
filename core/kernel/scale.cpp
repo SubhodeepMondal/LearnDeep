@@ -1,3 +1,4 @@
+#include "opskernel.h"
 #ifdef CUDA_ENABLED
 #include <LAS/gpu_interface.cuh>
 #endif
@@ -68,6 +69,76 @@ void Opsscale::compute() {
   delete[] arr;
 }
 
+void Opsscale::addGradGraph(Graph *gradient_graph) {
+  // .......... reverse mode autodiff graph .........
+  //
+  //             [inputs[n]]
+  //                 |
+  //        [temp_grad_tensor[n]]  *  [[incoming_gradients]...]
+  //                           [[add]...]
+  //                              |
+  //                      [output_gradient]
+  //
+  // ........................ End .....................
+
+  Tensor<std::float64_t> *tensor_ptr[2];
+  std::vector<Tensor<std::float64_t> *> incoming_gradients =
+      gradient_graph->getGradient(this);
+
+  // graph setup for accumulating incoming gradients y' = sum ( z' )
+  if (incoming_gradients.size()) {
+    Tensor<std::float64_t> *intermediate_gradient_sum;
+
+    intermediate_gradient_sum = new Tensor<std::float64_t>(*this->output);
+    intermediate_gradient_sum->initData(0.0);
+    int i = 0;
+    for (Tensor<std::float64_t> *inc_grad_tensor : incoming_gradients) {
+
+      // input initialization
+      tensor_ptr[0] = intermediate_gradient_sum;
+      tensor_ptr[1] = inc_grad_tensor;
+
+      Ops *ops_add = new Opsadd;
+      ops_add->initializeinputs(tensor_ptr);
+
+      gradient_graph->addGradientNode(ops_add);
+      gradient_graph->addGradientNode(tensor_ptr[0]);
+      gradient_graph->addGradientNode(tensor_ptr[1]);
+      gradient_graph->addGradientEdge(tensor_ptr[0], ops_add);
+      gradient_graph->addGradientEdge(tensor_ptr[1], ops_add);
+
+      // output initialization
+      intermediate_gradient_sum = new Tensor<std::float64_t>(*this->output);
+      intermediate_gradient_sum->initData(0.0);
+
+      ops_add->initializeoutput(intermediate_gradient_sum);
+      gradient_graph->addGradientNode(intermediate_gradient_sum);
+      gradient_graph->addGradientEdge(ops_add, intermediate_gradient_sum);
+    }
+    this->incoming_gradient = intermediate_gradient_sum;
+  } else {
+    this->incoming_gradient = new Tensor<std::float64_t>(*this->output);
+    this->incoming_gradient->initData(1.0);
+  }
+
+  // graph setup for d/dx[i] * z'
+  Ops *ops_scale = new Opsscale;
+
+  // input initialization
+  ops_scale->initializeinputs(&this->incoming_gradient);
+  ops_scale->initializeScale(this->scale_factor[0]);
+  gradient_graph->addGradientNode(ops_scale);
+  gradient_graph->addGradientNode(this->incoming_gradient);
+  gradient_graph->addGradientEdge(this->incoming_gradient, ops_scale);
+
+  // output initialization
+  this->outgoing_gradients[0] = new Tensor<std::float64_t>(*this->inputs[0]);
+  ops_scale->initializeoutput(this->outgoing_gradients[0]);
+  gradient_graph->addGradientNode(this->outgoing_gradients[0]);
+  gradient_graph->addGradientEdge(ops_scale, this->outgoing_gradients[0]);
+  // End of d/dx[i] * z'
+}
+
 void Opsscale::initializeinputs(Tensor<std::float64_t> **inputs) {
   this->inputs.push_back(inputs[0]);
 }
@@ -93,6 +164,23 @@ void Opsscale::printoutput() {
   std::cout << "\n";
 }
 
+Tensor<std::float64_t> *
+Opsscale::getOutgoingGradientTensor(Tensor<std::float64_t> *gradient_input) {
+
+  if (this->inputs[0] == gradient_input) {
+    // LOG(INFO) << "Requested gradint for the tensor found.\n";
+    return this->outgoing_gradients[0];
+  } else {
+    // LOG(FATAL) << "Requested gradint for the tensor doesn't exist.\n";
+    return NULL;
+  }
+}
+std::vector<Tensor<std::float64_t> *>
+Opsscale::getAllOutgoingGradientTensors() {
+  std::vector<Tensor<std::float64_t> *> grads;
+  grads.push_back(outgoing_gradients[0]);
+  return grads;
+}
 void Opsscale::kernel_dispatch(std::float64_t **ptr, unsigned *arr) {
 #ifdef CUDA_ENABLED
   double *d_arr[3];
