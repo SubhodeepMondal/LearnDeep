@@ -124,8 +124,6 @@ void Ops::recursive_sum(unsigned index, unsigned *dimension_arr,
         ptr[1] = temp_inp;
 
         cpu::__madd(ptr, a);
-        // cpu::__madd(output_ptr + (output_index + stride * k), temp_inp,
-        // output_ptr + (output_index + stride * k), x_axis, y_axis);
       }
       break;
     }
