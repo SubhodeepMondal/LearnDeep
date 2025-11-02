@@ -3,31 +3,30 @@
 
 #include <stdfloat>
 
-namespace cpu
-{
+namespace cpu {
 
-    void __matmul(std::float64_t **, unsigned *);
+void __matmul(std::float64_t **, unsigned *);
 
-    void __melementwisemul(std::float64_t **, unsigned *);
+void __melementwisemul(std::float64_t **, unsigned *);
 
-    void __matmul_conventional(std::float64_t **, unsigned *);
+void __matmul_conventional(std::float64_t **, unsigned *);
 
-    void __mscalermul(std::float64_t **, unsigned *);
+void __mscalermul(std::float64_t **, unsigned *);
 
-    void __madd(std::float64_t **, unsigned *);
+void __madd(std::float64_t **, unsigned *);
 
-    void __msub(std::float64_t **, unsigned *);
+void __msub(std::float64_t **, unsigned *);
 
-    void __mrollingsum(std::float64_t **, unsigned *);
+void __mrollingsum(std::float64_t **, unsigned *);
 
-    void __mtranspose(std::float64_t **, unsigned*);
+void __mtranspose(std::float64_t **, unsigned *);
 
-    void __msqrt(std::float64_t **, unsigned *);
+void __msqrt(std::float64_t **, unsigned *);
 
-    void __mrelu(std::float64_t **, unsigned *);
+void __mrelu(std::float64_t **, unsigned *);
 
-    void __msigmoid(std::float64_t **, unsigned *);
+void __msigmoid(std::float64_t **, unsigned *);
 
-    void __msoftmax(std::float64_t **, unsigned *);
-}
+void __msoftmax(std::float64_t **, unsigned *);
+} // namespace cpu
 #endif // CPULIBRARY_H

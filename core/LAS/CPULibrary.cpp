@@ -175,7 +175,6 @@ void cpu::__mtranspose(std::float64_t **ptr, unsigned *arr) {
   for (int j = 0; j < y; j++) {
     temp[j] = new std::float64_t[x];
     for (int i = 0; i < x; i++)
-
       temp[j][i] = A[j + i * y];
   }
 
