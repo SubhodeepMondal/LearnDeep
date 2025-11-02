@@ -177,7 +177,7 @@ public:
 
   void compute();
 
-  void addGradGraph(Graph *gradient_graph) {}
+  void addGradGraph(Graph *gradient_graph);
 
   Tensor<std::float64_t> *getOutgoingGradientTensor() {
     return outgoing_gradient;
