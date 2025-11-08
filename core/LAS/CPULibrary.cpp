@@ -5,7 +5,7 @@
 #include <omp.h>
 
 #define TILE_DOUBLE_X 8
-#define TILE_DOUBLE_Y 8
+#define TILE_DOUBLE_Y 16
 #define TILE_FLOAT_X 16
 #define TILE_FLOAT_Y 16
 #define TILE_INT_X 16
@@ -171,7 +171,6 @@ void cpu::__mrollingsum(std::float64_t **ptr, unsigned *arr) {
 void cpu::__mtranspose(std::float64_t **ptr, unsigned *arr) {
   std::float64_t *A, *B;
   unsigned x, y;
-  std::float64_t **temp;
 
   A = ptr[0];
   B = ptr[1];
@@ -179,44 +178,37 @@ void cpu::__mtranspose(std::float64_t **ptr, unsigned *arr) {
   x = arr[0];
   y = arr[1];
 
-  temp = new std::float64_t *[y];
-  for (int j = 0; j < y; j++) {
-    temp[j] = new std::float64_t[x];
-    for (int i = 0; i < x; i++)
-      temp[j][i] = A[j + i * y];
-  }
-
+#pragma omp parallel for collapse(2) schedule(static)
   for (int j = 0; j < y; j++) {
     for (int i = 0; i < x; i++)
-      B[i + j * x] = temp[j][i];
-
-    delete[] temp[j];
+      B[i + j * x] = A[j + i * y];
   }
-
-  delete[] temp;
 }
 
 void cpu::__mtiled_transpose(std::float64_t **ptr, unsigned *arr) {
   std::float64_t *A, *B;
   unsigned x, y;
-  std::float64_t tile[TILE_DOUBLE_X][TILE_DOUBLE_Y];
+  // std::float64_t tile[TILE_DOUBLE_Y][TILE_DOUBLE_X];
 
   A = ptr[0];
   B = ptr[1];
   x = arr[0];
   y = arr[1];
-
+#pragma omp parallel for collapse(2) schedule(static)
   for (unsigned idx_j = 0; idx_j < y / TILE_DOUBLE_Y; idx_j++) {
     for (unsigned idx_i = 0; idx_i < x / TILE_DOUBLE_X; idx_i++) {
-      for (unsigned j = 0; j < TILE_DOUBLE_Y; j++) {
-        for (unsigned i = 0; i < TILE_DOUBLE_X; i++) {
-          tile[i][j] =
+
+      alignas(64) double tile[TILE_DOUBLE_Y]
+                             [TILE_DOUBLE_X]; // row-major: tile[row][col]
+      for (unsigned i = 0; i < TILE_DOUBLE_X; i++) {
+        for (unsigned j = 0; j < TILE_DOUBLE_Y; j++) {
+          tile[j][i] =
               A[(i + idx_i * TILE_DOUBLE_X) + (j + idx_j * TILE_DOUBLE_Y) * x];
         }
       }
-      for (unsigned j = 0; j < TILE_DOUBLE_Y; j++) {
-        for (unsigned i = 0; i < TILE_DOUBLE_X; i++) {
-          B[(i + idx_j * TILE_DOUBLE_Y) + (j + idx_i * TILE_DOUBLE_X) * y] =
+      for (unsigned i = 0; i < TILE_DOUBLE_X; i++) {
+        for (unsigned j = 0; j < TILE_DOUBLE_Y; j++) {
+          B[(j + idx_j * TILE_DOUBLE_Y) + (i + idx_i * TILE_DOUBLE_X) * y] =
               tile[j][i];
         }
       }

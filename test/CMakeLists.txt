@@ -46,6 +46,7 @@ add_executable(benchmark_test
     # benchmark/relu.benchmark.cpp
     # benchmark/sub.benchmark.cpp
     benchmark/sqrt.benchmark.cpp
+    benchmark/transpose.benchmark.cpp
 )
 
 target_include_directories(benchmark_test PRIVATE ${CMAKE_SOURCE_DIR}/api

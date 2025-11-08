@@ -13,12 +13,6 @@ static void mat_add_eager_tensor(benchmark::State &state) {
   A.tensor_of(-0.5, 0.85);
   B.tensor_of(0.25, 0.75);
 
-  // Initialize matrices with some values
-  // for (int i = 0; i < N * N; ++i) {
-  //   A.getPtr()[i] = static_cast<double>(i);
-  //   B.getPtr()[i] = static_cast<double>(i);
-  // }
-
   for (auto _ : state) {
     C = A.add(B);                // Perform matrix addition
     benchmark::DoNotOptimize(C); // Prevent compiler optimization
@@ -34,7 +28,6 @@ BENCHMARK(mat_add_eager_tensor)
     ->Arg(1 << 10)  // 1024 elements
     ->Arg(1 << 12)  // 4192 eleements
     ->Arg(1 << 14); // 16K elements
-
 
 // -------- Benchmark Graph Addition --------
 static void mat_add_graph_tensor(benchmark::State &state) {
@@ -53,11 +46,10 @@ static void mat_add_graph_tensor(benchmark::State &state) {
   C = A.add(g_add, B);
 
   for (auto _ : state) {
-    g_add.graph_execute();                // Perform matrix addition
+    g_add.graph_execute();       // Perform matrix addition
     benchmark::DoNotOptimize(C); // Prevent compiler optimization
   }
   g_add.graph_clear();
-
 
   state.SetItemsProcessed(int64_t(state.iterations()) * N * N);
 }
@@ -78,5 +70,3 @@ BENCHMARK(mat_add_graph_tensor)
     ->Arg(1 << 12)  // 4192 eleements
     ->Arg(1 << 14); // 16K elements
 #endif
-
-
