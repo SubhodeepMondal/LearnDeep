@@ -140,7 +140,7 @@ void Opstranspose::kernel_dispatch(std::float64_t **ptr, unsigned *arr) {
   //   if (__builtin_cpu_supports("avx2")) {
   //     avx2::avx2_add_f64(ptr, arr);
   //   } else {
-  cpu::__mtranspose(ptr, arr);
+  cpu::__mtiled_transpose(ptr, arr);
   //   }
   // #endif
 }

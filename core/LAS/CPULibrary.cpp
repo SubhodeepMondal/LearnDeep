@@ -1,7 +1,15 @@
 #include "CPULibrary.h"
 #include <cmath>
 #include <cstring>
+#include <iostream>
 #include <omp.h>
+
+#define TILE_DOUBLE_X 8
+#define TILE_DOUBLE_Y 8
+#define TILE_FLOAT_X 16
+#define TILE_FLOAT_Y 16
+#define TILE_INT_X 16
+#define TILE_INT_Y 16
 
 void cpu::__matmul(std::float64_t **ptr, unsigned *arr) {
   // x output row size
@@ -186,6 +194,46 @@ void cpu::__mtranspose(std::float64_t **ptr, unsigned *arr) {
   }
 
   delete[] temp;
+}
+
+void cpu::__mtiled_transpose(std::float64_t **ptr, unsigned *arr) {
+  std::float64_t *A, *B;
+  unsigned x, y;
+  std::float64_t tile[TILE_DOUBLE_X][TILE_DOUBLE_Y];
+
+  A = ptr[0];
+  B = ptr[1];
+  x = arr[0];
+  y = arr[1];
+
+  for (unsigned idx_j = 0; idx_j < y / TILE_DOUBLE_Y; idx_j++) {
+    for (unsigned idx_i = 0; idx_i < x / TILE_DOUBLE_X; idx_i++) {
+      for (unsigned j = 0; j < TILE_DOUBLE_Y; j++) {
+        for (unsigned i = 0; i < TILE_DOUBLE_X; i++) {
+          tile[i][j] =
+              A[(i + idx_i * TILE_DOUBLE_X) + (j + idx_j * TILE_DOUBLE_Y) * x];
+        }
+      }
+      for (unsigned j = 0; j < TILE_DOUBLE_Y; j++) {
+        for (unsigned i = 0; i < TILE_DOUBLE_X; i++) {
+          B[(i + idx_j * TILE_DOUBLE_Y) + (j + idx_i * TILE_DOUBLE_X) * y] =
+              tile[j][i];
+        }
+      }
+    }
+  }
+
+  for (unsigned j = y - (y % TILE_DOUBLE_Y); j < y; j++)
+    for (unsigned i = 0; i < x - (x % TILE_DOUBLE_X); i++)
+      B[j + i * y] = A[i + j * x];
+
+  for (unsigned j = 0; j < y - (y % TILE_DOUBLE_Y); j++)
+    for (unsigned i = x - (x % TILE_DOUBLE_X); i < x; i++)
+      B[j + i * y] = A[i + j * x];
+
+  for (unsigned j = y - (y % TILE_DOUBLE_Y); j < y; j++)
+    for (unsigned i = x - (x % TILE_DOUBLE_X); i < x; i++)
+      B[j + i * y] = A[i + j * x];
 }
 
 void cpu::__msqrt(std::float64_t **ptr, unsigned *arr) {

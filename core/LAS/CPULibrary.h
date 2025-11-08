@@ -21,6 +21,8 @@ void __mrollingsum(std::float64_t **, unsigned *);
 
 void __mtranspose(std::float64_t **, unsigned *);
 
+void __mtiled_transpose(std::float64_t **, unsigned *);
+
 void __msqrt(std::float64_t **, unsigned *);
 
 void __mrelu(std::float64_t **, unsigned *);
