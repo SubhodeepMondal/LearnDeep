@@ -202,6 +202,18 @@ tf::graph &tf::tensor::sub(graph &g, tensor &input_b) {
   return g;
 }
 
+tf::graph &tf::tensor::transpose(graph &g) {
+  switch (dt_type) {
+  case tf_float64: {
+    g.input_a = this;
+    g.ops = reinterpret_cast<Tensor<std::float64_t> *>(this->ptr)->transpose(
+        *(static_cast<Graph *>(g.ptr)));
+    break;
+  }
+  }
+  return g;
+}
+
 tf::tensor tf::tensor::matmul(tensor &input_b) {
   tensor output;
 
@@ -332,6 +344,20 @@ tf::tensor tf::tensor::sub(tensor &input_b) {
     default:
       LOG(ERROR) << "Invalid data type!";
     }
+  }
+  return output;
+}
+
+tf::tensor tf::tensor::transpose() {
+  tensor output;
+
+  switch (dt_type) {
+  case tf_float64:
+    output.dt_type = this->dt_type;
+    output.ptr = static_cast<Tensor<std::float64_t> *>(this->ptr)->transpose();
+    break;
+  default:
+    LOG(ERROR) << "Invalid data type!";
   }
   return output;
 }

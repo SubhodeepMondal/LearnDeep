@@ -1,3 +1,4 @@
+#include "NDynamicArray.h"
 #include <framework/MathLibrary.h>
 #include <kernel/opskernel.h>
 
@@ -276,7 +277,6 @@ template <typename T> Tensor<T> Tensor<T>::operator-(const Tensor<T> input) {
 
     unsigned *dimension_arr = new unsigned[this->getNoOfDimensions()];
 
-
     return output;
   } else {
     std::cout << "Two metrix requires same shape to perform matrix addition, "
@@ -287,21 +287,6 @@ template <typename T> Tensor<T> Tensor<T>::operator-(const Tensor<T> input) {
     std::cout << " are of differenct shape.\n";
     return output;
   }
-}
-
-template <typename T> void Tensor<T>::transpose() {
-  unsigned x, y;
-
-  x = Tensor<T>::getDimensions()[0];
-  y = Tensor<T>::getDimensions()[1];
-
-  // Tensor<T>::reshape(y, x);
-
-  x = x + y;
-  y = x - y;
-  x = x - y;
-
-  // cpu::__mtranspose(this->getData(), this->getData(), x, y);
 }
 
 template <typename T> Tensor<T> *Tensor<T>::reducesum(std::vector<unsigned> n) {
@@ -526,6 +511,30 @@ template <typename T> Tensor<T> *Tensor<T>::mean(const unsigned dim) {
   delete temp_reducesum;
   delete ops;
 
+  return output;
+}
+
+template <typename T> Tensor<T> *Tensor<T>::transpose() {
+  Tensor<T> *output;
+  Ops *opstranspose = new Opstranspose;
+  std::vector<unsigned> dims(this->getDimensions(),
+                             this->getDimensions() + this->getNoOfDimensions());
+
+  // Swap dimensions
+  dims[0] = dims[0] + dims[1];
+  dims[1] = dims[0] - dims[1];
+  dims[0] = dims[0] - dims[1];
+
+  output = new Tensor<T>(dims.size(), dims.data(), tf_float64);
+
+  Tensor<T> *inputs[1];
+  inputs[0] = this;
+
+  opstranspose->initializeinputs(inputs);
+  opstranspose->initializeoutput(output);
+  opstranspose->compute();
+
+  delete opstranspose;
   return output;
 }
 
@@ -850,6 +859,20 @@ Ops *Tensor<T>::sub(Graph &g, Tensor<T> &input, bool &flag) {
                  "different rank.\n";
   }
   return ops;
+}
+
+template <typename T> Ops *Tensor<T>::transpose(Graph &g) {
+  Tensor<T> *inputs[1];
+  inputs[0] = this;
+
+  Ops *opstranspose = new Opstranspose;
+  opstranspose->initializeinputs(inputs);
+
+  g.addNode(this);
+  g.addNode(opstranspose);
+  g.addEdge(this, opstranspose);
+
+  return opstranspose;
 }
 
 // template class Tensor<std::bfloat16_t>;

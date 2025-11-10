@@ -60,8 +60,6 @@ public:
 
   Tensor<T> vectoradd(const Tensor<T>);
 
-  void transpose();
-
   Tensor<T> *reducesum(std::vector<unsigned>);
 
   Tensor<T> *scale(const std::float64_t);
@@ -80,6 +78,8 @@ public:
 
   Tensor<T> *mean(const unsigned);
 
+  Tensor<T> *transpose();
+
   Ops *add(Graph &g, Tensor<T> &input, bool &flag);
 
   Ops *mean(Graph &g, unsigned dim, bool &flag);
@@ -96,13 +96,15 @@ public:
 
   Ops *scale(Graph &g, const std::float64_t scaleFactor, bool &flag);
 
-  Ops *sigmoid(Graph &g,bool &flag);
+  Ops *sigmoid(Graph &g, bool &flag);
 
-  Ops *softmax(Graph &g,  unsigned axis, bool &flag);
+  Ops *softmax(Graph &g, unsigned axis, bool &flag);
 
   Ops *sqrt(Graph &g, bool &flag);
 
   Ops *sub(Graph &g, Tensor<T> &input, bool &flag);
+
+  Ops *transpose(Graph &g);
 };
 
 // template class Tensor<std::float64_t>;

@@ -1,0 +1,19 @@
+transpose,,,,
+benchmark,time,cpu,iterations,usercounters
+mat_transpose_eager_tensor/256,59245 ns,35291 ns,22372, items_per_second=2.02154G/s
+mat_transpose_eager_tensor/512,156526 ns,116646 ns,6257, items_per_second=2.51102G/s
+mat_transpose_eager_tensor/1024,472165 ns,378473 ns,1752, items_per_second=2.77055G/s
+mat_transpose_eager_tensor/4096,3875495 ns,53118399 ns,13, items_per_second=315.846M/s
+mat_transpose_eager_tensor/16384,871287616 ns,852477561 ns,1, items_per_second=314.889M/s
+2936631815,cpu_atom/cache-references/,,(24.62%),
+5273830223,cpu_core/cache-references/,,(75.38%),
+296071044,cpu_atom/cache-misses/,#   10.08% of all cache refs,     (24.62%),
+542270107,cpu_core/cache-misses/,#   10.28% of all cache refs,     (75.38%),
+19576578249,cpu_atom/L1-dcache-loads/,,(24.62%),
+24018406603,cpu_core/L1-dcache-loads/,,(75.38%),
+<not supported>,cpu_atom/L1-dcache-load-misses/,  ,,
+1758753400,cpu_core/L1-dcache-load-misses/,#    7.32% of all L1-dcache accesses,(75.38%),
+186626970,cpu_atom/LLC-loads/,,(24.62%),
+154474951,cpu_core/LLC-loads/,,(75.38%),
+4,cpu_atom/LLC-load-misses/,  #    0.00% of all LL-cache accesses,    (24.62%),
+1438268,cpu_core/LLC-load-misses/,  #    9.31% of all LL-cache accesses,    (75.38%),

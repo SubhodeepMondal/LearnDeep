@@ -22,29 +22,6 @@ __global__ void gpu_kernel::printData(double *a, unsigned x, unsigned y,
 
 __global__ void gpu_kernel::print(double *a) { printf("%.6lf", *(a)); }
 
-__global__ void gpu_kernel::cudaTranspose(unsigned int *a, unsigned int *b,
-                                          int xsize, int ysize) {
-  int ix, iy, mat_in, mat_tra;
-
-  __shared__ unsigned int smallblock[32][32];
-
-  ix = blockDim.x * blockIdx.x + threadIdx.x;
-  iy = blockDim.y * blockIdx.y + threadIdx.y;
-
-  mat_in = ix * xsize + iy;
-
-  int bidx, icol, irow;
-  bidx = threadIdx.y * blockDim.x + threadIdx.x;
-  irow = bidx / blockDim.y;
-  icol = bidx % blockDim.y;
-
-  mat_tra = iy * ysize + ix;
-
-  smallblock[threadIdx.x][threadIdx.y] = mat_in;
-  __syncthreads();
-  b[mat_tra] = smallblock[icol][irow];
-}
-
 __global__ void gpu_kernel::cudaDotMul(double *a, double *b, double *c, int x,
                                        int y, int a_m, int a_n, int b_m,
                                        int b_n) {
@@ -201,43 +178,44 @@ __global__ void gpu_kernel::matrixHadamardMul(double *a, double *b, double *c,
 
 __global__ void gpu_kernel::matrixMul(double *a, double *b, double *c,
                                       unsigned x, unsigned y, unsigned z) {
-    __shared__ double A[TILE_SIZE_DOUBLE][TILE_SIZE_DOUBLE];
-    __shared__ double B[TILE_SIZE_DOUBLE][TILE_SIZE_DOUBLE];
+  __shared__ double A[TILE_SIZE_DOUBLE][TILE_SIZE_DOUBLE];
+  __shared__ double B[TILE_SIZE_DOUBLE][TILE_SIZE_DOUBLE];
 
-    unsigned row = blockIdx.y * blockDim.y + threadIdx.y;
-    unsigned col = blockIdx.x * blockDim.x + threadIdx.x;
+  unsigned row = blockIdx.y * blockDim.y + threadIdx.y;
+  unsigned col = blockIdx.x * blockDim.x + threadIdx.x;
 
-    double sum = 0.0;
+  double sum = 0.0;
 
-    // loop over tiles of the reduction dim (y = K)
-    for (int t = 0; t < (y + TILE_SIZE_DOUBLE - 1) / TILE_SIZE_DOUBLE; t++) {
-        // load A tile
-        if (row < x && (t * TILE_SIZE_DOUBLE + threadIdx.x) < y)
-            A[threadIdx.y][threadIdx.x] = a[row * y + (t * TILE_SIZE_DOUBLE + threadIdx.x)];
-        else
-            A[threadIdx.y][threadIdx.x] = 0.0;
+  // loop over tiles of the reduction dim (y = K)
+  for (int t = 0; t < (y + TILE_SIZE_DOUBLE - 1) / TILE_SIZE_DOUBLE; t++) {
+    // load A tile
+    if (row < x && (t * TILE_SIZE_DOUBLE + threadIdx.x) < y)
+      A[threadIdx.y][threadIdx.x] =
+          a[row * y + (t * TILE_SIZE_DOUBLE + threadIdx.x)];
+    else
+      A[threadIdx.y][threadIdx.x] = 0.0;
 
-        // load B tile
-        if (col < z && (t * TILE_SIZE_DOUBLE + threadIdx.y) < y)
-            B[threadIdx.y][threadIdx.x] = b[(t * TILE_SIZE_DOUBLE + threadIdx.y) * z + col];
-        else
-            B[threadIdx.y][threadIdx.x] = 0.0;
+    // load B tile
+    if (col < z && (t * TILE_SIZE_DOUBLE + threadIdx.y) < y)
+      B[threadIdx.y][threadIdx.x] =
+          b[(t * TILE_SIZE_DOUBLE + threadIdx.y) * z + col];
+    else
+      B[threadIdx.y][threadIdx.x] = 0.0;
 
-        __syncthreads(); // make sure tiles are loaded
+    __syncthreads(); // make sure tiles are loaded
 
-        // compute with current tile
-        for (int i = 0; i < TILE_SIZE_DOUBLE; i++) {
-            sum += A[threadIdx.y][i] * B[i][threadIdx.x];
-        }
-
-        __syncthreads(); // make sure all threads are done before overwriting
+    // compute with current tile
+    for (int i = 0; i < TILE_SIZE_DOUBLE; i++) {
+      sum += A[threadIdx.y][i] * B[i][threadIdx.x];
     }
 
-    // write result
-    if (row < x && col < z)
-        c[row * z + col] = sum;
-}
+    __syncthreads(); // make sure all threads are done before overwriting
+  }
 
+  // write result
+  if (row < x && col < z)
+    c[row * z + col] = sum;
+}
 
 __global__ void gpu_kernel::matrixScalerMul(double *input, double scaler_value,
                                             double *output, unsigned x,
@@ -523,4 +501,25 @@ __global__ void gpu_kernel::matrixDifference(double *input_A, double *input_B,
     output_C[lin_idx] =
         input_A[lin_idx] - input_B[lin_idx]; // a[lin_idx] - b[id_y];
   }
+}
+
+__global__ void gpu_kernel::matrixTranspose(double *input_A, double *output,
+                                            unsigned x, unsigned y) {
+  int idx_x, idx_y, inp_idx, out_idx;
+
+  __shared__ double tile[TILE_SIZE_DOUBLE][TILE_SIZE_DOUBLE];
+
+  idx_x = blockDim.x * blockIdx.x + threadIdx.x;
+  idx_y = blockDim.y * blockIdx.y + threadIdx.y;
+
+  inp_idx = idx_x + idx_y * x;
+  out_idx = idx_y + idx_x * y;
+
+  if (idx_x < x && idx_y < y)
+    tile[threadIdx.x][threadIdx.y] = input_A[inp_idx];
+
+  __syncthreads();
+
+  if (idx_x < x && idx_y < y)
+    output[out_idx] = tile[threadIdx.x][threadIdx.y];
 }

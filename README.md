@@ -26,6 +26,7 @@ Currently, a small set of operations are implemented:
 10. Sigmoid operation
 11. Sqrt
 12. Subtraction
+13. Transpose
 
 ---
 

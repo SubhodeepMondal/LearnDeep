@@ -85,7 +85,7 @@ void Opsadd::addGradGraph(Graph *gradient_graph) {
   std::vector<Tensor<std::float64_t> *> incoming_gradient =
       gradient_graph->getGradient(this);
   Tensor<std::float64_t> *tensor_ptr[2];
-  
+
   // graph setup for accumulating incoming gradients y' = sum ( z' )
   if (incoming_gradient.size()) {
     Tensor<std::float64_t> *intermediate_gradient_sum;

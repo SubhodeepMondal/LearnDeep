@@ -16,6 +16,7 @@ set(COMBINED_RESORCES
     kernel/sigmoid.cpp
     kernel/sub.cpp
     kernel/sqrt.cpp
+    kernel/transpose.cpp
 
 
     graph/graph_framework.hpp

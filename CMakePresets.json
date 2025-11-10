@@ -53,7 +53,8 @@
                 "ENABLE_CUDA": "OFF",
                 "USE_SYSTEM_GTEST": "OFF",
                 "CMAKE_EXPORT_COMPILE_COMMANDS": true,
-                "CMAKE_CXX_FLAGS": "-g -O0"
+                "CMAKE_CXX_FLAGS": "-g -O0",
+                "CMAKE_C_FLAGS": "-g -O0"
             }
         },
         {
@@ -67,7 +68,9 @@
                 "ENABLE_CUDA": "ON",
                 "USE_SYSTEM_GTEST": "OFF",
                 "USE_SYSTEM_BENCHMARK ": "OFF",
-                "CMAKE_EXPORT_COMPILE_COMMANDS": true
+                "CMAKE_EXPORT_COMPILE_COMMANDS": true,
+                "CMAKE_CXX_FLAGS": "-g -O0",
+                "CMAKE_C_FLAGS": "-g -O0"
             }
         }
     ],

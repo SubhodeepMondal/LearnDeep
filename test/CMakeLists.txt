@@ -16,10 +16,10 @@ add_executable(unit_test
     unit/relu.unit.cpp
     unit/scale.unit.cpp
     unit/sigmoid.unit.cpp
-    # unit/softmax.unit.cpp
     unit/sqrt.unit.cpp
     unit/sub.unit.cpp
     unit/tensor.unit.cpp
+    unit/transpose.unit.cpp
 )
 
 target_include_directories(unit_test PRIVATE ${CMAKE_SOURCE_DIR}/api)
@@ -46,6 +46,7 @@ add_executable(benchmark_test
     # benchmark/relu.benchmark.cpp
     # benchmark/sub.benchmark.cpp
     benchmark/sqrt.benchmark.cpp
+    benchmark/transpose.benchmark.cpp
 )
 
 target_include_directories(benchmark_test PRIVATE ${CMAKE_SOURCE_DIR}/api

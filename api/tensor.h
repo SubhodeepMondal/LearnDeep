@@ -66,8 +66,7 @@ typedef struct tensor {
 
   void print_dimension();
 
-  void operator=(graph &g);
-
+  // ------- graph operations --------
   graph &add(graph &g, tensor &input_b);
 
   graph &mean(graph &g, unsigned dim);
@@ -88,7 +87,19 @@ typedef struct tensor {
 
   graph &sub(graph &g, tensor &input_b);
 
+  graph &transpose(graph &g);
+  // -------- end of graph operations ---------
+
+  // ------- eager operations --------
+  void operator=(graph &g);
+
+  tensor operator+(tensor &input_b);
+
+  tensor operator*(tensor &input_b);
+
   tensor add(tensor &input_b);
+
+  tensor mean(const unsigned dim);
 
   tensor matmul(tensor &input_b);
 
@@ -96,9 +107,18 @@ typedef struct tensor {
 
   tensor relu();
 
-  tensor mean(const unsigned dim);
+  tensor sigmoid();
+
+  tensor scale(const std::float64_t scaleFactor);
+
+  tensor sqrt();
+
+  tensor sub(tensor &input_b);
+
+  tensor transpose();
 
   tensor getReduction(std::vector<unsigned> reduction_dims);
+  // -------- end of eager operations ---------
 
   void gradient_required(bool is_grad_required);
 
@@ -118,18 +138,6 @@ typedef struct tensor {
 
     return getReduction(dimensions);
   }
-
-  tensor operator+(tensor &input_b);
-
-  tensor operator*(tensor &input_b);
-
-  tensor sigmoid();
-
-  tensor scale(const std::float64_t scaleFactor);
-
-  tensor sqrt();
-
-  tensor sub(tensor &input_b);
 
   // --- Default constructor
   tensor() { assign_ptr(); };
