@@ -165,7 +165,8 @@ class Opsmatmul : public Ops {
 
   std::vector<Tensor<std::float64_t> *> inputs;
   Tensor<std::float64_t> *output;
-  Tensor<std::float64_t> *outgoing_gradient;
+  Tensor<std::float64_t> *incoming_gradient;
+  Tensor<std::float64_t> *outgoing_gradients[2];
   void recursive_iterator(unsigned index, unsigned *, std::string, unsigned *,
                           std::float64_t *, Tensor<std::float64_t> *);
   void kernel_dispatch(std::float64_t **, unsigned *);
@@ -179,9 +180,8 @@ public:
 
   void addGradGraph(Graph *gradient_graph);
 
-  Tensor<std::float64_t> *getOutgoingGradientTensor() {
-    return outgoing_gradient;
-  }
+  Tensor<std::float64_t> *
+  getOutgoingGradientTensor(Tensor<std::float64_t> *gradient_input);
 
   std::vector<Tensor<std::float64_t> *> getAllOutgoingGradientTensors() {
     std::vector<Tensor<std::float64_t> *> grads;
