@@ -81,18 +81,28 @@ void Opsmatmul::recursive_iterator(unsigned index, unsigned *dimension_arr,
 }
 
 void Opsmatmul::addGradGraph(Graph *gradient_graph) {
+  // .......... reverse mode autodiff graph .........
+  //
+  //             [inputs[n]]
+  //                 |
+  //        [temp_grad_tensor[n]]  *  [[incoming_gradients]...]
+  //                           [[add]...]
+  //                              |
+  //                      [output_gradient]
+  //
+  // ........................ End .....................
+
   Tensor<std::float64_t> *tensor_ptr[2];
   std::vector<Tensor<std::float64_t> *> incoming_gradients =
       gradient_graph->getGradient(this);
 
-  // graph setup for accumulating incoming gradients y' = sum ( z' )
   if (incoming_gradients.size()) {
     Tensor<std::float64_t> *intermediate_gradient_sum;
 
     intermediate_gradient_sum = new Tensor<std::float64_t>(*this->output);
     intermediate_gradient_sum->initData(0.0);
+    int i = 0;
     for (Tensor<std::float64_t> *inc_grad_tensor : incoming_gradients) {
-      // input initialization
       tensor_ptr[0] = intermediate_gradient_sum;
       tensor_ptr[1] = inc_grad_tensor;
 
@@ -113,17 +123,53 @@ void Opsmatmul::addGradGraph(Graph *gradient_graph) {
       gradient_graph->addGradientNode(intermediate_gradient_sum);
       gradient_graph->addGradientEdge(ops_add, intermediate_gradient_sum);
     }
-    this->incoming_gradient = intermediate_gradient_sum;
   } else {
     this->incoming_gradient = new Tensor<std::float64_t>(*this->output);
     this->incoming_gradient->initData(1.0);
   }
+  Tensor<std::float64_t> *temp_trans_tensor;
+  for (unsigned i = 0; i < 2; i++) {
+    temp_trans_tensor =
+        new Tensor<std::float64_t>(*this->inputs[(2 - i - 1) % 2]);
+    Ops *ops_transpose = new Opstranspose;
+    tensor_ptr[0] = this->incoming_gradient;
 
-  // So lets get into the real shit. derivative of matrix multiplication and
-  // they aren't easy. So, Lets Say C = AB then
-  Tensor<std::float64_t> temp_incoming_grad = this->incoming_gradient;
-  // dC/dA
-  Ops ops_mul = new Opsmul;
+    // X = X.T
+    ops_transpose->initializeinputs(tensor_ptr);
+    ops_transpose->initializeoutput(temp_trans_tensor);
+    gradient_graph->addGradientNode(ops_transpose);
+    gradient_graph->addGradientNode(tensor_ptr[0]);
+    gradient_graph->addGradientNode(temp_trans_tensor);
+    gradient_graph->addGradientEdge(tensor_ptr[0], ops_transpose);
+    gradient_graph->addGradientEdge(ops_transpose, temp_trans_tensor);
+
+    tensor_ptr[0] = nullptr;
+    tensor_ptr[1] = nullptr;
+
+    // d/dx = G * B.T & A.T * G
+
+    Ops *ops_matmul = new Opsmatmul;
+    if (i == 0) {
+      tensor_ptr[0] = this->incoming_gradient;
+      tensor_ptr[1] = temp_trans_tensor;
+    } else {
+      tensor_ptr[0] = temp_trans_tensor;
+      tensor_ptr[1] = this->incoming_gradient;
+    }
+
+    ops_matmul->initializeinputs(tensor_ptr);
+    gradient_graph->addGradientNode(ops_matmul);
+    gradient_graph->addGradientNode(tensor_ptr[0]);
+    gradient_graph->addGradientNode(tensor_ptr[1]);
+    gradient_graph->addGradientEdge(tensor_ptr[0], ops_matmul);
+    gradient_graph->addGradientEdge(tensor_ptr[1], ops_matmul);
+
+    // output initilization
+    this->outgoing_gradients[i] = new Tensor<std::float64_t>(*this->inputs[i]);
+    ops_matmul->initializeoutput(this->outgoing_gradients[i]);
+    gradient_graph->addGradientNode(this->outgoing_gradients[i]);
+    gradient_graph->addGradientEdge(ops_matmul, this->outgoing_gradients[i]);
+  }
 }
 
 void Opsmatmul::compute() {
@@ -186,6 +232,26 @@ void Opsmatmul::printoutput() {
   std::cout << "output:\n";
   output->printData();
   std::cout << "\n";
+}
+
+Tensor<std::float64_t> *
+Opsmatmul::getOutgoingGradientTensor(Tensor<std::float64_t> *gradient_input) {
+  int i, it;
+  bool flag = false;
+  for (i = 0; i < 2; i++)
+    if (this->inputs[i] == gradient_input) {
+      it = i;
+      flag = true;
+      break;
+    }
+
+  if (flag) {
+    // LOG(INFO) << "Requested gradint for the tensor found.\n";
+    return this->outgoing_gradients[it];
+  } else {
+    // LOG(FATAL) << "Requested gradint for the tensor doesn't exist.\n";
+    return NULL;
+  }
 }
 
 void Opsmatmul::kernel_dispatch(std::float64_t **ptr, unsigned *arr) {
