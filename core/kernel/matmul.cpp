@@ -132,7 +132,7 @@ void Opsmatmul::addGradGraph(Graph *gradient_graph) {
     temp_trans_tensor =
         new Tensor<std::float64_t>(*this->inputs[(2 - i - 1) % 2]);
     Ops *ops_transpose = new Opstranspose;
-    tensor_ptr[0] = this->incoming_gradient;
+    tensor_ptr[0] = this->inputs[(2 - i - 1) % 2];
 
     // X = X.T
     ops_transpose->initializeinputs(tensor_ptr);
