@@ -123,6 +123,7 @@ void Opsmatmul::addGradGraph(Graph *gradient_graph) {
       gradient_graph->addGradientNode(intermediate_gradient_sum);
       gradient_graph->addGradientEdge(ops_add, intermediate_gradient_sum);
     }
+    this->incoming_gradient = intermediate_gradient_sum;
   } else {
     this->incoming_gradient = new Tensor<std::float64_t>(*this->output);
     this->incoming_gradient->initData(1.0);
@@ -201,7 +202,7 @@ void Opsmatmul::initializeoutput(Tensor<std::float64_t> *output) {
   unsigned i, dim_x, dim_y, no_of_dimensions;
   unsigned *output_dim;
 
-  no_of_dimensions = inputs[0]->getNoOfDimensions();
+  no_of_dimensions = this->inputs[0]->getNoOfDimensions();
 
   dim_x = inputs[1]->getDimensions()[0];
   dim_y = inputs[0]->getDimensions()[1];
