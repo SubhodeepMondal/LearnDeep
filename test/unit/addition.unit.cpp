@@ -848,6 +848,7 @@ TEST_F(MathTest, Graph_MatrixAddition_2D) {
 
 TEST_F(MathTest, Graph_MatrixAddition_Grad_2D) {
 
+  //--------------- Test 1 -----------------
   std::float64_t a_double_28_56[] = {
       0.55394102, 0.39624789, 0.04812677, 0.52567256, 0.15303858, 0.50001016,
       0.25608678, 0.54309316, 0.54826612, 0.22578871, 0.08924631, 0.45186963,
@@ -3239,8 +3240,10 @@ TEST_F(MathTest, Graph_MatrixAddition_Grad_2D) {
   tf::graph g_add;
   g_add.tf_create_graph();
 
+  // Directed acyclic graph for
   // A         B
-  // |         |
+  //  \       /
+  //   \     /
   //      +
   //      |
   //  E   C
@@ -3259,21 +3262,20 @@ TEST_F(MathTest, Graph_MatrixAddition_Grad_2D) {
 
   g_add.graph_execute();
 
-  auto *tensorF_res = static_cast<Tensor<std::float64_t> *>(F.ptr);
-  for (int j = 0; j < 56; j++) {
-    for (int i = 0; i < 28; i++) {
-      EXPECT_NEAR(tensorF_res->getData()[i + j * 28], f_out_28_56[i + j * 28],
-                  1e-6);
-    }
-  }
+  for (int j = 0; j < 56; j++)
+    for (int i = 0; i < 28; i++)
+      EXPECT_NEAR(F.getPtr()[i + j * 28], f_out_28_56[i + j * 28], 1e-6);
 
   g_add.graph_initialize_gradient();
   g_add.graph_compute_gradient();
 
+  // numpy equivalent calculation
   // delta_F = np.ones((56, 28), np.float64)
-  // delta_E = C_out_56_28 *C_out_56_28 delta_D = C_out_56_28 delta_C =
-  //         D_out_56_28 + C_out_56_28 *E_add_input_56_28 delta_B =
-  //             delta_C delta_A = delta_C
+  // delta_E = C_out_56_28 *C_out_56_28
+  // delta_D = C_out_56_28
+  // delta_C = D_out_56_28 + C_out_56_28 *E_add_input_56_28
+  // delta_B = delta_C
+  // delta_A = delta_C
 
   A_grad = g_add.graph_get_gradient(A);
   B_grad = g_add.graph_get_gradient(B);
@@ -3302,4 +3304,6 @@ TEST_F(MathTest, Graph_MatrixAddition_Grad_2D) {
       EXPECT_NEAR(D_grad.getPtr()[i + j * 28], d_d[i + j * 28], 1e-6);
 
   g_add.graph_clear();
+
+  //----------- End Of Test 1 --------------
 }
