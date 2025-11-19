@@ -176,8 +176,29 @@ __global__ void gpu_kernel::matrixHadamardMul(double *a, double *b, double *c,
     c[lin_idx] = a[lin_idx] * b[lin_idx];
 }
 
-__global__ void gpu_kernel::matrixMul(double *a, double *b, double *c,
-                                      unsigned x, unsigned y, unsigned z) {
+__global__ void gpu_kernel::matrixResuffledMul(double *a, double *b, double *c,
+                                               unsigned x, unsigned y,
+                                               unsigned z) {
+  // x output row size
+  // y (k collupsing row)
+  // z output column size
+  unsigned id_x, id_y;
+  unsigned lin_idx_a, lin_idx_b, lin_idx_c;
+  id_x = threadIdx.x + (blockDim.x * blockIdx.x);
+  id_y = threadIdx.y + (blockDim.y * blockIdx.y);
+  lin_idx_c = id_x + id_y * x;
+  c[lin_idx_c] = 0.0;
+  for (int i = 0; i < z; i++) {
+    if (id_x < x && id_y < y) {
+      lin_idx_a = i + id_y * z;
+      lin_idx_b = id_x + i * x;
+      c[lin_idx_c] += a[lin_idx_a] * b[lin_idx_b];
+    }
+  }
+}
+
+__global__ void gpu_kernel::matrixTiledMul(double *a, double *b, double *c,
+                                           unsigned x, unsigned y, unsigned z) {
   __shared__ double A[TILE_SIZE_DOUBLE][TILE_SIZE_DOUBLE];
   __shared__ double B[TILE_SIZE_DOUBLE][TILE_SIZE_DOUBLE];
 

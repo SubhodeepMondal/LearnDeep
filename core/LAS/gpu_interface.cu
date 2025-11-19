@@ -85,9 +85,9 @@ void gpu::gpu_mat_mul_f64(double **ptr, unsigned *arr) {
   double *a = ptr[0];
   double *b = ptr[1];
   double *c = ptr[2];
-  unsigned x = arr[0]; // x output row size
-  unsigned y = arr[1]; // y k row
-  unsigned z = arr[2]; // z output column size
+  unsigned x = arr[0]; // output row size
+  unsigned y = arr[2]; // output column size
+  unsigned z = arr[1]; // collapsing axis
 
   LOG(INFO) << "GPU kernel for matrix element wise multipliction is running...";
 
@@ -96,18 +96,18 @@ void gpu::gpu_mat_mul_f64(double **ptr, unsigned *arr) {
   block.x = (16 > x) ? x : 16;
   block.y = (16 > z) ? z : 16;
   grid.x = (x + block.x - 1) / block.x;
-  grid.y = (z + block.y - 1) / block.y;
+  grid.y = (y + block.y - 1) / block.y;
 
   double *d_a, *d_b, *d_c;
 
-  cudaMalloc((void **)&d_a, x * y * sizeof(double));
-  cudaMalloc((void **)&d_b, y * z * sizeof(double));
-  cudaMalloc((void **)&d_c, x * z * sizeof(double));
+  cudaMalloc((void **)&d_a, y * z * sizeof(double));
+  cudaMalloc((void **)&d_b, x * z * sizeof(double));
+  cudaMalloc((void **)&d_c, x * y * sizeof(double));
 
-  cudaMemcpy(d_a, a, x * y * sizeof(double), cudaMemcpyHostToDevice);
-  cudaMemcpy(d_b, b, x * y * sizeof(double), cudaMemcpyHostToDevice);
+  cudaMemcpy(d_a, a, y * z * sizeof(double), cudaMemcpyHostToDevice);
+  cudaMemcpy(d_b, b, x * z * sizeof(double), cudaMemcpyHostToDevice);
   cudaError_t err;
-  gpu_kernel::matrixMul<<<grid, block>>>(d_a, d_b, d_c, x, y, z);
+  gpu_kernel::matrixResuffledMul<<<grid, block>>>(d_a, d_b, d_c, x, y, z);
   cudaMemcpy(c, d_c, x * y * sizeof(double), cudaMemcpyDeviceToHost);
   cudaFree(d_a);
   cudaFree(d_b);
@@ -116,7 +116,7 @@ void gpu::gpu_mat_mul_f64(double **ptr, unsigned *arr) {
   if (err != cudaSuccess) {
     LOG(ERROR) << "CUDA error: " << cudaGetErrorString(err);
   }
-};
+}
 
 void gpu::gpu_mat_scale_f64(double **ptr, unsigned *arr) {
 
