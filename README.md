@@ -5,7 +5,7 @@ This library uses **CUDA** and **AVX/AVX2 kernels** to implement basic linear al
 
 With this library:
 - Linear algebra forward pass can be implemented in **eager mode** and **graph mode**.
-- Graph mode provides flexibility to add backpropagation functionality in future.
+- Graph mode provides Backpropagation capibility for all ops.
 
 **This Library is intented to function with tensors of n dimentions**
 
@@ -14,19 +14,21 @@ With this library:
 ## Linear Algebra Subroutines (LAS)
 Currently, a small set of operations are implemented:
 
-1. Matrix addition
-2. Matrix multiplication
-3. Matrix Mean on n-th axis
-4. Matrix Hadamard multiplication (element-wise multiplication)
-5. Matrix Power
-6. Exponential operation (`x^e`, where *e* is an integer)
-7. Reduction sum along the *n*-th dimension
-8. Relu
-9. Scaling operation
-10. Sigmoid operation
-11. Sqrt
-12. Subtraction
-13. Transpose
+|   #   | Operation Name                 | Forward Propagation   | Backward Propagation  | Unit Tests:Eager Mode | Unit Tests:Graph Mode | Unit Tests:Grad   | Unit Tests:Grad Pipe Line     |
+| ---:  | :----------------------------  | :-------------------: | :-------------------: | :-------------------: | :-------------------: | :---------------: | :---------------------------: |
+| 1     | Matrix addition                | &#x2713;              | &#x2713;              | &#x2713;              | &#x2713;              | &#x2713;          | &#x2713;                      |
+| 2     | Matrix multiplication          | &#x2713;              | &#x2713;              | &#x2713;              | &#x2713;              | &#x2713;          | &#x2713;                      |
+| 3     | Matrix Hadamard multiplication | &#x2713;              | &#x2713;              | &#x2713;              | &#x2713;              | &#x2713;          | &#10007;                      |
+| 4     | Matrix Power                   | &#x2713;              | &#x2713;              | &#x2713;              | &#x2713;              | &#x2713;          | &#x2713;                      |
+| 5     | Matrix Mean on n-th axis       | &#x2713;              | &#x2713;              | &#x2713;              | &#x2713;              | &#10007;          | &#10007;                      |
+| 6     | Matrix Transpose               | &#x2713;              | &#x2713;              | &#x2713;              | &#x2713;              | &#10007;          | &#10007;                      |
+| 7     | Matrix Subtraction             | &#x2713;              | &#x2713;              | &#x2713;              | &#x2713;              | &#10007;          | &#10007;                      |
+| 8     | Matrix Scale                   | &#x2713;              | &#x2713;              | &#x2713;              | &#x2713;              | &#10007;          | &#10007;                      |
+| 9     | Matrix Sigmoid                 | &#x2713;              | &#x2713;              | &#x2713;              | &#x2713;              | &#10007;          | &#10007;                      |
+| 10    | Matrix sqrt                    | &#x2713;              | &#x2713;              | &#x2713;              | &#x2713;              | &#10007;          | &#10007;                      |
+| 11    | Matrix Relu                    | &#x2713;              | &#x2713;              | &#x2713;              | &#x2713;              | &#10007;          | &#10007;                      |
+| 12    | Matrix Reduction Sum           | &#x2713;              | &#x2713;              | &#x2713;              | &#x2713;              | &#10007;          | &#10007;                      |
+| 13    | Matrix Exponentiation (`e^x`)  | &#x2713;              | &#x2713;              | &#x2713;              | &#x2713;              | &#10007;          | &#10007;                      |
 
 ---
 
