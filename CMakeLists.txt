@@ -60,7 +60,6 @@ else()
   )
 
   set(BENCHMARK_ENABLE_TESTING OFF)
-  set(CMAKE_BUILD_TYPE Release CACHE STRING "" FORCE)
   FetchContent_MakeAvailable(benchmark)
 endif()
 

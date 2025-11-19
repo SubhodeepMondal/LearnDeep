@@ -122,7 +122,7 @@ void Opspower::addGradGraph(Graph *gradient_graph) {
     Tensor<std::float64_t> *intermediate_gradient_sum;
     intermediate_gradient_sum = new Tensor<std::float64_t>(*this->output);
     intermediate_gradient_sum->initData(0.0);
-    int i = 0;
+
     for (Tensor<std::float64_t> *inc_grad_tensor : incoming_gradients) {
 
       // input initialization
@@ -151,8 +151,6 @@ void Opspower::addGradGraph(Graph *gradient_graph) {
     this->incoming_gradient = new Tensor<std::float64_t>(*this->output);
     this->incoming_gradient->initData(1.0);
   }
-
-  unsigned i, j;
 
   Tensor<std::float64_t> *temp_grad_tensors[2];
 
@@ -202,8 +200,8 @@ void Opspower::addGradGraph(Graph *gradient_graph) {
   gradient_graph->addGradientEdge(tensor_ptr[1], ops_mul);
 
   // output initialization
-  this->outgoing_gradients[i] = new Tensor<std::float64_t>(*this->inputs[0]);
-  ops_mul->initializeoutput(this->outgoing_gradients[i]);
+  this->outgoing_gradients[0] = new Tensor<std::float64_t>(*this->inputs[0]);
+  ops_mul->initializeoutput(this->outgoing_gradients[0]);
   gradient_graph->addGradientNode(this->outgoing_gradients[0]);
   gradient_graph->addGradientEdge(ops_mul, this->outgoing_gradients[0]);
   // End of d/dx[i] * z'
@@ -243,7 +241,8 @@ Opspower::getOutgoingGradientTensor(Tensor<std::float64_t> *gradient_input) {
   }
 }
 
-std::vector<Tensor<std::float64_t> *> Opspower::getAllOutgoingGradientTensors() {
+std::vector<Tensor<std::float64_t> *>
+Opspower::getAllOutgoingGradientTensors() {
   std::vector<Tensor<std ::float64_t> *> gradient_tensors;
   gradient_tensors.push_back(outgoing_gradients[0]);
   return gradient_tensors;
