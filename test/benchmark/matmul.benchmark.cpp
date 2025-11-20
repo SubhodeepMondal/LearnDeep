@@ -20,21 +20,28 @@ static void mat_matmul_eager_tensor(benchmark::State &state) {
   // }
 
   for (auto _ : state) {
-    C = A.matmul(B);                // Perform matrix Matmul
+    C = A.matmul(B);             // Perform matrix Matmul
     benchmark::DoNotOptimize(C); // Prevent compiler optimization
   }
 
   state.SetItemsProcessed(int64_t(state.iterations()) * N * N);
 }
-
 // Register this benchmark with different input sizes
+#ifdef CUDA_ENABLED
 BENCHMARK(mat_matmul_eager_tensor)
     ->Arg(1 << 8)   // 256 elements
     ->Arg(1 << 9)   // 512 elements
     ->Arg(1 << 10)  // 1024 elements
     ->Arg(1 << 12)  // 4192 eleements
     ->Arg(1 << 14); // 16K elements
-
+#else
+BENCHMARK(mat_matmul_eager_tensor)
+    ->Arg(1 << 8)   // 256 elements
+    ->Arg(1 << 9)   // 512 elements
+    ->Arg(1 << 10)  // 1024 elements
+    ->Arg(1 << 12)  // 4192 eleements
+    ->Arg(1 << 14); // 16K elements
+#endif
 
 // -------- Benchmark Graph Matmul --------
 static void mat_matmul_graph_tensor(benchmark::State &state) {
@@ -54,11 +61,10 @@ static void mat_matmul_graph_tensor(benchmark::State &state) {
   C = A.matmul(g_matmul, B);
 
   for (auto _ : state) {
-    g_matmul.graph_execute();                // Perform matrix Matmul
+    g_matmul.graph_execute();    // Perform matrix Matmul
     benchmark::DoNotOptimize(C); // Prevent compiler optimization
   }
   g_matmul.graph_clear();
-
 
   state.SetItemsProcessed(int64_t(state.iterations()) * N * N);
 }
@@ -81,5 +87,3 @@ BENCHMARK(mat_matmul_graph_tensor)
     ->Arg(1 << 12)  // 4192 eleements
     ->Arg(1 << 14); // 16K elements
 #endif
-
-
