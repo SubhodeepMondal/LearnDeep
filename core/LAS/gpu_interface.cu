@@ -107,7 +107,7 @@ void gpu::gpu_mat_mul_f64(double **ptr, unsigned *arr) {
   cudaMemcpy(d_a, a, y * z * sizeof(double), cudaMemcpyHostToDevice);
   cudaMemcpy(d_b, b, x * z * sizeof(double), cudaMemcpyHostToDevice);
   cudaError_t err;
-  gpu_kernel::matrixResuffledMul<<<grid, block>>>(d_a, d_b, d_c, x, y, z);
+  gpu_kernel::matrixTiledMul<<<grid, block>>>(d_a, d_b, d_c, x, y, z);
   cudaMemcpy(c, d_c, x * y * sizeof(double), cudaMemcpyDeviceToHost);
   cudaFree(d_a);
   cudaFree(d_b);

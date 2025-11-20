@@ -179,9 +179,9 @@ __global__ void gpu_kernel::matrixHadamardMul(double *a, double *b, double *c,
 __global__ void gpu_kernel::matrixResuffledMul(double *a, double *b, double *c,
                                                unsigned x, unsigned y,
                                                unsigned z) {
-  // x output row size
-  // y (k collupsing row)
-  // z output column size
+  // x output row axis
+  // y output column axis
+  // z collapsing axis
   unsigned id_x, id_y;
   unsigned lin_idx_a, lin_idx_b, lin_idx_c;
   id_x = threadIdx.x + (blockDim.x * blockIdx.x);
@@ -199,43 +199,44 @@ __global__ void gpu_kernel::matrixResuffledMul(double *a, double *b, double *c,
 
 __global__ void gpu_kernel::matrixTiledMul(double *a, double *b, double *c,
                                            unsigned x, unsigned y, unsigned z) {
+  // x output row axis
+  // y output column axis
+  // z collapsing axis
   __shared__ double A[TILE_SIZE_DOUBLE][TILE_SIZE_DOUBLE];
   __shared__ double B[TILE_SIZE_DOUBLE][TILE_SIZE_DOUBLE];
 
-  unsigned row = blockIdx.y * blockDim.y + threadIdx.y;
-  unsigned col = blockIdx.x * blockDim.x + threadIdx.x;
+  unsigned idx_x = blockIdx.x * blockDim.x + threadIdx.x;
+  unsigned idx_y = blockIdx.y * blockDim.y + threadIdx.y;
 
   double sum = 0.0;
 
-  // loop over tiles of the reduction dim (y = K)
-  for (int t = 0; t < (y + TILE_SIZE_DOUBLE - 1) / TILE_SIZE_DOUBLE; t++) {
+  // loop over tiles of the reduction dim (z = K)
+  for (int t = 0; t < (z + TILE_SIZE_DOUBLE - 1) / TILE_SIZE_DOUBLE; t++) {
     // load A tile
-    if (row < x && (t * TILE_SIZE_DOUBLE + threadIdx.x) < y)
+    if ((threadIdx.x + t * TILE_SIZE_DOUBLE) < z && idx_y < y)
       A[threadIdx.y][threadIdx.x] =
-          a[row * y + (t * TILE_SIZE_DOUBLE + threadIdx.x)];
+          a[(threadIdx.x + t * TILE_SIZE_DOUBLE) + idx_y * z];
     else
       A[threadIdx.y][threadIdx.x] = 0.0;
 
     // load B tile
-    if (col < z && (t * TILE_SIZE_DOUBLE + threadIdx.y) < y)
+    if (idx_x < x && (threadIdx.y + t * TILE_SIZE_DOUBLE) < z)
       B[threadIdx.y][threadIdx.x] =
-          b[(t * TILE_SIZE_DOUBLE + threadIdx.y) * z + col];
+          b[idx_x + (threadIdx.y + t * TILE_SIZE_DOUBLE) * x];
     else
       B[threadIdx.y][threadIdx.x] = 0.0;
 
-    __syncthreads(); // make sure tiles are loaded
+    __syncthreads(); // make sure all threads have loaded their data
 
-    // compute with current tile
-    for (int i = 0; i < TILE_SIZE_DOUBLE; i++) {
+    for (unsigned i = 0; i < TILE_SIZE_DOUBLE; i++)
       sum += A[threadIdx.y][i] * B[i][threadIdx.x];
-    }
 
-    __syncthreads(); // make sure all threads are done before overwriting
+    __syncthreads(); // wait before overwriting
   }
 
   // write result
-  if (row < x && col < z)
-    c[row * z + col] = sum;
+  if (idx_y < y && idx_x < x)
+    c[idx_y * x + idx_x] = sum;
 }
 
 __global__ void gpu_kernel::matrixScalerMul(double *input, double scaler_value,
