@@ -529,16 +529,14 @@ __global__ void gpu_kernel::matrixTranspose(double *input_A, double *output,
 
   __shared__ double tile[TILE_SIZE_DOUBLE][TILE_SIZE_DOUBLE];
 
-  idx_x = blockDim.x * blockIdx.x + threadIdx.x;
-  idx_y = blockDim.y * blockIdx.y + threadIdx.y;
+  idx_x = TILE_SIZE_DOUBLE * blockIdx.x + threadIdx.x;
+  idx_y = TILE_SIZE_DOUBLE * blockIdx.y + threadIdx.y;
 
   inp_idx = idx_x + idx_y * x;
   out_idx = idx_y + idx_x * y;
 
   if (idx_x < x && idx_y < y)
     tile[threadIdx.x][threadIdx.y] = input_A[inp_idx];
-
-  __syncthreads();
 
   if (idx_x < x && idx_y < y)
     output[out_idx] = tile[threadIdx.x][threadIdx.y];
@@ -548,22 +546,23 @@ __global__ void gpu_kernel::matrixTiledTranspose(double *input_A,
                                                  double *output, unsigned x,
                                                  unsigned y) {
   int idx_x, idx_y, idx_out_x, idx_out_y, inp_idx, out_idx;
+  // As each lane in a bank is of 32 bit wide and each double
+  // is 64 bit so each double is going to occupy 2 banks so we need
+  // to give a offset of 2
+  __shared__ double tile[TILE_SIZE_DOUBLE]
+                        [TILE_SIZE_DOUBLE + TILE_SIZE_DOUBLE / TILE_SIZE_FLOAT];
 
-  __shared__ double tile[TILE_SIZE_DOUBLE][TILE_SIZE_DOUBLE + 1];
-
-  idx_x = blockDim.x * blockIdx.x + threadIdx.x;
-  idx_y = blockDim.y * blockIdx.y + threadIdx.y;
-  idx_out_x = blockDim.y * blockIdx.y + threadIdx.x;
-  idx_out_y = blockDim.x * blockIdx.x + threadIdx.y;
+  idx_x = TILE_SIZE_DOUBLE * blockIdx.x + threadIdx.x;
+  idx_y = TILE_SIZE_DOUBLE * blockIdx.y + threadIdx.y;
+  idx_out_x = TILE_SIZE_DOUBLE * blockIdx.y + threadIdx.x;
+  idx_out_y = TILE_SIZE_DOUBLE * blockIdx.x + threadIdx.y;
 
   inp_idx = idx_x + idx_y * x;
   out_idx = idx_out_x + idx_out_y * y;
 
   if (idx_x < x && idx_y < y)
-    tile[threadIdx.x][threadIdx.y] = input_A[inp_idx];
-
-  __syncthreads();
+    tile[threadIdx.y][threadIdx.x] = input_A[inp_idx];
 
   if (idx_out_x < y && idx_out_y < x)
-    output[out_idx] = tile[threadIdx.y][threadIdx.x];
+    output[out_idx] = tile[threadIdx.x][threadIdx.y];
 }

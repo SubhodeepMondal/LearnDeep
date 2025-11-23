@@ -338,8 +338,8 @@ void gpu::gpu_mat_transpose_f64(double **ptr, unsigned *arr) {
 
   dim3 block;
   dim3 grid;
-  block.x = (TILE_SIZE_DOUBLE > x) ? x : TILE_SIZE_DOUBLE;
-  block.y = (TILE_SIZE_DOUBLE > y) ? y : TILE_SIZE_DOUBLE;
+  block.x = TILE_SIZE_DOUBLE;
+  block.y = TILE_SIZE_DOUBLE;
   grid.x = (x + block.x - 1) / block.x;
   grid.y = (y + block.y - 1) / block.y;
 
