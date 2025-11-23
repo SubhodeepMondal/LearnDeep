@@ -2,6 +2,10 @@
 #define GPU_MICRO_kERNELS_CUH
 #include <cuda_runtime.h>
 
+#define TILE_SIZE_DOUBLE 16
+#define TILE_SIZE_FLOAT 32
+#define TILE_SIZE_FLOAT_16 64
+
 namespace gpu_kernel {
 
 __global__ void printData(double *a, unsigned x, unsigned y, unsigned z);
@@ -92,6 +96,9 @@ __global__ void matrixDifference(double *input_A, double *input_B,
 
 __global__ void matrixTranspose(double *input_A, double *input_B, unsigned x,
                                 unsigned y);
+
+__global__ void matrixTiledTranspose(double *input_A, double *output,
+                                     unsigned x, unsigned y);
 
 } // namespace gpu_kernel
 #endif // GPU_MICRO_KERNEL_CUH

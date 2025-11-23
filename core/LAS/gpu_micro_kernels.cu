@@ -2,8 +2,6 @@
 #include <cuda_runtime.h>
 #include <stdio.h>
 
-#define TILE_SIZE_DOUBLE 16
-
 __global__ void gpu_kernel::printData(double *a, unsigned x, unsigned y,
                                       unsigned z) {
   int i, j, k;
@@ -544,4 +542,28 @@ __global__ void gpu_kernel::matrixTranspose(double *input_A, double *output,
 
   if (idx_x < x && idx_y < y)
     output[out_idx] = tile[threadIdx.x][threadIdx.y];
+}
+
+__global__ void gpu_kernel::matrixTiledTranspose(double *input_A,
+                                                 double *output, unsigned x,
+                                                 unsigned y) {
+  int idx_x, idx_y, idx_out_x, idx_out_y, inp_idx, out_idx;
+
+  __shared__ double tile[TILE_SIZE_DOUBLE][TILE_SIZE_DOUBLE + 1];
+
+  idx_x = blockDim.x * blockIdx.x + threadIdx.x;
+  idx_y = blockDim.y * blockIdx.y + threadIdx.y;
+  idx_out_x = blockDim.y * blockIdx.y + threadIdx.x;
+  idx_out_y = blockDim.x * blockIdx.x + threadIdx.y;
+
+  inp_idx = idx_x + idx_y * x;
+  out_idx = idx_out_x + idx_out_y * y;
+
+  if (idx_x < x && idx_y < y)
+    tile[threadIdx.x][threadIdx.y] = input_A[inp_idx];
+
+  __syncthreads();
+
+  if (idx_out_x < y && idx_out_y < x)
+    output[out_idx] = tile[threadIdx.y][threadIdx.x];
 }

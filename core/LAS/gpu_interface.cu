@@ -338,8 +338,8 @@ void gpu::gpu_mat_transpose_f64(double **ptr, unsigned *arr) {
 
   dim3 block;
   dim3 grid;
-  block.x = (16 > x) ? x : 16;
-  block.y = (16 > y) ? y : 16;
+  block.x = (TILE_SIZE_DOUBLE > x) ? x : TILE_SIZE_DOUBLE;
+  block.y = (TILE_SIZE_DOUBLE > y) ? y : TILE_SIZE_DOUBLE;
   grid.x = (x + block.x - 1) / block.x;
   grid.y = (y + block.y - 1) / block.y;
 
@@ -350,7 +350,7 @@ void gpu::gpu_mat_transpose_f64(double **ptr, unsigned *arr) {
 
   cudaMemcpy(d_a, a, x * y * sizeof(double), cudaMemcpyHostToDevice);
   cudaError_t err;
-  gpu_kernel::matrixTranspose<<<grid, block>>>(d_a, d_c, x, y);
+  gpu_kernel::matrixTiledTranspose<<<grid, block>>>(d_a, d_c, x, y);
   cudaMemcpy(c, d_c, x * y * sizeof(double), cudaMemcpyDeviceToHost);
   cudaFree(d_a);
   cudaFree(d_c);
