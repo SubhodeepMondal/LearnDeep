@@ -1,5 +1,6 @@
+#include "MathLibrary.h"
 #include "NDynamicArray.h"
-#include <framework/MathLibrary.h>
+#include <graph/graph_manager.hpp>
 #include <kernel/opskernel.h>
 
 template <typename T> Tensor<T> *Tensor<T>::matmul(Tensor<T> &input) {
@@ -116,10 +117,23 @@ template <typename T> Tensor<T> *Tensor<T>::mul(Tensor<T> &input) {
     inputs[1] = &input;
     ops->initializeinputs(inputs);
     ops->initializeoutput(output);
-    ops->compute();
 
-    delete ops;
-    return output;
+    Graph *g = GraphManager::instance().getCurrentGraph();
+    if (g) {
+      g->addNode(this);
+      g->addNode(&input);
+      g->addNode(ops);
+
+      g->addEdge(this, ops);
+      g->addEdge(&input, ops);
+
+      g->addNode(output);
+      g->addEdge(ops, output);
+    } else {
+      ops->compute();
+      delete ops;
+    }
+
   } else {
     std::cout << "Two metrix requires same shape to perform matrix addition, "
                  "here matrix A ";
@@ -127,8 +141,8 @@ template <typename T> Tensor<T> *Tensor<T>::mul(Tensor<T> &input) {
     std::cout << " and matrix B ";
     input.printDimensions();
     std::cout << " are of differenct shape.\n";
-    return output;
   }
+  return output;
 }
 
 template <typename T> Tensor<T> *Tensor<T>::add(Tensor<T> &input) {
@@ -152,10 +166,23 @@ template <typename T> Tensor<T> *Tensor<T>::add(Tensor<T> &input) {
     inputs[1] = &input;
     ops->initializeinputs(inputs);
     ops->initializeoutput(output);
-    ops->compute();
 
-    delete ops;
-    return output;
+    Graph *g = GraphManager::instance().getCurrentGraph();
+    if (g) {
+      g->addNode(this);
+      g->addNode(&input);
+      g->addNode(ops);
+
+      g->addEdge(this, ops);
+      g->addEdge(&input, ops);
+
+      g->addNode(output);
+      g->addEdge(ops, output);
+    } else {
+      ops->compute();
+      delete ops;
+    }
+
   } else {
     std::cout << "Two metrix requires same shape to perform matrix addition, "
                  "here matrix A ";
@@ -163,8 +190,8 @@ template <typename T> Tensor<T> *Tensor<T>::add(Tensor<T> &input) {
     std::cout << " and matrix B ";
     input.printDimensions();
     std::cout << " are of differenct shape.\n";
-    return output;
   }
+  return output;
 }
 
 template <typename T> Tensor<T> Tensor<T>::vectoradd(const Tensor<T> input) {
@@ -393,6 +420,7 @@ template <typename T> Tensor<T> *Tensor<T>::sub(Tensor<T> &input) {
     std::cout << " and matrix B ";
     input.printDimensions();
     std::cout << " are of differenct shape.\n";
+
     return output;
   }
 }

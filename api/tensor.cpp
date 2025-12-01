@@ -1,6 +1,6 @@
 #include "tensor.h"
 #include <absl/log/log.h>
-#include <cstddef>
+#include <graph/graph_manager.hpp>
 
 void tf::tensor::assign_ptr() { tensor_nodes.push_back(this); }
 
@@ -408,6 +408,24 @@ tf::tensor tf::tensor::mean(const unsigned dim) {
   return output;
 }
 
+tf::tensor tf::tensor::mul(tensor &input_b) {
+  tensor output;
+
+  if (this->dt_type == input_b.dt_type) {
+    switch (dt_type) {
+    case tf_float64: {
+      output.dt_type = this->dt_type;
+      output.ptr = static_cast<Tensor<std::float64_t> *>(this->ptr)->mul(
+          *(static_cast<Tensor<std::float64_t> *>(input_b.ptr)));
+      break;
+    }
+    default:
+      LOG(ERROR) << "Invalid data type!";
+    }
+  }
+  return output;
+}
+
 tf::tensor tf::tensor::getReduction(std::vector<unsigned> reduction_dims) {
   tensor output;
   switch (dt_type) {
@@ -461,7 +479,6 @@ tf::tensor tf::graph::graph_get_gradient(const tensor &a) {
   if (temp_ptr)
     output.ptr = temp_ptr;
 
-  // static_cast<Tensor<std::float64_t> *>(output.ptr)->printData();
   return output;
 }
 
@@ -504,3 +521,53 @@ void tf::graph::graph_compute_gradient() {
 void tf::graph::graph_traverse_gradient() {
   static_cast<Graph *>(this->ptr)->traverseGradientGraph();
 }
+
+// -------------- Graph Context ------------
+
+tf::graph_context::graph_context() { this->graph_ctx = new GraphContext(); }
+
+tf::graph_context::~graph_context() {
+
+  std::vector<void *> data_nodes =
+      static_cast<GraphContext *>(this->graph_ctx)->get_data_nodes();
+
+  for (auto tensor_node : tensor_nodes) {
+    for (auto node : data_nodes) {
+      if (node == tensor_node->ptr) {
+        tensor_node->isNodeCleared = true;
+        tensor_node->ptr = nullptr;
+        break;
+      }
+    }
+  }
+
+  static_cast<GraphContext *>(this->graph_ctx)->~GraphContext();
+}
+
+tf::tensor tf::graph_context::get_gradient(const tensor &a) {
+  tensor output;
+  output.dt_type = a.dt_type;
+  Tensor<std::float64_t> *temp_ptr =
+      static_cast<GraphContext *>(this->graph_ctx)
+          ->graph_get_gradient(
+              reinterpret_cast<Tensor<std::float64_t> *>(a.ptr));
+
+  if (temp_ptr)
+    output.ptr = temp_ptr;
+
+  return output;
+}
+
+void tf::graph_context::run() {
+  static_cast<GraphContext *>(this->graph_ctx)->run();
+}
+
+void tf::graph_context::initialize_gradient() {
+  static_cast<GraphContext *>(this->graph_ctx)->graph_initiize_gradient();
+}
+
+void tf::graph_context::compute_gradient() {
+  static_cast<GraphContext *>(this->graph_ctx)->graph_compute_gradeint();
+}
+
+// -------------- Graph Context ------------

@@ -18,9 +18,11 @@ set(COMBINED_RESORCES
     kernel/sqrt.cpp
     kernel/transpose.cpp
 
-
+    graph/graph_context.hpp
     graph/graph_framework.hpp
     graph/graph_framework.cpp
+    graph/graph_manager.hpp
+    graph/graph_manager.cpp
     graph/graph_node.hpp
     graph/graph_node.cpp
 

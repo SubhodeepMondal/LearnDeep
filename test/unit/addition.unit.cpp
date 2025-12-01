@@ -501,20 +501,20 @@ TEST_F(MathTest, Graph_MatrixAddition_2D) {
   A_16_8.tensor_of(a_double_16_8);
   B_16_8.tensor_of(b_double_16_8);
 
-  tf::graph g_add;
-  g_add.tf_create_graph();
+  {
+    tf::graph_context ctx;
 
-  C_16_8 = A_16_8.add(g_add, B_16_8);
+    C_16_8 = A_16_8.add(B_16_8);
 
-  g_add.graph_execute();
+    ctx.run();
 
-  for (int j = 0; j < 8; j++) {
-    for (int i = 0; i < 16; i++) {
-      EXPECT_NEAR(C_16_8.getPtr()[i + j * 16], out_double_16_8[i + j * 16],
-                  0.0001);
+    for (int j = 0; j < 8; j++) {
+      for (int i = 0; i < 16; i++) {
+        EXPECT_NEAR(C_16_8.getPtr()[i + j * 16], out_double_16_8[i + j * 16],
+                    0.0001);
+      }
     }
   }
-  g_add.graph_clear();
   //----------- End Of Test 1 --------------
 
   //--------------- Test 2 -----------------
@@ -3237,73 +3237,63 @@ TEST_F(MathTest, Graph_MatrixAddition_Grad_2D) {
   B.tensor_of(b_double_28_56);
   E.tensor_of(e_double_28_56);
 
-  tf::graph g_add;
-  g_add.tf_create_graph();
+  {
 
-  // Directed acyclic graph for
-  // A         B
-  //  \       /
-  //   \     /
-  //      +
-  //      |
-  //  E   C
-  //   \ / \
+    // Directed acyclic graph for
+    // A         B
+    //  \       /
+    //   \     /
+    //      +
+    //      |
+    //  E   C
+    //   \ / \
   //    *  |
-  //    |  |
-  //    D  C
-  //    \ /
-  //     *
-  //     |
-  //     F
+    //    |  |
+    //    D  C
+    //    \ /
+    //     *
+    //     |
+    //     F
+    tf::graph_context ctx;
+    C = A.add(B);
+    D = C.mul(E);
+    F = C.mul(D);
 
-  C = A.add(g_add, B);
-  D = C.mul(g_add, E);
-  F = C.mul(g_add, D);
+    ctx.run();
 
-  g_add.graph_execute();
+    for (int j = 0; j < 56; j++)
+      for (int i = 0; i < 28; i++)
+        EXPECT_NEAR(F.getPtr()[i + j * 28], f_out_28_56[i + j * 28], 1e-6);
 
-  for (int j = 0; j < 56; j++)
-    for (int i = 0; i < 28; i++)
-      EXPECT_NEAR(F.getPtr()[i + j * 28], f_out_28_56[i + j * 28], 1e-6);
+    ctx.initialize_gradient();
+    ctx.compute_gradient();
 
-  g_add.graph_initialize_gradient();
-  g_add.graph_compute_gradient();
+    A_grad = ctx.get_gradient(A);
+    B_grad = ctx.get_gradient(B);
+    C_grad = ctx.get_gradient(C);
+    E_grad = ctx.get_gradient(E);
+    D_grad = ctx.get_gradient(D);
 
-  // numpy equivalent calculation
-  // delta_F = np.ones((56, 28), np.float64)
-  // delta_E = C_out_56_28 *C_out_56_28
-  // delta_D = C_out_56_28
-  // delta_C = D_out_56_28 + C_out_56_28 *E_add_input_56_28
-  // delta_B = delta_C
-  // delta_A = delta_C
+    for (int j = 0; j < 56; j++)
+      for (int i = 0; i < 28; i++)
+        EXPECT_NEAR(A_grad.getPtr()[i + j * 28], d_a[i + j * 28], 1e-6);
 
-  A_grad = g_add.graph_get_gradient(A);
-  B_grad = g_add.graph_get_gradient(B);
-  C_grad = g_add.graph_get_gradient(C);
-  E_grad = g_add.graph_get_gradient(E);
-  D_grad = g_add.graph_get_gradient(D);
+    for (int j = 0; j < 56; j++)
+      for (int i = 0; i < 28; i++)
+        EXPECT_NEAR(B_grad.getPtr()[i + j * 28], d_b[i + j * 28], 1e-6);
 
-  for (int j = 0; j < 56; j++)
-    for (int i = 0; i < 28; i++)
-      EXPECT_NEAR(A_grad.getPtr()[i + j * 28], d_a[i + j * 28], 1e-6);
+    for (int j = 0; j < 56; j++)
+      for (int i = 0; i < 28; i++)
+        EXPECT_NEAR(C_grad.getPtr()[i + j * 28], d_c[i + j * 28], 1e-6);
 
-  for (int j = 0; j < 56; j++)
-    for (int i = 0; i < 28; i++)
-      EXPECT_NEAR(B_grad.getPtr()[i + j * 28], d_b[i + j * 28], 1e-6);
+    for (int j = 0; j < 56; j++)
+      for (int i = 0; i < 28; i++)
+        EXPECT_NEAR(E_grad.getPtr()[i + j * 28], d_e[i + j * 28], 1e-6);
 
-  for (int j = 0; j < 56; j++)
-    for (int i = 0; i < 28; i++)
-      EXPECT_NEAR(C_grad.getPtr()[i + j * 28], d_c[i + j * 28], 1e-6);
-
-  for (int j = 0; j < 56; j++)
-    for (int i = 0; i < 28; i++)
-      EXPECT_NEAR(E_grad.getPtr()[i + j * 28], d_e[i + j * 28], 1e-6);
-
-  for (int j = 0; j < 56; j++)
-    for (int i = 0; i < 28; i++)
-      EXPECT_NEAR(D_grad.getPtr()[i + j * 28], d_d[i + j * 28], 1e-6);
-
-  g_add.graph_clear();
+    for (int j = 0; j < 56; j++)
+      for (int i = 0; i < 28; i++)
+        EXPECT_NEAR(D_grad.getPtr()[i + j * 28], d_d[i + j * 28], 1e-6);
+  }
 
   //----------- End Of Test 1 --------------
 }

@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <cstddef>
 #include <framework/MathLibrary.h>
+#include <graph/graph_context.hpp>
 #include <graph/graph_framework.hpp>
 #include <iostream>
 #include <iterator>
@@ -102,6 +103,8 @@ typedef struct tensor {
   tensor mean(const unsigned dim);
 
   tensor matmul(tensor &input_b);
+
+  tensor mul(tensor &input_b);
 
   tensor pow(const unsigned exponent);
 
@@ -251,6 +254,21 @@ typedef struct graph {
 
   void graph_compute_gradient();
 } graph;
+
+typedef struct graph_context {
+  void *graph_ctx;
+  graph_context();
+
+  ~graph_context();
+
+  void run();
+
+  tensor get_gradient(const tensor &a);
+
+  void initialize_gradient();
+
+  void compute_gradient();
+} graph_context;
 
 } // namespace tf
 
