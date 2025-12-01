@@ -117,10 +117,23 @@ template <typename T> Tensor<T> *Tensor<T>::mul(Tensor<T> &input) {
     inputs[1] = &input;
     ops->initializeinputs(inputs);
     ops->initializeoutput(output);
-    ops->compute();
 
-    delete ops;
-    return output;
+    Graph *g = GraphManager::instance().getCurrentGraph();
+    if (g) {
+      g->addNode(this);
+      g->addNode(&input);
+      g->addNode(ops);
+
+      g->addEdge(this, ops);
+      g->addEdge(&input, ops);
+
+      g->addNode(output);
+      g->addEdge(ops, output);
+    } else {
+      ops->compute();
+      delete ops;
+    }
+
   } else {
     std::cout << "Two metrix requires same shape to perform matrix addition, "
                  "here matrix A ";
@@ -128,8 +141,8 @@ template <typename T> Tensor<T> *Tensor<T>::mul(Tensor<T> &input) {
     std::cout << " and matrix B ";
     input.printDimensions();
     std::cout << " are of differenct shape.\n";
-    return output;
   }
+  return output;
 }
 
 template <typename T> Tensor<T> *Tensor<T>::add(Tensor<T> &input) {
@@ -153,9 +166,6 @@ template <typename T> Tensor<T> *Tensor<T>::add(Tensor<T> &input) {
     inputs[1] = &input;
     ops->initializeinputs(inputs);
     ops->initializeoutput(output);
-    ops->compute();
-
-    return output;
 
     Graph *g = GraphManager::instance().getCurrentGraph();
     if (g) {
@@ -168,8 +178,10 @@ template <typename T> Tensor<T> *Tensor<T>::add(Tensor<T> &input) {
 
       g->addNode(output);
       g->addEdge(ops, output);
-    } else
+    } else {
+      ops->compute();
       delete ops;
+    }
 
   } else {
     std::cout << "Two metrix requires same shape to perform matrix addition, "
@@ -178,8 +190,8 @@ template <typename T> Tensor<T> *Tensor<T>::add(Tensor<T> &input) {
     std::cout << " and matrix B ";
     input.printDimensions();
     std::cout << " are of differenct shape.\n";
-    return output;
   }
+  return output;
 }
 
 template <typename T> Tensor<T> Tensor<T>::vectoradd(const Tensor<T> input) {

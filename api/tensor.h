@@ -104,6 +104,8 @@ typedef struct tensor {
 
   tensor matmul(tensor &input_b);
 
+  tensor mul(tensor &input_b);
+
   tensor pow(const unsigned exponent);
 
   tensor relu();
@@ -255,11 +257,17 @@ typedef struct graph {
 
 typedef struct graph_context {
   void *graph_ctx;
-  graph_context() { this->graph_ctx = new GraphContext; }
+  graph_context();
 
-  ~graph_context() { static_cast<GraphContext *>(graph_ctx)->~GraphContext(); }
+  ~graph_context();
 
-  void run() { static_cast<GraphContext *>(graph_ctx)->run(); }
+  void run();
+
+  tensor get_gradient(const tensor &a);
+
+  void initialize_gradient();
+
+  void compute_gradient();
 } graph_context;
 
 } // namespace tf
