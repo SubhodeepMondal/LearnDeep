@@ -501,20 +501,20 @@ TEST_F(MathTest, Graph_MatrixAddition_2D) {
   A_16_8.tensor_of(a_double_16_8);
   B_16_8.tensor_of(b_double_16_8);
 
-  tf::graph g_add;
-  g_add.tf_create_graph();
+  {
+    tf::graph_context ctx;
 
-  C_16_8 = A_16_8.add(g_add, B_16_8);
+    C_16_8 = A_16_8.add(B_16_8);
 
-  g_add.graph_execute();
+    ctx.run();
 
-  for (int j = 0; j < 8; j++) {
-    for (int i = 0; i < 16; i++) {
-      EXPECT_NEAR(C_16_8.getPtr()[i + j * 16], out_double_16_8[i + j * 16],
-                  0.0001);
+    for (int j = 0; j < 8; j++) {
+      for (int i = 0; i < 16; i++) {
+        EXPECT_NEAR(C_16_8.getPtr()[i + j * 16], out_double_16_8[i + j * 16],
+                    0.0001);
+      }
     }
   }
-  g_add.graph_clear();
   //----------- End Of Test 1 --------------
 
   //--------------- Test 2 -----------------

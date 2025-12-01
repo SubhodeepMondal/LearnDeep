@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <cstddef>
 #include <framework/MathLibrary.h>
+#include <graph/graph_context.hpp>
 #include <graph/graph_framework.hpp>
 #include <iostream>
 #include <iterator>
@@ -251,6 +252,15 @@ typedef struct graph {
 
   void graph_compute_gradient();
 } graph;
+
+typedef struct graph_context {
+  void *graph_ctx;
+  graph_context() { this->graph_ctx = new GraphContext; }
+
+  ~graph_context() { static_cast<GraphContext *>(graph_ctx)->~GraphContext(); }
+
+  void run() { static_cast<GraphContext *>(graph_ctx)->run(); }
+} graph_context;
 
 } // namespace tf
 

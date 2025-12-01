@@ -1,6 +1,6 @@
 #include "tensor.h"
 #include <absl/log/log.h>
-#include <cstddef>
+#include <graph/graph_manager.hpp>
 
 void tf::tensor::assign_ptr() { tensor_nodes.push_back(this); }
 
