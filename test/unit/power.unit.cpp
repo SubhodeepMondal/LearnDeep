@@ -44,19 +44,18 @@ TEST_F(MathTest, Graph_MatrixPower_2D) {
   C.tf_create(tf_float64, 4, 4);
 
   A.tensor_of(a);
+  {
+    tf::graph_context ctx;
 
-  tf::graph g_power;
-  g_power.tf_create_graph();
+    C = A.pow(2);
 
-  C = A.pow(g_power, 2);
+    ctx.run();
 
-  g_power.graph_execute();
-
-  auto *tensorC_power = static_cast<Tensor<std::float64_t> *>(C.ptr);
-  for (int i = 0; i < 16; i++) {
-    EXPECT_NEAR(tensorC_power->getData()[i], c_power[i], 0.0001);
+    auto *tensorC_power = static_cast<Tensor<std::float64_t> *>(C.ptr);
+    for (int i = 0; i < 16; i++) {
+      EXPECT_NEAR(tensorC_power->getData()[i], c_power[i], 0.0001);
+    }
   }
-  g_power.graph_clear();
 }
 
 TEST_F(MathTest, Eager_MatrixPower_Grad_2D) {
@@ -96,38 +95,36 @@ TEST_F(MathTest, Eager_MatrixPower_Grad_2D) {
 
   A.tensor_of(a);
   B.tensor_of(c_power);
+  {
+    tf::graph_context ctx;
 
-  tf::graph g_power;
-  g_power.tf_create_graph();
+    B = A.pow(2);
+    C = B.pow(3);
 
-  B = A.pow(g_power, 2);
-  C = B.pow(g_power, 3);
+    ctx.run();
 
-  g_power.graph_execute();
+    auto *tensorB_power = static_cast<Tensor<std::float64_t> *>(B.ptr);
+    for (int i = 0; i < 16; i++) {
+      EXPECT_NEAR(tensorB_power->getData()[i], b_power[i], 0.0001);
+    }
 
-  auto *tensorB_power = static_cast<Tensor<std::float64_t> *>(B.ptr);
-  for (int i = 0; i < 16; i++) {
-    EXPECT_NEAR(tensorB_power->getData()[i], b_power[i], 0.0001);
+    auto *tensorC_power = static_cast<Tensor<std::float64_t> *>(C.ptr);
+    for (int i = 0; i < 16; i++) {
+      EXPECT_NEAR(tensorC_power->getData()[i], c_power[i], 0.0001);
+    }
+    ctx.initialize_gradient();
+    ctx.compute_gradient();
+
+    A_grad = ctx.get_gradient(A);
+    B_grad = ctx.get_gradient(B);
+
+    auto *tensorA_grad = static_cast<Tensor<std::float64_t> *>(A_grad.ptr);
+    for (int i = 0; i < 16; i++) {
+      EXPECT_NEAR(tensorA_grad->getData()[i], a_grad[i], 0.0001);
+    }
+    auto *tensorB_grad = static_cast<Tensor<std::float64_t> *>(B_grad.ptr);
+    for (int i = 0; i < 16; i++) {
+      EXPECT_NEAR(tensorB_grad->getData()[i], b_grad[i], 0.0001);
+    }
   }
-
-  auto *tensorC_power = static_cast<Tensor<std::float64_t> *>(C.ptr);
-  for (int i = 0; i < 16; i++) {
-    EXPECT_NEAR(tensorC_power->getData()[i], c_power[i], 0.0001);
-  }
-  g_power.graph_initialize_gradient();
-  g_power.graph_compute_gradient();
-
-  A_grad = g_power.graph_get_gradient(A);
-  B_grad = g_power.graph_get_gradient(B);
-
-  auto *tensorA_grad = static_cast<Tensor<std::float64_t> *>(A_grad.ptr);
-  for (int i = 0; i < 16; i++) {
-    EXPECT_NEAR(tensorA_grad->getData()[i], a_grad[i], 0.0001);
-  }
-  auto *tensorB_grad = static_cast<Tensor<std::float64_t> *>(B_grad.ptr);
-  for (int i = 0; i < 16; i++) {
-    EXPECT_NEAR(tensorB_grad->getData()[i], b_grad[i], 0.0001);
-  }
-
-  g_power.graph_clear();
 }

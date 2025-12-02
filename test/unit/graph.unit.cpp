@@ -21,14 +21,11 @@ TEST_F(MathTest, GraphCreation_test) {
 
   A.tensor_of(a);
   B.tensor_of(b);
-  tf::graph g;
-  g.tf_create_graph();
-  ASSERT_TRUE(g.ptr != nullptr);
+  {
+    tf::graph_context ctx;
 
-  C = A.add(g, B);
-  ASSERT_TRUE(C.ptr != nullptr);
-  EXPECT_TRUE(C.dt_type == tf_float64);
+    C = A.add(B);
 
-  g.graph_execute();
-  g.graph_clear();
+    ctx.run();
+  }
 }

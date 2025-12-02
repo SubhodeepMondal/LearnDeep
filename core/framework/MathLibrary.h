@@ -79,32 +79,6 @@ public:
   Tensor<T> *mean(const unsigned);
 
   Tensor<T> *transpose();
-
-  Ops *add(Graph &g, Tensor<T> &input, bool &flag);
-
-  Ops *mean(Graph &g, unsigned dim, bool &flag);
-
-  Ops *mul(Graph &g, Tensor<T> &input, bool &flag);
-
-  Ops *matmul(Graph &g, Tensor<T> &input, bool &flag);
-
-  Ops *reducesum(Graph &g, std::vector<unsigned> n, bool &flag);
-
-  Ops *pow(Graph &g, unsigned exponent, bool &flag);
-
-  Ops *relu(Graph &g, bool &flag);
-
-  Ops *scale(Graph &g, const std::float64_t scaleFactor, bool &flag);
-
-  Ops *sigmoid(Graph &g, bool &flag);
-
-  Ops *softmax(Graph &g, unsigned axis, bool &flag);
-
-  Ops *sqrt(Graph &g, bool &flag);
-
-  Ops *sub(Graph &g, Tensor<T> &input, bool &flag);
-
-  Ops *transpose(Graph &g);
 };
 
 // template class Tensor<std::float64_t>;

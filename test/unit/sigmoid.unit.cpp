@@ -46,17 +46,16 @@ TEST_F(MathTest, Graph_Matrixsigmoid_2D) {
   C.tf_create(tf_float64, 4, 4);
 
   A.tensor_of(a);
+  {
+    tf::graph_context ctx;
 
-  tf::graph g_sigmoid;
-  g_sigmoid.tf_create_graph();
+    C = A.sigmoid();
 
-  C = A.sigmoid(g_sigmoid);
+    ctx.run();
 
-  g_sigmoid.graph_execute();
-
-  auto *tensorC_sigmoid = static_cast<Tensor<std::float64_t> *>(C.ptr);
-  for (int i = 0; i < 16; i++) {
-    EXPECT_NEAR(tensorC_sigmoid->getData()[i], c_sigmoid[i], 0.0001);
+    auto *tensorC_sigmoid = static_cast<Tensor<std::float64_t> *>(C.ptr);
+    for (int i = 0; i < 16; i++) {
+      EXPECT_NEAR(tensorC_sigmoid->getData()[i], c_sigmoid[i], 0.0001);
+    }
   }
-  g_sigmoid.graph_clear();
 }

@@ -1,7 +1,6 @@
 #include <benchmark/benchmark.h>
 #include <tensor.h>
 
-
 // -------- Benchmark Graph sigmoid --------
 static void mat_sigmoid_graph_tensor(benchmark::State &state) {
   // Define two large matrices
@@ -11,18 +10,16 @@ static void mat_sigmoid_graph_tensor(benchmark::State &state) {
   A.tf_create(tf_float64, N, N);
   C.tf_create(tf_float64, N, N);
   A.tensor_of(-0.5, 0.85);
+  {
+    tf::graph_context ctx;
 
-  tf::graph g_sigmoid;
-  g_sigmoid.tf_create_graph();
+    C = A.sigmoid(0);
 
-  C = A.sigmoid(g_sigmoid, 0);
-
-  for (auto _ : state) {
-    g_sigmoid.graph_execute();                // Perform matrix sigmoid
-    benchmark::DoNotOptimize(C); // Prevent compiler optimization
+    for (auto _ : state) {
+      ctx.run();                   // Perform matrix sigmoid
+      benchmark::DoNotOptimize(C); // Prevent compiler optimization
+    }
   }
-  g_sigmoid.graph_clear();
-
 
   state.SetItemsProcessed(int64_t(state.iterations()) * N * N);
 }
@@ -43,8 +40,6 @@ BENCHMARK(mat_sigmoid_graph_tensor)
     ->Arg(1 << 9)   // 512 elements
     ->Arg(1 << 10)  // 1024 elements
     ->Arg(1 << 12)  // 4192 eleements
-    ->Arg(1 << 14) // 16K elements
+    ->Arg(1 << 14)  // 16K elements
     ->Arg(1 << 16); // 16K elements
 #endif
-
-

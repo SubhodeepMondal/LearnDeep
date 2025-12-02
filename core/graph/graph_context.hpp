@@ -16,7 +16,7 @@ public:
   }
 
   ~GraphContext() {
-    graph->release_resources();
+    // graph->release_resources();
     graph = nullptr;
     GraphManager::instance().popGraph();
   }

@@ -828,21 +828,20 @@ TEST_F(MathTest, Graph_MatrixAddition_2D) {
 
   A_19_31.tensor_of(a_double_19_31);
   B_19_31.tensor_of(b_double_19_31);
+  {
+    tf::graph_context ctx;
 
-  tf::graph g_add_2;
-  g_add_2.tf_create_graph();
+    C_19_31 = A_19_31.add(B_19_31);
 
-  C_19_31 = A_19_31.add(g_add_2, B_19_31);
+    ctx.run();
 
-  g_add_2.graph_execute();
-
-  for (int j = 0; j < 31; j++) {
-    for (int i = 0; i < 19; i++) {
-      EXPECT_NEAR(C_19_31.getPtr()[i + j * 19], out_double_19_31[i + j * 19],
-                  0.0001);
+    for (int j = 0; j < 31; j++) {
+      for (int i = 0; i < 19; i++) {
+        EXPECT_NEAR(C_19_31.getPtr()[i + j * 19], out_double_19_31[i + j * 19],
+                    0.0001);
+      }
     }
   }
-  g_add_2.graph_clear();
   //----------- End Of Test 2 --------------
 }
 

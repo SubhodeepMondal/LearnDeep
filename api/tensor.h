@@ -5,13 +5,11 @@
 #include <cstddef>
 #include <framework/MathLibrary.h>
 #include <graph/graph_context.hpp>
-#include <graph/graph_framework.hpp>
 #include <iostream>
 #include <iterator>
 #include <vector>
 
 namespace tf {
-struct graph;
 
 typedef struct tensor {
   void *ptr{nullptr};
@@ -67,33 +65,7 @@ typedef struct tensor {
 
   void print_dimension();
 
-  // ------- graph operations --------
-  graph &add(graph &g, tensor &input_b);
-
-  graph &mean(graph &g, unsigned dim);
-
-  graph &mul(graph &g, tensor &input_b);
-
-  graph &matmul(graph &g, tensor &input_b);
-
-  graph &pow(graph &g, unsigned exponent);
-
-  graph &relu(graph &g);
-
-  graph &sigmoid(graph &g);
-
-  graph &scale(graph &g, std::float64_t scaleFactor);
-
-  graph &sqrt(graph &g);
-
-  graph &sub(graph &g, tensor &input_b);
-
-  graph &transpose(graph &g);
-  // -------- end of graph operations ---------
-
   // ------- eager operations --------
-  void operator=(graph &g);
-
   tensor operator+(tensor &input_b);
 
   tensor operator*(tensor &input_b);
@@ -121,13 +93,14 @@ typedef struct tensor {
   tensor transpose();
 
   tensor getReduction(std::vector<unsigned> reduction_dims);
-  // -------- end of eager operations ---------
 
   void gradient_required(bool is_grad_required);
 
   template <typename... Args> tensor reducesum(Args... args) {
     std::vector<unsigned> dimensions;
     bool flag = true;
+
+    // -------- end of eager operations ---------
 
     // Add dimensions to the vector
     addDimensions(dimensions, args...);
@@ -205,55 +178,12 @@ typedef struct tensor {
   void destory();
   void eraseRecord();
 
-  graph &getReductionGraph(graph &g, std::vector<unsigned> reduction_dims,
-                           bool &flag);
-
-  template <typename... Args> graph &reducesum(graph &g, Args... args) {
-    std::vector<unsigned> dimensions;
-    bool flag = true;
-
-    // Add dimensions to the vector
-    addDimensions(dimensions, args...);
-
-    unsigned *reduction_dims = new unsigned[dimensions.size()];
-    for (int i = 0; i < dimensions.size(); i++) {
-      reduction_dims[i] = dimensions[i];
-    }
-    delete[] reduction_dims;
-
-    return getReductionGraph(g, dimensions, flag);
-  }
-
   std::float64_t *getPtr() {
     return static_cast<Tensor<std::float64_t> *>(this->ptr)->getData();
   }
 } tensor;
 
 static std::vector<tensor *> tensor_nodes;
-
-typedef struct graph {
-  void *ptr;
-  bool isGraphCleared = bool(false);
-  tensor *input_a = nullptr;
-  tensor *input_b = nullptr;
-  tensor *output = nullptr;
-  Ops *ops;
-  void tf_create_graph();
-
-  void graph_execute();
-
-  void graph_travarse_data_node();
-
-  tensor graph_get_gradient(const tensor &a);
-
-  void graph_traverse_gradient();
-
-  void graph_clear();
-
-  void graph_initialize_gradient();
-
-  void graph_compute_gradient();
-} graph;
 
 typedef struct graph_context {
   void *graph_ctx;

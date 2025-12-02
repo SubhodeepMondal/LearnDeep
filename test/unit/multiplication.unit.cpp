@@ -60,19 +60,18 @@ TEST_F(MathTest, Graph_MatrixElementWiseMultiplication_2D) {
 
   A.tensor_of(a);
   B.tensor_of(b);
+  {
+    tf::graph_context ctx;
 
-  tf::graph g_mul;
-  g_mul.tf_create_graph();
+    C = A.mul(B);
 
-  C = A.mul(g_mul, B);
+    ctx.run();
 
-  g_mul.graph_execute();
-
-  auto *tensorC_mul = static_cast<Tensor<std::float64_t> *>(C.ptr);
-  for (int i = 0; i < 16; i++) {
-    EXPECT_NEAR(tensorC_mul->getData()[i], c_mul[i], 0.0001);
+    auto *tensorC_mul = static_cast<Tensor<std::float64_t> *>(C.ptr);
+    for (int i = 0; i < 16; i++) {
+      EXPECT_NEAR(tensorC_mul->getData()[i], c_mul[i], 0.0001);
+    }
   }
-  g_mul.graph_clear();
 }
 
 TEST_F(MathTest, Graph_MatrixElementWiseMultiplication_Grad_2D) {
@@ -122,41 +121,40 @@ TEST_F(MathTest, Graph_MatrixElementWiseMultiplication_Grad_2D) {
   A.tensor_of(a);
   B.tensor_of(b);
   E.tensor_of(e);
+  {
+    tf::graph_context ctx;
 
-  tf::graph g_mul;
-  g_mul.tf_create_graph();
+    C = A.mul(B);
+    D = C.mul(E);
 
-  C = A.mul(g_mul, B);
-  D = C.mul(g_mul, E);
+    ctx.run();
 
-  g_mul.graph_execute();
+    ctx.initialize_gradient();
+    ctx.compute_gradient();
 
-  g_mul.graph_initialize_gradient();
-  g_mul.graph_compute_gradient();
+    A_grad = ctx.get_gradient(A);
+    B_grad = ctx.get_gradient(B);
+    C_grad = ctx.get_gradient(C);
+    E_grad = ctx.get_gradient(E);
 
-  A_grad = g_mul.graph_get_gradient(A);
-  B_grad = g_mul.graph_get_gradient(B);
-  C_grad = g_mul.graph_get_gradient(C);
-  E_grad = g_mul.graph_get_gradient(E);
+    auto *tensorA_grad = static_cast<Tensor<std::float64_t> *>(A_grad.ptr);
+    for (int i = 0; i < 16; i++) {
+      EXPECT_NEAR(tensorA_grad->getData()[i], d_a[i], 0.0001);
+    }
 
-  auto *tensorA_grad = static_cast<Tensor<std::float64_t> *>(A_grad.ptr);
-  for (int i = 0; i < 16; i++) {
-    EXPECT_NEAR(tensorA_grad->getData()[i], d_a[i], 0.0001);
+    auto *tensorB_grad = static_cast<Tensor<std::float64_t> *>(B_grad.ptr);
+    for (int i = 0; i < 16; i++) {
+      EXPECT_NEAR(tensorB_grad->getData()[i], d_b[i], 0.0001);
+    }
+
+    auto *tensorC_grad = static_cast<Tensor<std::float64_t> *>(C_grad.ptr);
+    for (int i = 0; i < 16; i++) {
+      EXPECT_NEAR(tensorC_grad->getData()[i], d_c[i], 0.0001);
+    }
+
+    auto *tensorE_grad = static_cast<Tensor<std::float64_t> *>(E_grad.ptr);
+    for (int i = 0; i < 16; i++) {
+      EXPECT_NEAR(tensorE_grad->getData()[i], d_e[i], 0.0001);
+    }
   }
-
-  auto *tensorB_grad = static_cast<Tensor<std::float64_t> *>(B_grad.ptr);
-  for (int i = 0; i < 16; i++) {
-    EXPECT_NEAR(tensorB_grad->getData()[i], d_b[i], 0.0001);
-  }
-
-  auto *tensorC_grad = static_cast<Tensor<std::float64_t> *>(C_grad.ptr);
-  for (int i = 0; i < 16; i++) {
-    EXPECT_NEAR(tensorC_grad->getData()[i], d_c[i], 0.0001);
-  }
-
-  auto *tensorE_grad = static_cast<Tensor<std::float64_t> *>(E_grad.ptr);
-  for (int i = 0; i < 16; i++) {
-    EXPECT_NEAR(tensorE_grad->getData()[i], d_e[i], 0.0001);
-  }
-  g_mul.graph_clear();
 }
