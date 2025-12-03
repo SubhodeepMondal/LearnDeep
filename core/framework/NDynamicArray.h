@@ -22,6 +22,7 @@ template <typename T> class ndarray {
   void *data_ptr;
 
 public:
+  // ----------------- Rule of 5 -------------------
   ndarray();
 
   ndarray(unsigned, const unsigned *, DataType);

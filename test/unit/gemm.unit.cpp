@@ -3,7 +3,7 @@
 
 #include "LinearAlgebraFixtures.unit.hpp"
 
-TEST_F(MathTest, eager_general_matrix_multiplication_2D) {
+TEST_F(MathTest, Eraph_General_Matrix_Multiplication_2D) {
   // gemm is a general matrix multiplication operation
   // It performs matrix multiplication followed by addition with another matrix
   // A * B + C

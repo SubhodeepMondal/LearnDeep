@@ -68,7 +68,7 @@ void Graph::addEdge(Ops *src, Tensor<std::float64_t> *dst) {
 }
 
 void Graph::addGradientNode(Tensor<std::float64_t> *input_node) {
-  if (grad_data_nodes.count(input_node) == 0) {
+  if (!grad_data_nodes.count(input_node) && !data_nodes.count(input_node)) {
     grad_data_nodes.insert(input_node);
     // Create a new node for the input tensor and add it to the graph
     node *new_node = new node(reinterpret_cast<unsigned long>(input_node),
@@ -402,7 +402,7 @@ void Graph::traverseGradientGraph() {
   }
 }
 
-void Graph::release_resources() {
+Graph::~Graph() {
   if (!is_valid_graph) {
     LOG(ERROR) << "Graph is not valid!";
     return;

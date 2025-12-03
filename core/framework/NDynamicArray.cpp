@@ -132,7 +132,18 @@ ndarray<T> &ndarray<T>::operator=(ndarray<T> &&ndarray) noexcept {
 template <typename T> ndarray<T>::~ndarray() {
   // std::cout << "Destructor called for object: " << "\n";
   LOG(INFO) << "Destructor called for object: " << "\n";
-  destroy();
+  if (data) {
+    delete[] data;
+    data = nullptr;
+  }
+  if (dimension) {
+    delete[] dimension;
+    dimension = nullptr;
+  }
+  if (arr_dim) {
+    delete[] arr_dim;
+    arr_dim = nullptr;
+  }
 }
 
 template <typename T> T *ndarray<T>::getData() const { return data; }

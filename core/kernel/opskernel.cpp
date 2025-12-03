@@ -1,18 +1,23 @@
+// Library Headers
 #include "opskernel.h"
-#include "../framework/MathLibrary.h"
-
+#include <LAS/CPULibrary.h>
+#include <LAS/avx2_micro_kernels.h>
+#include <framework/MathLibrary.h>
 
 Ops::~Ops() {}
 
 void Ops::recursive_iterator(unsigned index, unsigned *dimension_arr,
                              // Tensor<std::float64_t> input_a,
-                             Tensor<std::float64_t> input_b, Tensor<std::float64_t> &output,
+                             Tensor<std::float64_t> input_b,
+                             Tensor<std::float64_t> &output,
                              std::string function_name, unsigned *ui_arr,
-                             std::float64_t *dl_arr, Tensor<std::float64_t> *misc_arr) {}
+                             std::float64_t *dl_arr,
+                             Tensor<std::float64_t> *misc_arr) {}
 
 void Ops::recursive_sum(unsigned index, unsigned *dimension_arr,
-                        Tensor<std::float64_t> input_b, Tensor<std::float64_t> &output,
-                        unsigned reduction_dim, std::float64_t *temp_input) {
+                        Tensor<std::float64_t> input_b,
+                        Tensor<std::float64_t> &output, unsigned reduction_dim,
+                        std::float64_t *temp_input) {
 
   if (index < 3) {
     unsigned i, j, k;

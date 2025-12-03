@@ -54,6 +54,7 @@ public:
     graph[0] = root_node;                    // 0 is root node id
     auto_diff_graph[0] = gradient_root_node; // 0 is gradient root node id
   }
+  ~Graph();
 
   void addNode(Tensor<std::float64_t> *input_node);
 

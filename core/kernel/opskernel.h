@@ -125,7 +125,7 @@ class Opsadd : public Ops {
   std::vector<Tensor<std::float64_t> *> inputs;
   Tensor<std::float64_t> *output;
   Tensor<std::float64_t> *incoming_gradient;
-  Tensor<std::float64_t> *outgoing_gradients[2];
+  std::vector<Tensor<std::float64_t> *> outgoing_gradients;
   void recursive_iterator(unsigned index, unsigned *dimension_arr,
                           std::string function_name, unsigned *ui_arr,
                           std::float64_t *dl_arr,
