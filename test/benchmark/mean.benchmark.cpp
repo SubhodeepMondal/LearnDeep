@@ -36,18 +36,16 @@ static void mat_mean_graph_tensor(benchmark::State &state) {
   A.tf_create(tf_float64, N, N);
   C.tf_create(tf_float64, N, N);
   A.tensor_of(-0.5, 0.85);
+  {
+    tf::graph_context ctx;
 
-  tf::graph g_mean;
-  g_mean.tf_create_graph();
+    C = A.mean(0);
 
-  C = A.mean(g_mean, 0);
-
-  for (auto _ : state) {
-    g_mean.graph_execute(); // Perform matrix mean
-    benchmark::DoNotOptimize(C);      // Prevent compiler optimization
+    for (auto _ : state) {
+      ctx.run();                   // Perform matrix mean
+      benchmark::DoNotOptimize(C); // Prevent compiler optimization
+    }
   }
-  g_mean.graph_clear();
-
 
   state.SetItemsProcessed(int64_t(state.iterations()) * N * N);
 }

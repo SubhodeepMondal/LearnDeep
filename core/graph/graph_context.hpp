@@ -11,12 +11,12 @@ class GraphContext {
 
 public:
   GraphContext() {
-    graph = new Graph();
+    graph = new Graph;
     GraphManager::instance().pushGraph(graph);
   }
 
   ~GraphContext() {
-    graph->release_resources();
+    delete graph;
     graph = nullptr;
     GraphManager::instance().popGraph();
   }

@@ -13,7 +13,7 @@ Graph *GraphManager::getCurrentGraph() {
   if (graphs.size()) {
     return graphs[graphs.size() - 1];
   } else {
-    LOG(ERROR) << "Fatal! No active graph found!\n";
+    LOG(INFO) << "Fatal! No active graph found!\n";
     return NULL;
   }
 }

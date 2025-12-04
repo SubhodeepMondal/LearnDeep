@@ -58,17 +58,16 @@ TEST_F(MathTest, Graph_MatrixSubtraction_2D) {
 
   A.tensor_of(a);
   B.tensor_of(b);
+  {
+    tf::graph_context ctx;
 
-  tf::graph g_sub;
-  g_sub.tf_create_graph();
+    C = A.sub(B);
 
-  C = A.sub(g_sub, B);
+    ctx.run();
 
-  g_sub.graph_execute();
-
-  auto *tensorC_sub = static_cast<Tensor<std::float64_t> *>(C.ptr);
-  for (int i = 0; i < 16; i++) {
-    EXPECT_NEAR(tensorC_sub->getData()[i], c_sub[i], 0.0001);
+    auto *tensorC_sub = static_cast<Tensor<std::float64_t> *>(C.ptr);
+    for (int i = 0; i < 16; i++) {
+      EXPECT_NEAR(tensorC_sub->getData()[i], c_sub[i], 0.0001);
+    }
   }
-  g_sub.graph_clear();
 }

@@ -1,13 +1,14 @@
 #ifndef MATH_LIBRARY
 #define MATH_LIBRARY
 
+// C++ Headers
 #include <algorithm>
 #include <iostream>
+#include <span>
 #include <vector>
 
+// Library Headers
 #include "NDynamicArray.h"
-#include <LAS/CPULibrary.h>
-#include <graph/graph_framework.hpp>
 #include <kernel/opskernel.h>
 
 template <typename T> class Tensor : public ndarray<T> {
@@ -39,20 +40,17 @@ public:
   }
 
   // destructor
-  ~Tensor() {
-    // // std::cout << "Destructor called for Tensor object: " << "\n";
-    // this->~ndarray();
-  }
+  ~Tensor() {}
 
   void assign(Ops *ops) { ops->initializeoutput(this); }
 
-  Tensor<T> *add(Tensor<T> &);
+  Tensor<T> *add(Tensor<T> &input, std::span<Ops *> ops);
 
-  Tensor<T> *matmul(Tensor<T> &);
+  Tensor<T> *matmul(Tensor<T> &input, std::span<Ops *> ops);
 
   Tensor<T> *operator*(Tensor<T> &);
 
-  Tensor<T> *mul(Tensor<T> &);
+  Tensor<T> *mul(Tensor<T> &input, std::span<Ops *> ops);
 
   Tensor<T> operator+(const Tensor<T>);
 
@@ -60,51 +58,25 @@ public:
 
   Tensor<T> vectoradd(const Tensor<T>);
 
-  Tensor<T> *reducesum(std::vector<unsigned>);
+  Tensor<T> *reducesum(std::vector<unsigned> n, std::span<Ops *> ops);
 
-  Tensor<T> *scale(const std::float64_t);
+  Tensor<T> *scale(const std::float64_t scaleFactor, std::span<Ops *> ops);
 
-  Tensor<T> *sqrt();
+  Tensor<T> *sqrt(std::span<Ops *> ops);
 
-  Tensor<T> *sub(Tensor<T> &);
+  Tensor<T> *sub(Tensor<T> &input, std::span<Ops *> ops);
 
-  Tensor<T> *pow(unsigned);
+  Tensor<T> *pow(unsigned exponent, std::span<Ops *> ops);
 
-  Tensor<T> *relu();
+  Tensor<T> *relu(std::span<Ops *> ops);
 
-  Tensor<T> *sigmoid();
+  Tensor<T> *sigmoid(std::span<Ops *> ops);
 
   Tensor<T> *softmax(const unsigned axis);
 
-  Tensor<T> *mean(const unsigned);
+  Tensor<T> *mean(const unsigned dim, std::span<Ops *> ops);
 
-  Tensor<T> *transpose();
-
-  Ops *add(Graph &g, Tensor<T> &input, bool &flag);
-
-  Ops *mean(Graph &g, unsigned dim, bool &flag);
-
-  Ops *mul(Graph &g, Tensor<T> &input, bool &flag);
-
-  Ops *matmul(Graph &g, Tensor<T> &input, bool &flag);
-
-  Ops *reducesum(Graph &g, std::vector<unsigned> n, bool &flag);
-
-  Ops *pow(Graph &g, unsigned exponent, bool &flag);
-
-  Ops *relu(Graph &g, bool &flag);
-
-  Ops *scale(Graph &g, const std::float64_t scaleFactor, bool &flag);
-
-  Ops *sigmoid(Graph &g, bool &flag);
-
-  Ops *softmax(Graph &g, unsigned axis, bool &flag);
-
-  Ops *sqrt(Graph &g, bool &flag);
-
-  Ops *sub(Graph &g, Tensor<T> &input, bool &flag);
-
-  Ops *transpose(Graph &g);
+  Tensor<T> *transpose(std::span<Ops *> ops);
 };
 
 // template class Tensor<std::float64_t>;

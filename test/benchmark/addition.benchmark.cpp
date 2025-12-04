@@ -40,16 +40,15 @@ static void mat_add_graph_tensor(benchmark::State &state) {
   C.tf_create(tf_float64, N, N);
   A.tensor_of(-0.5, 0.85);
   B.tensor_of(0.25, 0.75);
+  {
+    tf::graph_context ctx;
+    C = A.add(B);
 
-  tf::graph g_add;
-  g_add.tf_create_graph();
-  C = A.add(g_add, B);
-
-  for (auto _ : state) {
-    g_add.graph_execute();       // Perform matrix addition
-    benchmark::DoNotOptimize(C); // Prevent compiler optimization
+    for (auto _ : state) {
+      ctx.run();                   // Perform matrix addition
+      benchmark::DoNotOptimize(C); // Prevent compiler optimization
+    }
   }
-  g_add.graph_clear();
 
   state.SetItemsProcessed(int64_t(state.iterations()) * N * N);
 }

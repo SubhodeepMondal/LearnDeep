@@ -46,17 +46,16 @@ TEST_F(MathTest, Graph_MatrixSQRT_2D) {
   C.tf_create(tf_float64, 4, 4);
 
   A.tensor_of(a);
+  {
+    tf::graph_context ctx;
 
-  tf::graph g_sqrt;
-  g_sqrt.tf_create_graph();
+    C = A.sqrt();
 
-  C = A.sqrt(g_sqrt);
+    ctx.run();
 
-  g_sqrt.graph_execute();
-
-  auto *tensorC_sqrt = static_cast<Tensor<std::float64_t> *>(C.ptr);
-  for (int i = 0; i < 16; i++) {
-    EXPECT_NEAR(tensorC_sqrt->getData()[i], c_scale[i], 0.0001);
+    auto *tensorC_sqrt = static_cast<Tensor<std::float64_t> *>(C.ptr);
+    for (int i = 0; i < 16; i++) {
+      EXPECT_NEAR(tensorC_sqrt->getData()[i], c_scale[i], 0.0001);
+    }
   }
-  g_sqrt.graph_clear();
 }

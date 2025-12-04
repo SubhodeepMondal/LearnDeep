@@ -1,11 +1,57 @@
 #include "MathLibrary.h"
 #include "NDynamicArray.h"
 #include <graph/graph_manager.hpp>
-#include <kernel/opskernel.h>
-
-template <typename T> Tensor<T> *Tensor<T>::matmul(Tensor<T> &input) {
+// Eager Mode
+template <typename T>
+Tensor<T> *Tensor<T>::add(Tensor<T> &input, std::span<Ops *> ops) {
   Tensor<T> *output;
-  Ops *ops;
+  DataType d_type = tf_float64;
+
+  unsigned flag = 1;
+
+  for (int i = 0; i < this->getNoOfDimensions(); i++)
+    if (this->getDimensions()[i] != input.getDimensions()[i]) {
+      flag = 0;
+      break;
+    }
+  if (flag) {
+    output =
+        new Tensor<T>(this->getNoOfDimensions(), this->getDimensions(), d_type);
+    Tensor<T> *inputs[2];
+    inputs[0] = this;
+    inputs[1] = &input;
+    ops[0]->initializeinputs(inputs);
+    ops[0]->initializeoutput(output);
+
+    Graph *g = GraphManager::instance().getCurrentGraph();
+    if (g) {
+      g->addNode(this);
+      g->addNode(&input);
+      g->addNode(ops[0]);
+
+      g->addEdge(this, ops[0]);
+      g->addEdge(&input, ops[0]);
+
+      g->addNode(output);
+      g->addEdge(ops[0], output);
+    } else {
+      ops[0]->compute();
+    }
+
+  } else {
+    std::cout << "Two metrix requires same shape to perform matrix addition, "
+                 "here matrix A ";
+    Tensor<T>::printDimensions();
+    std::cout << " and matrix B ";
+    input.printDimensions();
+    std::cout << " are of differenct shape.\n";
+  }
+  return output;
+}
+
+template <typename T>
+Tensor<T> *Tensor<T>::matmul(Tensor<T> &input, std::span<Ops *> ops) {
+  Tensor<T> *output;
   unsigned i, j, flag = 1;
   unsigned *output_dim;
 
@@ -25,32 +71,40 @@ template <typename T> Tensor<T> *Tensor<T>::matmul(Tensor<T> &input) {
         }
       }
       if (flag) {
-        ops = new Opsmatmul;
         output = new Tensor<T>(Tensor<T>::getNoOfDimensions(), output_dim,
                                this->getType());
+        delete[] output_dim;
         Tensor<T> *inputs[2];
         inputs[0] = this;
         inputs[1] = &input;
-        ops->initializeinputs(inputs);
-        ops->initializeoutput(output);
-        ops->compute();
+        ops[0]->initializeinputs(inputs);
+        ops[0]->initializeoutput(output);
 
-        delete ops;
-        delete[] output_dim;
+        Graph *g = GraphManager::instance().getCurrentGraph();
+        if (g) {
+          g->addNode(this);
+          g->addNode(&input);
+          g->addNode(ops[0]);
+
+          g->addEdge(this, ops[0]);
+          g->addEdge(&input, ops[0]);
+
+          g->addNode(output);
+          g->addEdge(ops[0], output);
+        } else {
+          ops[0]->compute();
+        }
       } else {
         std::cout << "Error!" << i
                   << "th Dimension does not match with second matrix.\n";
-        return output;
       }
     } else {
       std::cout << "Error! First matrix's row length does not match with "
                    "second matrix column length.\n";
-      return output;
     }
   } else {
     std::cout << "Dimension mismatch, First matrix doesn't have same no of "
                  "dimension of second matrix.\n";
-    return output;
   }
 
   return output;
@@ -79,10 +133,22 @@ template <typename T> Tensor<T> *Tensor<T>::operator*(Tensor<T> &input) {
     inputs[1] = &input;
     ops->initializeinputs(inputs);
     ops->initializeoutput(output);
-    ops->compute();
 
-    delete ops;
-    return output;
+    Graph *g = GraphManager::instance().getCurrentGraph();
+    if (g) {
+      g->addNode(this);
+      g->addNode(&input);
+      g->addNode(ops);
+
+      g->addEdge(this, ops);
+      g->addEdge(&input, ops);
+
+      g->addNode(output);
+      g->addEdge(ops, output);
+    } else {
+      ops->compute();
+      delete ops;
+    }
   } else {
     std::cout << "Two metrix requires same shape to perform matrix addition, "
                  "here matrix A ";
@@ -90,13 +156,13 @@ template <typename T> Tensor<T> *Tensor<T>::operator*(Tensor<T> &input) {
     std::cout << " and matrix B ";
     input.printDimensions();
     std::cout << " are of differenct shape.\n";
-    return output;
   }
+  return output;
 }
 
-template <typename T> Tensor<T> *Tensor<T>::mul(Tensor<T> &input) {
+template <typename T>
+Tensor<T> *Tensor<T>::mul(Tensor<T> &input, std::span<Ops *> ops) {
   Tensor<T> *output;
-  Ops *ops;
   DataType d_type = tf_float64;
 
   unsigned flag = 1;
@@ -109,78 +175,27 @@ template <typename T> Tensor<T> *Tensor<T>::mul(Tensor<T> &input) {
       break;
     }
   if (flag) {
-    ops = new Opsmul;
     output =
         new Tensor<T>(this->getNoOfDimensions(), this->getDimensions(), d_type);
     Tensor<T> *inputs[2];
     inputs[0] = this;
     inputs[1] = &input;
-    ops->initializeinputs(inputs);
-    ops->initializeoutput(output);
+    ops[0]->initializeinputs(inputs);
+    ops[0]->initializeoutput(output);
 
     Graph *g = GraphManager::instance().getCurrentGraph();
     if (g) {
       g->addNode(this);
       g->addNode(&input);
-      g->addNode(ops);
+      g->addNode(ops[0]);
 
-      g->addEdge(this, ops);
-      g->addEdge(&input, ops);
-
-      g->addNode(output);
-      g->addEdge(ops, output);
-    } else {
-      ops->compute();
-      delete ops;
-    }
-
-  } else {
-    std::cout << "Two metrix requires same shape to perform matrix addition, "
-                 "here matrix A ";
-    Tensor<T>::printDimensions();
-    std::cout << " and matrix B ";
-    input.printDimensions();
-    std::cout << " are of differenct shape.\n";
-  }
-  return output;
-}
-
-template <typename T> Tensor<T> *Tensor<T>::add(Tensor<T> &input) {
-  Tensor<T> *output;
-  Ops *ops;
-  DataType d_type = tf_float64;
-
-  unsigned flag = 1;
-
-  for (int i = 0; i < this->getNoOfDimensions(); i++)
-    if (this->getDimensions()[i] != input.getDimensions()[i]) {
-      flag = 0;
-      break;
-    }
-  if (flag) {
-    ops = new Opsadd;
-    output =
-        new Tensor<T>(this->getNoOfDimensions(), this->getDimensions(), d_type);
-    Tensor<T> *inputs[2];
-    inputs[0] = this;
-    inputs[1] = &input;
-    ops->initializeinputs(inputs);
-    ops->initializeoutput(output);
-
-    Graph *g = GraphManager::instance().getCurrentGraph();
-    if (g) {
-      g->addNode(this);
-      g->addNode(&input);
-      g->addNode(ops);
-
-      g->addEdge(this, ops);
-      g->addEdge(&input, ops);
+      g->addEdge(this, ops[0]);
+      g->addEdge(&input, ops[0]);
 
       g->addNode(output);
-      g->addEdge(ops, output);
+      g->addEdge(ops[0], output);
     } else {
-      ops->compute();
-      delete ops;
+      ops[0]->compute();
     }
 
   } else {
@@ -316,9 +331,9 @@ template <typename T> Tensor<T> Tensor<T>::operator-(const Tensor<T> input) {
   }
 }
 
-template <typename T> Tensor<T> *Tensor<T>::reducesum(std::vector<unsigned> n) {
+template <typename T>
+Tensor<T> *Tensor<T>::reducesum(std::vector<unsigned> n, std::span<Ops *> ops) {
   Tensor<T> *output;
-  Ops *ops = NULL;
   unsigned i, no_of_dimensions, count = 0;
   bool flag = true;
 
@@ -337,60 +352,88 @@ template <typename T> Tensor<T> *Tensor<T>::reducesum(std::vector<unsigned> n) {
   }
 
   if (count > 0) {
-    ops = new Opsreducesum;
     output = new Tensor<T>(this->getNoOfDimensions() - count,
                            this->getDimensions(), this->getType());
     Tensor<T> *inputs[1];
     inputs[0] = this;
-    ops->initializeinputs(inputs);
-    ops->initializeReductionDims(n.size(), n.data());
-    ops->initializeoutput(output);
-    ops->compute();
+    ops[0]->initializeinputs(inputs);
+    ops[0]->initializeReductionDims(n.size(), n.data());
+    ops[0]->initializeoutput(output);
+
+    Graph *g = GraphManager::instance().getCurrentGraph();
+    if (g) {
+      g->addNode(this);
+      g->addNode(ops[0]);
+
+      g->addEdge(this, ops[0]);
+
+      g->addNode(output);
+      g->addEdge(ops[0], output);
+    } else {
+      ops[0]->compute();
+    }
   }
-  delete ops;
   return output;
 }
 
 template <typename T>
-Tensor<T> *Tensor<T>::scale(const std::float64_t scaleFactor) {
+Tensor<T> *Tensor<T>::scale(const std::float64_t scaleFactor,
+                            std::span<Ops *> ops) {
   Tensor<T> *output;
-  Ops *ops;
-  DataType d_type = tf_float64;
-
-  ops = new Opsscale;
-  output =
-      new Tensor<T>(this->getNoOfDimensions(), this->getDimensions(), d_type);
-  Tensor<T> *inputs[1];
-  inputs[0] = this;
-  ops->initializeinputs(inputs);
-  ops->initializeScale(scaleFactor);
-  ops->initializeoutput(output);
-  ops->compute();
-
-  delete ops;
-  return output;
-}
-
-template <typename T> Tensor<T> *Tensor<T>::sqrt() {
-  Tensor<T> *output;
-  Ops *ops = new Opssqrt;
   DataType d_type = tf_float64;
 
   output =
       new Tensor<T>(this->getNoOfDimensions(), this->getDimensions(), d_type);
   Tensor<T> *inputs[1];
   inputs[0] = this;
-  ops->initializeinputs(inputs);
-  ops->initializeoutput(output);
-  ops->compute();
+  ops[0]->initializeinputs(inputs);
+  ops[0]->initializeScale(scaleFactor);
+  ops[0]->initializeoutput(output);
 
-  delete ops;
+  Graph *g = GraphManager::instance().getCurrentGraph();
+  if (g) {
+    g->addNode(this);
+    g->addNode(ops[0]);
+
+    g->addEdge(this, ops[0]);
+
+    g->addNode(output);
+    g->addEdge(ops[0], output);
+  } else {
+    ops[0]->compute();
+  }
   return output;
 }
 
-template <typename T> Tensor<T> *Tensor<T>::sub(Tensor<T> &input) {
+template <typename T> Tensor<T> *Tensor<T>::sqrt(std::span<Ops *> ops) {
   Tensor<T> *output;
-  Ops *ops;
+  DataType d_type = tf_float64;
+
+  output =
+      new Tensor<T>(this->getNoOfDimensions(), this->getDimensions(), d_type);
+  Tensor<T> *inputs[1];
+  inputs[0] = this;
+  ops[0]->initializeinputs(inputs);
+  ops[0]->initializeoutput(output);
+
+  Graph *g = GraphManager::instance().getCurrentGraph();
+  if (g) {
+    g->addNode(this);
+    g->addNode(ops[0]);
+
+    g->addEdge(this, ops[0]);
+
+    g->addNode(output);
+    g->addEdge(ops[0], output);
+  } else {
+    ops[0]->compute();
+  }
+  return output;
+}
+
+template <typename T>
+Tensor<T> *Tensor<T>::sub(Tensor<T> &input, std::span<Ops *> ops) {
+  Tensor<T> *output;
   DataType d_type = tf_float64;
 
   unsigned flag = 1;
@@ -401,17 +444,28 @@ template <typename T> Tensor<T> *Tensor<T>::sub(Tensor<T> &input) {
       break;
     }
   if (flag) {
-    ops = new Opssub;
     output =
         new Tensor<T>(this->getNoOfDimensions(), this->getDimensions(), d_type);
     Tensor<T> *inputs[2];
     inputs[0] = this;
     inputs[1] = &input;
-    ops->initializeinputs(inputs);
-    ops->initializeoutput(output);
-    ops->compute();
+    ops[0]->initializeinputs(inputs);
+    ops[0]->initializeoutput(output);
 
-    delete ops;
+    Graph *g = GraphManager::instance().getCurrentGraph();
+    if (g) {
+      g->addNode(this);
+      g->addNode(&input);
+      g->addNode(ops[0]);
+
+      g->addEdge(this, ops[0]);
+      g->addEdge(&input, ops[0]);
+
+      g->addNode(output);
+      g->addEdge(ops[0], output);
+    } else {
+      ops[0]->compute();
+    }
     return output;
   } else {
     std::cout << "Two metrix requires same shape to perform matrix addition, "
@@ -425,10 +479,10 @@ template <typename T> Tensor<T> *Tensor<T>::sub(Tensor<T> &input) {
   }
 }
 
-template <typename T> Tensor<T> *Tensor<T>::pow(const unsigned exponent) {
+template <typename T>
+Tensor<T> *Tensor<T>::pow(const unsigned exponent, std::span<Ops *> ops) {
   Tensor<T> *output;
   DataType d_type = tf_float64;
-  Ops *ops;
 
   output =
       new Tensor<T>(this->getNoOfDimensions(), this->getDimensions(), d_type);
@@ -437,53 +491,80 @@ template <typename T> Tensor<T> *Tensor<T>::pow(const unsigned exponent) {
   } else if (exponent == 1) {
     output->initData(this->getData());
   } else {
-    ops = new Opspower;
 
     Tensor<T> *inputs[1];
     inputs[0] = this;
 
-    ops->initializeinputs(inputs);
-    ops->initializeExpoent(exponent);
-    ops->initializeoutput(output);
-    ops->compute();
+    ops[0]->initializeinputs(inputs);
+    ops[0]->initializeExpoent(exponent);
+    ops[0]->initializeoutput(output);
 
-    delete ops;
+    Graph *g = GraphManager::instance().getCurrentGraph();
+    if (g) {
+      g->addNode(this);
+      g->addNode(ops[0]);
+
+      g->addEdge(this, ops[0]);
+
+      g->addNode(output);
+      g->addEdge(ops[0], output);
+    } else {
+      ops[0]->compute();
+    }
   }
   return output;
 }
 
-template <typename T> Tensor<T> *Tensor<T>::relu() {
+template <typename T> Tensor<T> *Tensor<T>::relu(std::span<Ops *> ops) {
   Tensor<T> *output;
-  Ops *ops = new Opsrelu;
   DataType d_type = tf_float64;
 
   output =
       new Tensor<T>(this->getNoOfDimensions(), this->getDimensions(), d_type);
   Tensor<T> *inputs[1];
   inputs[0] = this;
-  ops->initializeinputs(inputs);
-  ops->initializeoutput(output);
-  ops->compute();
+  ops[0]->initializeinputs(inputs);
+  ops[0]->initializeoutput(output);
 
-  delete ops;
+  Graph *g = GraphManager::instance().getCurrentGraph();
+  if (g) {
+    g->addNode(this);
+    g->addNode(ops[0]);
+
+    g->addEdge(this, ops[0]);
+
+    g->addNode(output);
+    g->addEdge(ops[0], output);
+  } else {
+    ops[0]->compute();
+  }
   return output;
 }
 
-template <typename T> Tensor<T> *Tensor<T>::sigmoid() {
+template <typename T> Tensor<T> *Tensor<T>::sigmoid(std::span<Ops *> ops) {
 
   Tensor<T> *output;
-  Ops *ops = new Opssigmoid;
   DataType d_type = tf_float64;
 
   output =
       new Tensor<T>(this->getNoOfDimensions(), this->getDimensions(), d_type);
   Tensor<T> *inputs[1];
   inputs[0] = this;
-  ops->initializeinputs(inputs);
-  ops->initializeoutput(output);
-  ops->compute();
+  ops[0]->initializeinputs(inputs);
+  ops[0]->initializeoutput(output);
 
-  delete ops;
+  Graph *g = GraphManager::instance().getCurrentGraph();
+  if (g) {
+    g->addNode(this);
+    g->addNode(ops[0]);
+
+    g->addEdge(this, ops[0]);
+
+    g->addNode(output);
+    g->addEdge(ops[0], output);
+  } else {
+    ops[0]->compute();
+  }
   return output;
 }
 
@@ -499,20 +580,30 @@ template <typename T> Tensor<T> *Tensor<T>::softmax(const unsigned axis) {
   inputs[0] = this;
   ops->initializeinputs(inputs);
   ops->initializeoutput(output);
-  ops->compute();
 
-  delete ops;
+  Graph *g = GraphManager::instance().getCurrentGraph();
+  if (g) {
+    g->addNode(this);
+    g->addNode(ops);
+
+    g->addEdge(this, ops);
+
+    g->addNode(output);
+    g->addEdge(ops, output);
+  } else {
+    ops->compute();
+    delete ops;
+  }
   return output;
 }
 
-template <typename T> Tensor<T> *Tensor<T>::mean(const unsigned dim) {
+template <typename T>
+Tensor<T> *Tensor<T>::mean(const unsigned dim, std::span<Ops *> ops) {
   Tensor<T> *output;
   Tensor<T> *temp_reducesum;
-  Ops *ops;
   DataType d_type = tf_float64;
 
   // first perform reducesum operation along the specified dimension
-  ops = new Opsreducesum;
   temp_reducesum = new Tensor<T>(this->getNoOfDimensions() - 1,
                                  this->getDimensions(), d_type);
   Tensor<T> *inputs[1];
@@ -521,30 +612,46 @@ template <typename T> Tensor<T> *Tensor<T>::mean(const unsigned dim) {
                                ? (this->getNoOfDimensions() - dim - 1)
                                : 0;
   unsigned dims[1] = {reduction_dim};
-  ops->initializeinputs(inputs);
-  ops->initializeReductionDims(1, dims);
-  ops->initializeoutput(temp_reducesum);
-  ops->compute();
-  delete ops;
+  ops[0]->initializeinputs(inputs);
+  ops[0]->initializeReductionDims(1, dims);
+  ops[0]->initializeoutput(temp_reducesum);
 
   // then perform scale operation with scale factor = 1/n, n = size of the
-  ops = new Opsscale;
   output = new Tensor<T>(temp_reducesum->getNoOfDimensions(),
                          temp_reducesum->getDimensions(), d_type);
   std::float64_t scale_factor = 1.0f / this->getDimensions()[reduction_dim];
-  ops->initializeinputs(&temp_reducesum);
-  ops->initializeScale(scale_factor);
-  ops->initializeoutput(output);
-  ops->compute();
-  delete temp_reducesum;
-  delete ops;
+  ops[1]->initializeinputs(&temp_reducesum);
+  ops[1]->initializeScale(scale_factor);
+  ops[1]->initializeoutput(output);
+
+  Graph *g = GraphManager::instance().getCurrentGraph();
+  if (g) {
+    // Ops reduce
+    g->addNode(this);
+    g->addNode(ops[0]);
+    g->addEdge(this, ops[0]);
+
+    g->addNode(temp_reducesum);
+    g->addEdge(ops[0], temp_reducesum);
+
+    // Ops scale
+    g->addNode(temp_reducesum);
+    g->addNode(ops[1]);
+    g->addEdge(temp_reducesum, ops[1]);
+
+    g->addNode(output);
+    g->addEdge(ops[1], output);
+  } else {
+    ops[0]->compute();
+    ops[1]->compute();
+    delete temp_reducesum;
+  }
 
   return output;
 }
 
-template <typename T> Tensor<T> *Tensor<T>::transpose() {
+template <typename T> Tensor<T> *Tensor<T>::transpose(std::span<Ops *> ops) {
   Tensor<T> *output;
-  Ops *opstranspose = new Opstranspose;
   std::vector<unsigned> dims(this->getDimensions(),
                              this->getDimensions() + this->getNoOfDimensions());
 
@@ -558,350 +665,25 @@ template <typename T> Tensor<T> *Tensor<T>::transpose() {
   Tensor<T> *inputs[1];
   inputs[0] = this;
 
-  opstranspose->initializeinputs(inputs);
-  opstranspose->initializeoutput(output);
-  opstranspose->compute();
+  ops[0]->initializeinputs(inputs);
+  ops[0]->initializeoutput(output);
 
-  delete opstranspose;
+  Graph *g = GraphManager::instance().getCurrentGraph();
+  if (g) {
+    g->addNode(this);
+    g->addNode(ops[0]);
+
+    g->addEdge(this, ops[0]);
+
+    g->addNode(output);
+    g->addEdge(ops[0], output);
+  } else {
+    ops[0]->compute();
+  }
+
   return output;
 }
-
-template <typename T>
-Ops *Tensor<T>::add(Graph &g, Tensor<T> &input, bool &flag) {
-  Ops *ops = nullptr;
-  Tensor<T> *inputs[2];
-  unsigned i, no_of_dimensions;
-
-  no_of_dimensions = Tensor<T>::getNoOfDimensions();
-
-  if (no_of_dimensions == input.getNoOfDimensions()) {
-    for (i = 0; i < no_of_dimensions; i++) {
-      if (Tensor<T>::getDimensions()[i] != input.getDimensions()[i]) {
-        flag = false;
-        break;
-      }
-    }
-    if (flag) {
-      ops = new Opsadd;
-
-      inputs[0] = this;
-      inputs[1] = &input;
-
-      ops->initializeinputs(inputs);
-
-      g.addNode(this);
-      g.addNode(&input);
-      g.addNode(ops);
-
-      g.addEdge(this, ops);
-      g.addEdge(&input, ops);
-    } else {
-      std::cout << "Error!" << i
-                << "th Dimension does not match with second matrix.\n";
-    }
-  } else {
-    std::cout << "Dimension mismatch, First matrix and second matrix has "
-                 "different rank.\n";
-  }
-  return ops;
-}
-
-template <typename T> Ops *Tensor<T>::mean(Graph &g, unsigned dim, bool &flag) {
-  Tensor<T> *temp_reducesum;
-  Ops *ops;
-  DataType d_type = tf_float64;
-
-  // first perform reducesum operation along the specified dimension
-  ops = new Opsreducesum;
-  temp_reducesum = new Tensor<T>(this->getNoOfDimensions() - 1,
-                                 this->getDimensions(), d_type);
-  Tensor<T> *inputs[1];
-  inputs[0] = this;
-  unsigned reduction_dim = (this->getNoOfDimensions() - dim - 1) > 0
-                               ? (this->getNoOfDimensions() - dim - 1)
-                               : 0;
-  unsigned dims[1] = {reduction_dim};
-
-  // initialize the inputs and add nodes and edges to the graph
-  ops->initializeinputs(inputs);
-  ops->initializeReductionDims(1, dims);
-  g.addNode(this);
-  g.addNode(ops);
-  g.addEdge(this, ops);
-
-  // initialize the output and add nodes and edges to the graph
-  ops->initializeoutput(temp_reducesum);
-  g.addNode(temp_reducesum);
-  g.addEdge(ops, temp_reducesum);
-
-  // then perform scale operation with scale factor = 1/n, n = size of the
-  // dimension
-  ops = new Opsscale;
-  std::float64_t scale_factor = 1.0f / this->getDimensions()[reduction_dim];
-  ops->initializeinputs(&temp_reducesum);
-  ops->initializeScale(scale_factor);
-
-  g.addNode(temp_reducesum);
-  g.addNode(ops);
-
-  g.addEdge(temp_reducesum, ops);
-
-  return ops;
-}
-
-template <typename T>
-Ops *Tensor<T>::mul(Graph &g, Tensor<T> &input, bool &flag) {
-
-  Ops *ops = NULL;
-  unsigned i, no_of_dimensions;
-
-  no_of_dimensions = Tensor<T>::getNoOfDimensions();
-
-  if (no_of_dimensions == input.getNoOfDimensions()) {
-    for (i = 0; i < no_of_dimensions; i++) {
-      if (Tensor<T>::getDimensions()[i] != input.getDimensions()[i]) {
-        flag = 0;
-        break;
-      }
-    }
-    if (flag) {
-      ops = new Opsmul;
-      Tensor<T> *inputs[2];
-      inputs[0] = this;
-      inputs[1] = &input;
-      ops->initializeinputs(inputs);
-
-      g.addNode(this);
-      g.addNode(&input);
-      g.addNode(ops);
-
-      g.addEdge(this, ops);
-      g.addEdge(&input, ops);
-    } else {
-      std::cout << "Error! " << i
-                << "th Dimension does not match with second matrix.\n";
-    }
-  } else {
-    std::cout << "Dimension mismatch, First matrix doesn't have same no of "
-                 "dimension of second matrix.\n";
-  }
-
-  return ops;
-}
-
-template <typename T>
-Ops *Tensor<T>::matmul(Graph &g, Tensor<T> &input, bool &flag) {
-
-  Ops *ops = NULL;
-  unsigned i, no_of_dimensions;
-
-  no_of_dimensions = Tensor<T>::getNoOfDimensions();
-
-  if (no_of_dimensions == input.getNoOfDimensions()) {
-
-    if (this->getDimensions()[0] == input.getDimensions()[1]) {
-
-      for (i = 2; i < no_of_dimensions; i++) {
-        if (Tensor<T>::getDimensions()[i] != input.getDimensions()[i]) {
-          flag = false;
-          break;
-        }
-      }
-      if (flag) {
-        ops = new Opsmatmul;
-        Tensor<T> *inputs[2];
-        inputs[0] = this;
-        inputs[1] = &input;
-        ops->initializeinputs(inputs);
-
-        g.addNode(this);   // Add the first input node to the graph
-        g.addNode(&input); // Add the second input node to the graph
-        g.addNode(ops);    // Add the operation node to the graph
-
-        g.addEdge(this, ops); // Create an edge from the first input node to the
-                              // operation node
-        g.addEdge(&input, ops); // Create an edge from the second input node to
-                                // the operation node
-      } else {
-        std::cout << "Error!" << i
-                  << "th Dimension does not match with second matrix.\n";
-      }
-    } else {
-      std::cout << "Error! First matrix's row length does not match with "
-                   "second matrix column length.\n";
-    }
-  } else {
-    std::cout << "Dimension mismatch, First matrix doesn't have same no of "
-                 "dimension of second matrix.\n";
-  }
-
-  return ops;
-}
-
-template <typename T>
-Ops *Tensor<T>::reducesum(Graph &g, std::vector<unsigned> n, bool &flag) {
-  Ops *ops = NULL;
-  unsigned i, no_of_dimensions, count = 0;
-
-  std::sort(n.begin(), n.end());
-
-  no_of_dimensions = Tensor<T>::getNoOfDimensions();
-
-  for (i = 0; i < n.size(); i++) {
-    if (n[i] >= no_of_dimensions) {
-      flag = false;
-      std::cout
-          << "Fatal error! reduction axis does not belong for the Tensor\n";
-      return ops;
-    }
-    count++;
-  }
-
-  if (count > 0) {
-    ops = new Opsreducesum;
-    Tensor<T> *inputs[1];
-    inputs[0] = this;
-    ops->initializeinputs(inputs);
-    ops->initializeReductionDims(n.size(), n.data());
-
-    g.addNode(this);
-    g.addNode(ops);
-
-    g.addEdge(this, ops);
-  }
-
-  return ops;
-}
-
-template <typename T>
-Ops *Tensor<T>::pow(Graph &g, const unsigned exponent, bool &flag) {
-  Ops *ops = new Opspower;
-
-  Tensor<T> *inputs[1];
-  inputs[0] = this;
-  ops->initializeinputs(inputs);
-  ops->initializeExpoent(exponent);
-  g.addNode(this);
-  g.addNode(ops);
-  g.addEdge(this, ops);
-  return ops;
-}
-
-template <typename T> Ops *Tensor<T>::relu(Graph &g, bool &flag) {
-  Ops *ops = new Opsrelu;
-  Tensor<T> *inputs[1];
-  inputs[0] = this;
-  ops->initializeinputs(inputs);
-  g.addNode(this);
-  g.addNode(ops);
-  g.addEdge(this, ops);
-  return ops;
-}
-
-template <typename T> Ops *Tensor<T>::sigmoid(Graph &g, bool &flag) {
-  Ops *ops = new Opssigmoid;
-  Tensor<T> *inputs[1];
-  inputs[0] = this;
-  ops->initializeinputs(inputs);
-  g.addNode(this);
-  g.addNode(ops);
-  g.addEdge(this, ops);
-  return ops;
-}
-
-template <typename T>
-Ops *Tensor<T>::softmax(Graph &g, const unsigned axis, bool &flag) {
-  Ops *ops = new Opssoftmax;
-  Tensor<T> *inputs[1];
-  inputs[0] = this;
-  ops->initializeinputs(inputs);
-  g.addNode(this);
-  g.addNode(ops);
-  g.addEdge(this, ops);
-  return ops;
-}
-
-template <typename T>
-Ops *Tensor<T>::scale(Graph &g, const std::float64_t scaleFactor,
-                      [[maybe_unused]] bool &flag) {
-  Ops *ops = new Opsscale;
-  Tensor<T> *inputs[1];
-  inputs[0] = this;
-
-  ops->initializeinputs(inputs);
-  ops->initializeScale(scaleFactor);
-  g.addNode(this);
-  g.addNode(ops);
-
-  g.addEdge(this, ops);
-
-  return ops;
-}
-
-template <typename T> Ops *Tensor<T>::sqrt(Graph &g, bool &flag) {
-  Ops *ops = new Opssqrt;
-  Tensor<T> *inputs[1];
-  inputs[0] = this;
-  ops->initializeinputs(inputs);
-  g.addNode(this);
-  g.addNode(ops);
-  g.addEdge(this, ops);
-  return ops;
-}
-
-template <typename T>
-Ops *Tensor<T>::sub(Graph &g, Tensor<T> &input, bool &flag) {
-  Ops *ops = NULL;
-  unsigned i, no_of_dimensions;
-
-  no_of_dimensions = Tensor<T>::getNoOfDimensions();
-
-  if (no_of_dimensions == input.getNoOfDimensions()) {
-    for (i = 0; i < no_of_dimensions; i++) {
-      if (Tensor<T>::getDimensions()[i] != input.getDimensions()[i]) {
-        flag = false;
-        break;
-      }
-    }
-    if (flag) {
-      ops = new Opssub;
-
-      Tensor<T> *inputs[2];
-      inputs[0] = this;
-      inputs[1] = &input;
-
-      ops->initializeinputs(inputs);
-
-      g.addNode(this);
-      g.addNode(&input);
-      g.addNode(ops);
-
-      g.addEdge(this, ops);
-      g.addEdge(&input, ops);
-    } else {
-      std::cout << "Error!" << i
-                << "th Dimension does not match with second matrix.\n";
-    }
-  } else {
-    std::cout << "Dimension mismatch, First matrix and second matrix has "
-                 "different rank.\n";
-  }
-  return ops;
-}
-
-template <typename T> Ops *Tensor<T>::transpose(Graph &g) {
-  Tensor<T> *inputs[1];
-  inputs[0] = this;
-
-  Ops *opstranspose = new Opstranspose;
-  opstranspose->initializeinputs(inputs);
-
-  g.addNode(this);
-  g.addNode(opstranspose);
-  g.addEdge(this, opstranspose);
-
-  return opstranspose;
-}
+// End Eager Mode
 
 // template class Tensor<std::bfloat16_t>;
 // template class Tensor<std::float16_t>;

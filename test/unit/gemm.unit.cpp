@@ -3,7 +3,7 @@
 
 #include "LinearAlgebraFixtures.unit.hpp"
 
-TEST_F(MathTest, eager_general_matrix_multiplication_2D) {
+TEST_F(MathTest, Eraph_General_Matrix_Multiplication_2D) {
   // gemm is a general matrix multiplication operation
   // It performs matrix multiplication followed by addition with another matrix
   // A * B + C
@@ -40,14 +40,13 @@ TEST_F(MathTest, eager_general_matrix_multiplication_2D) {
   C.tensor_of(c);
 
   D = A.matmul(B);
-  E = D.add( C);
+  E = D.add(C);
 
   auto *tensorE_gemm = static_cast<Tensor<std::float64_t> *>(E.ptr);
   for (int i = 0; i < 16; i++) {
     EXPECT_NEAR(tensorE_gemm->getData()[i], e_gemm[i], 0.0001);
   }
 }
-
 
 TEST_F(MathTest, Graph_General_Matrix_Multiplication_2D) {
   // gemm is a general matrix multiplication operation
@@ -85,18 +84,16 @@ TEST_F(MathTest, Graph_General_Matrix_Multiplication_2D) {
   B.tensor_of(b);
   C.tensor_of(c);
 
-  tf::graph g_gemm;
-  g_gemm.tf_create_graph();
+  {
+    tf::graph_context ctx;
+    D = A.matmul(B);
+    E = D.add(C);
 
-  D = A.matmul(g_gemm, B);
-  E = D.add(g_gemm, C);
+    ctx.run();
 
-  g_gemm.graph_execute();
-
-  auto *tensorE_gemm = static_cast<Tensor<std::float64_t> *>(E.ptr);
-  for (int i = 0; i < 16; i++) {
-    EXPECT_NEAR(tensorE_gemm->getData()[i], e_gemm[i], 0.0001);
+    auto *tensorE_gemm = static_cast<Tensor<std::float64_t> *>(E.ptr);
+    for (int i = 0; i < 16; i++) {
+      EXPECT_NEAR(tensorE_gemm->getData()[i], e_gemm[i], 0.0001);
+    }
   }
-
-  g_gemm.graph_clear();
 }

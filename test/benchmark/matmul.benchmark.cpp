@@ -54,17 +54,16 @@ static void mat_matmul_graph_tensor(benchmark::State &state) {
   C.tf_create(tf_float64, N, N);
   A.tensor_of(-0.5, 0.85);
   B.tensor_of(0.25, 0.75);
+  {
+    tf::graph_context ctx;
 
-  tf::graph g_matmul;
-  g_matmul.tf_create_graph();
+    C = A.matmul(B);
 
-  C = A.matmul(g_matmul, B);
-
-  for (auto _ : state) {
-    g_matmul.graph_execute();    // Perform matrix Matmul
-    benchmark::DoNotOptimize(C); // Prevent compiler optimization
+    for (auto _ : state) {
+      ctx.run();                   // Perform matrix Matmul
+      benchmark::DoNotOptimize(C); // Prevent compiler optimization
+    }
   }
-  g_matmul.graph_clear();
 
   state.SetItemsProcessed(int64_t(state.iterations()) * N * N);
 }

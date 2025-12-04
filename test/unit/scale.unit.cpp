@@ -45,17 +45,16 @@ TEST_F(MathTest, Graph_MatrixScale_2D) {
   C.tf_create(tf_float64, 4, 4);
 
   A.tensor_of(a);
+  {
+    tf::graph_context ctx;
 
-  tf::graph g_scale;
-  g_scale.tf_create_graph();
+    C = A.scale(0.625);
 
-  C = A.scale(g_scale, 0.625);
+    ctx.run();
 
-  g_scale.graph_execute();
-
-  auto *tensorC_scale = static_cast<Tensor<std::float64_t> *>(C.ptr);
-  for (int i = 0; i < 16; i++) {
-    EXPECT_NEAR(tensorC_scale->getData()[i], c_scale[i], 0.0001);
+    auto *tensorC_scale = static_cast<Tensor<std::float64_t> *>(C.ptr);
+    for (int i = 0; i < 16; i++) {
+      EXPECT_NEAR(tensorC_scale->getData()[i], c_scale[i], 0.0001);
+    }
   }
-  g_scale.graph_clear();
 }

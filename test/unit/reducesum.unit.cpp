@@ -52,19 +52,16 @@ TEST_F(MathTest, Graph_MatrixReductionSum_2D) {
 
   A.tensor_of(a);
 
+  {
+    tf::graph_context ctx;
 
-  auto *tensorA= static_cast<Tensor<std::float64_t> *>(A.ptr);
+    C = A.reducesum(0);
 
-  tf::graph g_reduce_sum;
-  g_reduce_sum.tf_create_graph();
+    ctx.run();
 
-  C = A.reducesum(g_reduce_sum, 0);
-
-  g_reduce_sum.graph_execute();
-
-  auto *tensorC_reducesum = static_cast<Tensor<std::float64_t> *>(C.ptr);
-  for (int i = 0; i < 4; i++) {
-    EXPECT_NEAR(tensorC_reducesum->getData()[i], c_reducesum[i], 0.0001);
+    auto *tensorC_reducesum = static_cast<Tensor<std::float64_t> *>(C.ptr);
+    for (int i = 0; i < 4; i++) {
+      EXPECT_NEAR(tensorC_reducesum->getData()[i], c_reducesum[i], 0.0001);
+    }
   }
-  g_reduce_sum.graph_clear();
 }

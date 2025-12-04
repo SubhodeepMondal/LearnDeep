@@ -14,7 +14,6 @@ TEST_F(MathTest, Eager_MatrixMean_2D) {
 
   tf::tensor A, C;
   A.tf_create(tf_float64, 4, 4);
-  // C.tf_create(tf_float64, 4);
 
   A.tensor_of(a);
 
@@ -40,17 +39,16 @@ TEST_F(MathTest, Graph_MatrixMean_2D) {
   C.tf_create(tf_float64, 4, 4);
 
   A.tensor_of(a);
+  {
+    tf::graph_context ctx;
 
-  tf::graph g_scale;
-  g_scale.tf_create_graph();
+    C = A.mean(0);
 
-  C = A.mean(g_scale, 0);
+    ctx.run();
 
-  g_scale.graph_execute();
-
-  auto *tensorC_mean = static_cast<Tensor<std::float64_t> *>(C.ptr);
-  for (int i = 0; i < 4; i++) {
-    EXPECT_NEAR(tensorC_mean->getData()[i], c_mean[i], 0.0001);
+    auto *tensorC_mean = static_cast<Tensor<std::float64_t> *>(C.ptr);
+    for (int i = 0; i < 4; i++) {
+      EXPECT_NEAR(tensorC_mean->getData()[i], c_mean[i], 0.0001);
+    }
   }
-  g_scale.graph_clear();
 }

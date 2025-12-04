@@ -1,3 +1,4 @@
+#include <elf.h>
 #ifdef CUDA_ENABLED
 #include <LAS/gpu_interface.cuh>
 #endif
@@ -82,18 +83,18 @@ void Opsadd::addGradGraph(Graph *gradient_graph) {
   //
   // ........................ End .....................
 
-  std::vector<Tensor<std::float64_t> *> incoming_gradient =
+  std::vector<Tensor<std::float64_t> *> incoming_gradients =
       gradient_graph->getGradient(this);
   Tensor<std::float64_t> *tensor_ptr[2];
 
   // graph setup for accumulating incoming gradients y' = sum ( z' )
-  if (incoming_gradient.size()) {
+  if (incoming_gradients.size()) {
     Tensor<std::float64_t> *intermediate_gradient_sum;
 
     intermediate_gradient_sum = new Tensor<std::float64_t>(*this->output);
     intermediate_gradient_sum->initData(0.0);
     int i = 0;
-    for (Tensor<std::float64_t> *inc_grad_tensor : incoming_gradient) {
+    for (Tensor<std::float64_t> *inc_grad_tensor : incoming_gradients) {
 
       // input initialization
       tensor_ptr[0] = intermediate_gradient_sum;
@@ -123,7 +124,7 @@ void Opsadd::addGradGraph(Graph *gradient_graph) {
   }
 
   for (unsigned i = 0; i < 2; i++)
-    this->outgoing_gradients[i] = this->incoming_gradient;
+    this->outgoing_gradients.push_back(this->incoming_gradient);
 }
 
 void Opsadd::compute() {
@@ -186,22 +187,13 @@ void Opsadd::printoutput() {
 
 Tensor<std::float64_t> *
 Opsadd::getOutgoingGradientTensor(Tensor<std::float64_t> *gradient_input) {
-  int i, it;
-  bool flag = false;
-  for (i = 0; i < 2; i++)
-    if (this->inputs[i] == gradient_input) {
-      it = i;
-      flag = true;
-      break;
-    }
-
-  if (flag) {
-    // LOG(INFO) << "Requested gradint for the tensor found.\n";
-    return this->outgoing_gradients[it];
-  } else {
-    // LOG(FATAL) << "Requested gradint for the tensor doesn't exist.\n";
-    return NULL;
+  auto it = std::find(inputs.begin(), inputs.end(), gradient_input);
+  Tensor<std::float64_t> *ptr = nullptr;
+  if (inputs.end() != it) {
+    int idx = std::distance(inputs.begin(), it);
+    ptr = outgoing_gradients[idx];
   }
+  return ptr;
 }
 
 Tensor<std::float64_t> *

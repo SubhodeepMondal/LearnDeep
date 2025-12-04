@@ -1038,33 +1038,32 @@ TEST_F(MathTest, Graph_MatrixTranspose_2D) {
 
   C_32_16.tf_create(tf_float64, 32, 16);
   C_47_19.tf_create(tf_float64, 47, 19);
+  {
+    tf::graph_context ctx;
 
-  tf::graph g_transpose;
-  g_transpose.tf_create_graph();
+    C_32_16 = A_16_32.transpose();
+    C_47_19 = A_19_47.transpose();
 
-  C_32_16 = A_16_32.transpose(g_transpose);
-  C_47_19 = A_19_47.transpose(g_transpose);
+    ctx.run();
 
-  g_transpose.graph_execute();
+    auto *tensorC_transpose_32_16 =
+        static_cast<Tensor<std::float64_t> *>(C_32_16.ptr);
+    for (unsigned j = 0; j < 16; j++) {
+      for (int i = 0; i < 32; i++) {
+        EXPECT_EQ(tensorC_transpose_32_16->getData()[i + j * 32],
+                  transpose_out_32_16[i + j * 32])
+            << "mismatch at " << i << ", " << j;
+      }
+    }
 
-  auto *tensorC_transpose_32_16 =
-      static_cast<Tensor<std::float64_t> *>(C_32_16.ptr);
-  for (unsigned j = 0; j < 16; j++) {
-    for (int i = 0; i < 32; i++) {
-      EXPECT_EQ(tensorC_transpose_32_16->getData()[i + j * 32],
-                transpose_out_32_16[i + j * 32])
-          << "mismatch at " << i << ", " << j;
+    auto *tensorC_transpose_47_19 =
+        static_cast<Tensor<std::float64_t> *>(C_47_19.ptr);
+    for (unsigned j = 0; j < 19; j++) {
+      for (int i = 0; i < 47; i++) {
+        EXPECT_EQ(tensorC_transpose_47_19->getData()[i + j * 47],
+                  transpose_out_47_19[i + j * 47])
+            << "mismatch at " << i << ", " << j;
+      }
     }
   }
-
-  auto *tensorC_transpose_47_19 =
-      static_cast<Tensor<std::float64_t> *>(C_47_19.ptr);
-  for (unsigned j = 0; j < 19; j++) {
-    for (int i = 0; i < 47; i++) {
-      EXPECT_EQ(tensorC_transpose_47_19->getData()[i + j * 47],
-                transpose_out_47_19[i + j * 47])
-          << "mismatch at " << i << ", " << j;
-    }
-  }
-  g_transpose.graph_clear();
 }
