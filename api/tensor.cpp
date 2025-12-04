@@ -74,35 +74,15 @@ tf::tensor &tf::tensor::operator=(tensor &&other) noexcept {
     this->ptr = other.ptr;
     other.ptr = nullptr;
   }
-
-  // for (auto t : tensor_nodes)
-  //   std::cout << t << ", ";
-  // std::cout << "\n";
   Graph *g = GraphManager::instance().getCurrentGraph();
   if (g)
     std::erase(tensor_nodes, this);
-  // for (auto t : tensor_nodes)
-  //   std::cout << t << ", ";
-  // std::cout << "\n";
 
   return *this;
 }
 
-void tf::tensor::assign_pointer(std::vector<unsigned> dimensions) {
-
-  switch (this->dt_type) {
-  case tf_float64:
-    this->ptr = new Tensor<std::float64_t>(dimensions.size(), dimensions.data(),
-                                           this->dt_type);
-    break;
-  default:
-    ptr = nullptr;
-  }
-}
-
 // --- Destructor
 tf::tensor::~tensor() {
-
   if (tensor_nodes.end() !=
       std::find(tensor_nodes.begin(), tensor_nodes.end(), this)) {
     if (this->ptr) {
@@ -115,6 +95,19 @@ tf::tensor::~tensor() {
       opsPtr.clear();
     }
     std::erase(tensor_nodes, this);
+  }
+}
+
+// --- Utility ---
+void tf::tensor::assign_pointer(std::vector<unsigned> dimensions) {
+
+  switch (this->dt_type) {
+  case tf_float64:
+    this->ptr = new Tensor<std::float64_t>(dimensions.size(), dimensions.data(),
+                                           this->dt_type);
+    break;
+  default:
+    ptr = nullptr;
   }
 }
 
@@ -171,6 +164,7 @@ void tf::tensor::print_dimension() {
     LOG(ERROR) << "Invalid data type!";
   }
 }
+// --- Utilty ---
 
 // ---------------- Eager Mode ---------------
 tf::tensor tf::tensor::matmul(tensor &input_b) {
@@ -443,17 +437,11 @@ tf::tensor tf::tensor::mean(const unsigned dim) {
   default:
     LOG(ERROR) << "Invalid data type!";
   }
-  // for (auto t : tensor_nodes)
-  //   std::cout << t << ", ";
-  // std::cout << "\n";
   Graph *g = GraphManager::instance().getCurrentGraph();
   if (g) {
     std::erase(tensor_nodes, this);
     std::erase(tensor_nodes, &output);
   }
-  // for (auto t : tensor_nodes)
-  //   std::cout << t << ", ";
-  // std::cout << "\n";
   return output;
 }
 
