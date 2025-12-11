@@ -19,9 +19,8 @@ TEST_F(MathTest, Eager_MatrixMean_2D) {
 
   C = A.mean(0);
 
-  auto *tensorC_mean = static_cast<Tensor<std::float64_t> *>(C.ptr);
   for (int i = 0; i < 4; i++) {
-    EXPECT_NEAR(tensorC_mean->getData()[i], c_mean[i], 0.0001);
+    EXPECT_NEAR(C.getData()[i], c_mean[i], 0.0001);
   }
 }
 
@@ -46,9 +45,8 @@ TEST_F(MathTest, Graph_MatrixMean_2D) {
 
     ctx.run();
 
-    auto *tensorC_mean = static_cast<Tensor<std::float64_t> *>(C.ptr);
     for (int i = 0; i < 4; i++) {
-      EXPECT_NEAR(tensorC_mean->getData()[i], c_mean[i], 0.0001);
+      EXPECT_NEAR(C.getData()[i], c_mean[i], 0.0001);
     }
   }
 }

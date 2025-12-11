@@ -28,9 +28,8 @@ TEST_F(MathTest, Eager_MatrixSubtraction_2D) {
 
   C = A.sub(B);
 
-  auto *tensorC_matmul = static_cast<Tensor<std::float64_t> *>(C.ptr);
   for (int i = 0; i < 16; i++) {
-    EXPECT_NEAR(C.getPtr()[i], c_sub[i], 0.0001);
+    EXPECT_NEAR(C.getData()[i], c_sub[i], 0.0001);
   }
 }
 
@@ -65,9 +64,8 @@ TEST_F(MathTest, Graph_MatrixSubtraction_2D) {
 
     ctx.run();
 
-    auto *tensorC_sub = static_cast<Tensor<std::float64_t> *>(C.ptr);
     for (int i = 0; i < 16; i++) {
-      EXPECT_NEAR(tensorC_sub->getData()[i], c_sub[i], 0.0001);
+      EXPECT_NEAR(C.getData()[i], c_sub[i], 0.0001);
     }
   }
 }

@@ -74,21 +74,16 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(abseil)
 
+ # first build corelibrary
 add_subdirectory(core)
 
+add_subdirectory(model)
+
+add_subdirectory(layers)
+
+# then goes api
 add_subdirectory(api)
-
 add_subdirectory(test)
-
-# add_custom_target(
-#     src
-#     DEPENDS core tensor_api
-# )
-
-# add_custom_target(
-#     test
-#     DEPENDS core tensor_api
-# )
 
 set(CMAKE_INSTALL_PREFIX ${CMAKE_SOURCE_DIR}/build/)
 install(TARGETS core

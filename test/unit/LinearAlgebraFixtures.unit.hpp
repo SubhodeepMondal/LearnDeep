@@ -11,4 +11,9 @@ protected:
   virtual void TearDown() override;
 };
 
+class FrameworkTest : public testing::Test {
+protected:
+  virtual void SetUp() override {};
+  virtual void TearDown() override {};
+};
 #endif // LINEAR_ALGEBRA_FIXTURES_UNIT_HPP

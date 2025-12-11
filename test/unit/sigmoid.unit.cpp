@@ -23,9 +23,8 @@ TEST_F(MathTest, Eager_Matrixsigmoid_2D) {
 
   C = A.sigmoid();
 
-  auto *tensorC_sigmoid = static_cast<Tensor<std::float64_t> *>(C.ptr);
   for (int i = 0; i < 16; i++) {
-    EXPECT_NEAR(tensorC_sigmoid->getData()[i], c_sigmoid[i], 0.0001);
+    EXPECT_NEAR(C.getData()[i], c_sigmoid[i], 0.0001);
   }
 }
 
@@ -53,9 +52,8 @@ TEST_F(MathTest, Graph_Matrixsigmoid_2D) {
 
     ctx.run();
 
-    auto *tensorC_sigmoid = static_cast<Tensor<std::float64_t> *>(C.ptr);
     for (int i = 0; i < 16; i++) {
-      EXPECT_NEAR(tensorC_sigmoid->getData()[i], c_sigmoid[i], 0.0001);
+      EXPECT_NEAR(C.getData()[i], c_sigmoid[i], 0.0001);
     }
   }
 }

@@ -42,9 +42,8 @@ TEST_F(MathTest, Eraph_General_Matrix_Multiplication_2D) {
   D = A.matmul(B);
   E = D.add(C);
 
-  auto *tensorE_gemm = static_cast<Tensor<std::float64_t> *>(E.ptr);
   for (int i = 0; i < 16; i++) {
-    EXPECT_NEAR(tensorE_gemm->getData()[i], e_gemm[i], 0.0001);
+    EXPECT_NEAR(E.getData()[i], e_gemm[i], 0.0001);
   }
 }
 
@@ -91,9 +90,8 @@ TEST_F(MathTest, Graph_General_Matrix_Multiplication_2D) {
 
     ctx.run();
 
-    auto *tensorE_gemm = static_cast<Tensor<std::float64_t> *>(E.ptr);
     for (int i = 0; i < 16; i++) {
-      EXPECT_NEAR(tensorE_gemm->getData()[i], e_gemm[i], 0.0001);
+      EXPECT_NEAR(E.getData()[i], e_gemm[i], 0.0001);
     }
   }
 }

@@ -89,7 +89,7 @@ TEST_F(MathTest, Eager_MatrixAddition_2D) {
 
   for (int j = 0; j < 8; j++) {
     for (int i = 0; i < 16; i++) {
-      EXPECT_NEAR(C_16_8.getPtr()[i + j * 16], out_double_16_8[i + j * 16],
+      EXPECT_NEAR(C_16_8.getData()[i + j * 16], out_double_16_8[i + j * 16],
                   0.0001);
     }
   }
@@ -411,7 +411,7 @@ TEST_F(MathTest, Eager_MatrixAddition_2D) {
 
   for (int j = 0; j < 31; j++) {
     for (int i = 0; i < 19; i++) {
-      EXPECT_NEAR(C_19_31.getPtr()[i + j * 19], out_double_19_31[i + j * 19],
+      EXPECT_NEAR(C_19_31.getData()[i + j * 19], out_double_19_31[i + j * 19],
                   0.0001);
     }
   }
@@ -510,7 +510,7 @@ TEST_F(MathTest, Graph_MatrixAddition_2D) {
 
     for (int j = 0; j < 8; j++) {
       for (int i = 0; i < 16; i++) {
-        EXPECT_NEAR(C_16_8.getPtr()[i + j * 16], out_double_16_8[i + j * 16],
+        EXPECT_NEAR(C_16_8.getData()[i + j * 16], out_double_16_8[i + j * 16],
                     0.0001);
       }
     }
@@ -837,7 +837,7 @@ TEST_F(MathTest, Graph_MatrixAddition_2D) {
 
     for (int j = 0; j < 31; j++) {
       for (int i = 0; i < 19; i++) {
-        EXPECT_NEAR(C_19_31.getPtr()[i + j * 19], out_double_19_31[i + j * 19],
+        EXPECT_NEAR(C_19_31.getData()[i + j * 19], out_double_19_31[i + j * 19],
                     0.0001);
       }
     }
@@ -3262,7 +3262,7 @@ TEST_F(MathTest, Graph_MatrixAddition_Grad_2D) {
 
     for (int j = 0; j < 56; j++)
       for (int i = 0; i < 28; i++)
-        EXPECT_NEAR(F.getPtr()[i + j * 28], f_out_28_56[i + j * 28], 1e-6);
+        EXPECT_NEAR(F.getData()[i + j * 28], f_out_28_56[i + j * 28], 1e-6);
 
     ctx.initialize_gradient();
     ctx.compute_gradient();
@@ -3275,23 +3275,23 @@ TEST_F(MathTest, Graph_MatrixAddition_Grad_2D) {
 
     for (int j = 0; j < 56; j++)
       for (int i = 0; i < 28; i++)
-        EXPECT_NEAR(A_grad.getPtr()[i + j * 28], d_a[i + j * 28], 1e-6);
+        EXPECT_NEAR(A_grad.getData()[i + j * 28], d_a[i + j * 28], 1e-6);
 
     for (int j = 0; j < 56; j++)
       for (int i = 0; i < 28; i++)
-        EXPECT_NEAR(B_grad.getPtr()[i + j * 28], d_b[i + j * 28], 1e-6);
+        EXPECT_NEAR(B_grad.getData()[i + j * 28], d_b[i + j * 28], 1e-6);
 
     for (int j = 0; j < 56; j++)
       for (int i = 0; i < 28; i++)
-        EXPECT_NEAR(C_grad.getPtr()[i + j * 28], d_c[i + j * 28], 1e-6);
+        EXPECT_NEAR(C_grad.getData()[i + j * 28], d_c[i + j * 28], 1e-6);
 
     for (int j = 0; j < 56; j++)
       for (int i = 0; i < 28; i++)
-        EXPECT_NEAR(E_grad.getPtr()[i + j * 28], d_e[i + j * 28], 1e-6);
+        EXPECT_NEAR(E_grad.getData()[i + j * 28], d_e[i + j * 28], 1e-6);
 
     for (int j = 0; j < 56; j++)
       for (int i = 0; i < 28; i++)
-        EXPECT_NEAR(D_grad.getPtr()[i + j * 28], d_d[i + j * 28], 1e-6);
+        EXPECT_NEAR(D_grad.getData()[i + j * 28], d_d[i + j * 28], 1e-6);
   }
 
   //----------- End Of Test 1 --------------

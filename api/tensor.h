@@ -9,9 +9,12 @@
 #include <vector>
 
 // Library Headers
-#include <framework/MathLibrary.h>
-#include <graph/graph_context.hpp>
-#include <kernel/opskernel.h>
+#include <core/framework/MathLibrary.h>
+#include <core/graph/graph_context.hpp>
+#include <core/kernel/opskernel.h>
+#include <layers/dense.hpp>
+#include <layers/layers.hpp>
+#include <model/model.hpp>
 
 namespace tf {
 
@@ -20,8 +23,8 @@ private:
   std::vector<Ops *> opsPtr;
 
 public:
+  Tensor<std::float64_t> *ptr{nullptr};
   bool activateGraphSession;
-  void *ptr{nullptr};
   DataType dt_type;
 
   // --- Default constructor
@@ -132,12 +135,12 @@ public:
     return getReduction(dimensions);
   }
 
-  std::float64_t *getPtr() {
-    return static_cast<Tensor<std::float64_t> *>(this->ptr)->getData();
-  }
+  Tensor<std::float64_t> *getPtr();
+
+  std::float64_t *getData() { return ptr->getData(); }
 } tensor;
 
-static std::vector<tensor *> tensor_nodes;
+static std::vector<Tensor<std::float64_t> *> tensor_nodes;
 
 typedef struct graph_context {
 private:
@@ -150,12 +153,54 @@ public:
 
   void run();
 
-  tensor get_gradient(const tensor &a);
+  tensor get_gradient(tensor &a);
 
   void initialize_gradient();
 
   void compute_gradient();
 } graph_context;
+
+namespace layer {
+
+typedef struct dense {
+private:
+  Layer *dense_layer;
+
+public:
+  dense(unsigned unit);
+
+  std::vector<tf::tensor> operator()(const std::vector<tf::tensor> &inputs);
+} dense;
+
+} // namespace layer
+
+typedef struct model {
+private:
+  Model *model_ptr;
+
+public:
+  model(const std::vector<tf::tensor> &inputs,
+        const std::vector<tf::tensor> &outputs);
+
+  void fit(const std::vector<tf::tensor> &inputs,
+           const std::vector<tf::tensor> &outputs,
+           const std::vector<tf::tensor> &validation_datas = {tf::tensor()},
+           unsigned epochs = 10, unsigned batch_size = 1, unsigned callback = 0,
+           unsigned verbose = 0);
+
+} model;
+
+typedef struct optimizer {
+
+} optimizer;
+
+typedef struct metric {
+
+} metric;
+
+typedef struct loss {
+
+} loss;
 
 } // namespace tf
 

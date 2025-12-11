@@ -23,9 +23,8 @@ TEST_F(MathTest, Eager_MatrixSQRT_2D) {
 
   C = A.sqrt();
 
-  auto *tensorC_sqrt = static_cast<Tensor<std::float64_t> *>(C.ptr);
   for (int i = 0; i < 16; i++) {
-    EXPECT_NEAR(tensorC_sqrt->getData()[i], c_scale[i], 0.0001);
+    EXPECT_NEAR(C.getData()[i], c_scale[i], 0.0001);
   }
 }
 
@@ -53,9 +52,8 @@ TEST_F(MathTest, Graph_MatrixSQRT_2D) {
 
     ctx.run();
 
-    auto *tensorC_sqrt = static_cast<Tensor<std::float64_t> *>(C.ptr);
     for (int i = 0; i < 16; i++) {
-      EXPECT_NEAR(tensorC_sqrt->getData()[i], c_scale[i], 0.0001);
+      EXPECT_NEAR(C.getData()[i], c_scale[i], 0.0001);
     }
   }
 }

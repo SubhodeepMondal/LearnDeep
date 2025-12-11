@@ -32,7 +32,7 @@ public:
     return graph->getGradientTensor(input_tensor);
   }
 
-  void graph_initiize_gradient() { graph->createGradientGraph(); }
+  void graph_initilize_gradient() { graph->createGradientGraph(); }
 };
 
 #endif // GRAPH_CONTEXT
