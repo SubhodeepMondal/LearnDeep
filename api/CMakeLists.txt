@@ -14,6 +14,7 @@ target_link_libraries(tensor_api
     core
     layer
     model
+    callback
     absl::log
     absl::log_initialize
     absl::flags_parse

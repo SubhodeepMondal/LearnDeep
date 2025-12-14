@@ -77,6 +77,9 @@ public:
 
   void initData(ndarray<T> incData);
 
+  /** @brief returns number of element for existing tensor */
+  /// @tparam None
+  /// @return returns unsigned array of dimension vector.
   void initPartialData(unsigned index, unsigned n, T *data_source);
 
   void initRandData(double lower_limit, double upper_limit);

@@ -262,9 +262,14 @@ template <typename T> void ndarray<T>::initData(ndarray<T> incData) {
 
 template <typename T>
 void ndarray<T>::initPartialData(unsigned index, unsigned n, T *data_source) {
-  int j = 0;
-  for (int i = index; i < (index + n); i++)
-    data[i] = data_source[j++];
+  if (data_source) {
+    std::memcpy(this->data + index, data_source, n * sizeof(T));
+  } else {
+    std::cout << "Data source, is not valid .\n";
+  }
+  // int j = 0;
+  // for (int i = index; i < (index + n); i++)
+  //   data[i] = data_source[j++];
 }
 
 template <typename T>

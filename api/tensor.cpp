@@ -64,6 +64,7 @@ tf::tensor &tf::tensor::operator=(tensor &&other) noexcept {
     this->ptr = other.ptr;
     other.ptr = nullptr;
   }
+  tensor_nodes.push_back(this->ptr);
   Graph *g = GraphManager::instance().getCurrentGraph();
   if (g)
     std::erase(tensor_nodes, this->ptr);
@@ -512,6 +513,8 @@ void tf::graph_context::compute_gradient() {
 // -------------- Graph Context ------------
 
 // --- Layers ---
+
+// --- Dense ---
 tf::layer::dense::dense(unsigned unit) { dense_layer = new Dense(unit); }
 
 std::vector<tf::tensor>
@@ -533,6 +536,46 @@ tf::layer::dense::operator()(const std::vector<tf::tensor> &inputs) {
   return outputs;
 }
 
+std::vector<tf::tensor> tf::layer::dense::get_input_tensors() {
+  std::vector<tf::tensor> input_tensors;
+
+  std::vector<Tensor<std::float64_t> *> incoming_tensors =
+      dense_layer->getInputTensors();
+
+  for (Tensor<std::float64_t> *incoming_tensor : incoming_tensors)
+    input_tensors.push_back(tf::tensor(tf_float64, incoming_tensor));
+  return input_tensors;
+}
+
+std::vector<tf::tensor> tf::layer::dense::get_output_tensors() {
+  std::vector<tf::tensor> output_tensors;
+
+  std::vector<Tensor<std::float64_t> *> outgoing_tensors =
+      dense_layer->getInputTensors();
+
+  for (Tensor<std::float64_t> *outgoing_tensor : outgoing_tensors)
+    output_tensors.push_back(tf::tensor(tf_float64, outgoing_tensor));
+  return output_tensors;
+}
+
+void tf::layer::dense::set_weight(tf::tensor weight_tensor) {
+  if (weight_tensor.ptr)
+    static_cast<Dense *>(dense_layer)->setWeight(weight_tensor.ptr);
+  else
+    LOG(ERROR) << "Fatal! given tensor is not initialized with data\n";
+}
+
+void tf::layer::dense::set_bias(tf::tensor bias_tensor) {
+  if (bias_tensor.ptr)
+    static_cast<Dense *>(dense_layer)->setBias(bias_tensor.ptr);
+  else
+    LOG(ERROR) << "Fatal! given tensor is not initialized with data\n";
+}
+
+Layer *tf::layer::dense::getLayerPtr() { return this->dense_layer; }
+
+// --- End of Dense ---
+
 // --- End of Layers ---
 
 // --- Model ---
@@ -552,9 +595,9 @@ tf::model::model(const std::vector<tf::tensor> &inputs,
 }
 
 void tf::model::fit(const std::vector<tf::tensor> &inputs,
-                    const std::vector<tf::tensor> &outputs,
+                    const std::vector<tf::tensor> &outputs, callback call_back,
+                    unsigned epochs, unsigned batch_size,
                     const std::vector<tf::tensor> &validation_datas,
-                    unsigned epochs, unsigned batch_size, unsigned callback,
                     unsigned verbose) {
 
   std::vector<Tensor<std::float64_t> *> input_tensors;
@@ -577,7 +620,78 @@ void tf::model::fit(const std::vector<tf::tensor> &inputs,
   }
 
   this->model_ptr->fit(input_tensors, output_tensors, validation_tensors,
-                       epochs, batch_size, callback, verbose);
+                       epochs, batch_size, call_back.getCallbackPtr(), verbose);
 }
 
+void tf::model::shuffle(bool shuffle) { model_ptr->shuffle(shuffle); }
+
 // --- End Model ---
+
+// --- Callback ---
+tf::callback::callback(bool print_callback_log) {
+  callback_ptr = new Callback(print_callback_log);
+}
+
+tf::callback::callback(unsigned callback_level) {
+  callback_ptr = new Callback(callback_level);
+}
+
+void tf::callback::on_epoch_begin_get_trainable_parameter(
+    tf::layer::dense dense_layer, Layer_Parameter trainable_parameter_no,
+    bool print_flag) {
+  callback_ptr->onEpochBeginGetTrainableParameter(
+      dense_layer.getLayerPtr(), trainable_parameter_no, print_flag);
+}
+
+void tf::callback::on_epoch_end_get_trainable_parameter(
+    tf::layer::dense dense_layer, Layer_Parameter trainable_parameter_no,
+    bool print_flag) {
+  callback_ptr->onEpochEndGetTrainableParameter(
+      dense_layer.getLayerPtr(), trainable_parameter_no, print_flag);
+}
+
+std::vector<std::vector<tf::tensor>>
+tf::callback::get_trainable_parameter_on_epoch_begin(
+    tf::layer::dense dense_layer, Layer_Parameter trainable_parameter_no) {
+  std::vector<std::vector<tf::tensor>> trainable_parametes_on_epoch_begin;
+
+  std::vector<std::vector<Tensor<std::float64_t> *>> vector_vector_tensors =
+      callback_ptr->getTrainableParameterEpochOnBegin(dense_layer.getLayerPtr(),
+                                                      trainable_parameter_no);
+
+  trainable_parametes_on_epoch_begin.resize(vector_vector_tensors.size());
+
+  unsigned i = 0;
+  for (unsigned i = 0; i < vector_vector_tensors.size(); i++) {
+    for (Tensor<std::float64_t> *tensor : vector_vector_tensors[i])
+      trainable_parametes_on_epoch_begin[i].push_back(
+          tf::tensor(tf_float64, tensor));
+  }
+
+  return trainable_parametes_on_epoch_begin;
+}
+
+std::vector<std::vector<tf::tensor>>
+tf::callback::get_trainable_parameter_on_epoch_end(
+    tf::layer::dense dense_layer, Layer_Parameter trainable_parameter_no) {
+  std::vector<std::vector<tf::tensor>> trainable_parametes_on_epoch_end;
+
+  std::vector<std::vector<Tensor<std::float64_t> *>> vector_vector_tensors =
+      callback_ptr->getTrainableParameterEpochOnEnd(dense_layer.getLayerPtr(),
+                                                    trainable_parameter_no);
+
+  trainable_parametes_on_epoch_end.resize(vector_vector_tensors.size());
+
+  unsigned i = 0;
+  for (unsigned i = 0; i < vector_vector_tensors.size(); i++) {
+    for (Tensor<std::float64_t> *tensor : vector_vector_tensors[i]) {
+      trainable_parametes_on_epoch_end[i].push_back(
+          tf::tensor(tf_float64, tensor));
+    }
+  }
+
+  return trainable_parametes_on_epoch_end;
+}
+
+Callback *tf::callback::getCallbackPtr() { return this->callback_ptr; }
+// --- End Callback ---

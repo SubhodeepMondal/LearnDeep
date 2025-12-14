@@ -37,6 +37,9 @@ set(COMBINED_RESORCES
     LAS/CPULibrary.cpp
     LAS/avx2_micro_kernels.h
     LAS/avx2_micro_kernels.cpp
+
+    utility/initializers.hpp
+    utility/initializers.cpp
 )
 
 add_library(core SHARED ${COMBINED_RESORCES})

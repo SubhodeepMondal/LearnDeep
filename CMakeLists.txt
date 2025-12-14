@@ -81,6 +81,8 @@ add_subdirectory(model)
 
 add_subdirectory(layers)
 
+add_subdirectory(callback)
+
 # then goes api
 add_subdirectory(api)
 add_subdirectory(test)

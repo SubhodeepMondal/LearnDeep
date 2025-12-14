@@ -42,6 +42,8 @@ public:
   getLayersOfIncomingTensor(Tensor<std::float64_t> *tensor);
 
   Layer *getLayerOfOutgoingTensor(Tensor<std::float64_t> *tensor);
+
+  std::vector<Layer *> getAllLayers();
 };
 
 extern LayerGraph global_layer_graph;

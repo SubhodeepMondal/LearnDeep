@@ -8,13 +8,18 @@
 #include <vector>
 
 // Library headers
+#include <callback/callback.hpp>
 #include <core/framework/MathLibrary.h>
 #include <layers/layer_graph.hpp>
 
 class Model {
 private:
+  unsigned batch_size;
+  bool shuffle_input;
   std::vector<Tensor<std::float64_t> *> inputs;
   std::vector<Tensor<std::float64_t> *> outputs;
+
+  std::vector<Tensor<std::float64_t> *> local_training_inputs;
 
   std::unordered_map<Layer *, std::vector<Tensor<std::float64_t> *>>
       layer_input_mappings;
@@ -34,8 +39,7 @@ private:
   std::vector<Tensor<std::float64_t> *>
   getLayers(std::queue<Tensor<std::float64_t> *> &output_queue);
 
-  void getTrainingTensorsForInputLayer(
-      const std::vector<Tensor<std::float64_t> *> &training_inputs);
+  void getTrainingTensorsForInputLayer();
 
   void doDummyAndTrainingTensorMapping(
       const std::vector<Tensor<std::float64_t> *> &training_inputs);
@@ -43,6 +47,9 @@ private:
   void doTensorAndLayerMappings();
 
   void initializeLayerGraph();
+
+  void initilizeInputsForTraining(
+      std::vector<Tensor<std::float64_t> *> training_inputs);
 
 public:
   Model(std::vector<Tensor<std::float64_t> *> const inputs);
@@ -82,8 +89,8 @@ public:
   void fit(std::vector<Tensor<std::float64_t> *> inputs,
            std::vector<Tensor<std::float64_t> *> output,
            std::vector<Tensor<std::float64_t> *> valdiation_data = {NULL},
-           unsigned epochs = 10, unsigned batch_size = 1, unsigned callback = 0,
-           unsigned verbose = 0);
+           unsigned epochs = 10, unsigned batch_size = 1,
+           Callback *callback = nullptr, unsigned verbose = 0);
 
   /** @file model.hpp basic model implementation */
   /** @brief Feeds the model with input and does a inference on it to predict
@@ -93,6 +100,8 @@ public:
    * dimension */
   /** @return Tensor<std::float64_t> * output tensor after inference */
   Tensor<std::float64_t> *predict(std::vector<Tensor<std::float64_t> *> input);
+
+  void shuffle(bool shuffle);
 };
 
 #endif // _TENSOR_CORE_MODEL_

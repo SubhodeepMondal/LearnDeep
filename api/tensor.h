@@ -9,6 +9,7 @@
 #include <vector>
 
 // Library Headers
+#include <callback/callback.hpp>
 #include <core/framework/MathLibrary.h>
 #include <core/graph/graph_context.hpp>
 #include <core/kernel/opskernel.h>
@@ -170,10 +171,53 @@ public:
   dense(unsigned unit);
 
   std::vector<tf::tensor> operator()(const std::vector<tf::tensor> &inputs);
+
+  std::vector<tf::tensor> get_input_tensors();
+
+  std::vector<tf::tensor> get_output_tensors();
+
+  std::vector<tf::tensor> get_output_training_tensor();
+
+  std::vector<tf::tensor> get_output_training_weight();
+
+  void set_weight(tf::tensor weight_tensor);
+
+  void set_bias(tf::tensor bias_tensor);
+
+  Layer *getLayerPtr();
 } dense;
 
 } // namespace layer
 
+typedef struct callback {
+private:
+  Callback *callback_ptr;
+
+public:
+  callback(bool print_callback_log);
+
+  callback(unsigned callback_level);
+
+  void
+  on_epoch_begin_get_trainable_parameter(layer::dense dense_layer,
+                                         Layer_Parameter trainable_parameter_no,
+                                         bool print_flag = false);
+
+  void
+  on_epoch_end_get_trainable_parameter(layer::dense dense_layer,
+                                       Layer_Parameter trainable_parameter_no,
+                                       bool print_flag = false);
+
+  std::vector<std::vector<tf::tensor>> get_trainable_parameter_on_epoch_begin(
+      layer::dense dense_layer, Layer_Parameter trainable_parameter_no);
+
+  std::vector<std::vector<tf::tensor>>
+  get_trainable_parameter_on_epoch_end(layer::dense dense_layer,
+                                       Layer_Parameter trainable_parameter_no);
+
+  Callback *getCallbackPtr();
+
+} callback;
 typedef struct model {
 private:
   Model *model_ptr;
@@ -182,11 +226,34 @@ public:
   model(const std::vector<tf::tensor> &inputs,
         const std::vector<tf::tensor> &outputs);
 
+  /** @file tensor.cpp basic model implementation */
+  /** @brief Runs the training loop and updates the gradients */
+  /** @param inputs std vector inputs for the training */
+  /** @param output expected output for the training, used for loss calculation
+   */
+  /** @param epochs unsigned, default 10; required, no of iterations to run for
+   * training and optimization */
+  /** @param batch_size unsigned, default 1, batch size for each training */
+  /** @param validation_data Tensor<std::float64_t> *,   output for the
+   * training, used for loss calculation
+   */
+  /** @param callbacks unsigned default 0, learning rate schedular */
+  /** @param verbose unsigned number training progress monitoring
+   * level 0: default, none,
+   * level 1: epoch progress
+   * level 2: + loss
+   * level 3: + metrics detail (i.e accuracy, precision, recall etc.)
+   * level 4: + validation loss
+   * level 5: + va;odation metric */
+  /** @return void */
   void fit(const std::vector<tf::tensor> &inputs,
            const std::vector<tf::tensor> &outputs,
+           callback call_back = callback(false), unsigned epochs = 10,
+           unsigned batch_size = 1,
            const std::vector<tf::tensor> &validation_datas = {tf::tensor()},
-           unsigned epochs = 10, unsigned batch_size = 1, unsigned callback = 0,
            unsigned verbose = 0);
+
+  void shuffle(bool shuffle);
 
 } model;
 

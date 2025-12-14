@@ -60,3 +60,12 @@ std::vector<Tensor<std::float64_t> *> LayerGraph::forward(
   std::vector<Tensor<std::float64_t> *> incoming_node;
   return incoming_node;
 }
+
+std::vector<Layer *> LayerGraph::getAllLayers() {
+  std::vector<Layer *> output_layers;
+
+  for (Layer *layer : this->layers)
+    output_layers.push_back(layer);
+
+  return output_layers;
+}
