@@ -1,6 +1,6 @@
+#include <LearnDeep/api/tensor.h>
 #include <algorithm>
 #include <gtest/gtest.h>
-#include <tensor.h>
 
 #include "LinearAlgebraFixtures.unit.hpp"
 

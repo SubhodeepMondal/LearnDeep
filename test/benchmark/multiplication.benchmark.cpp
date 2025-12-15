@@ -1,5 +1,5 @@
+#include <LearnDeep/api/tensor.h>
 #include <benchmark/benchmark.h>
-#include <tensor.h>
 
 // -------- Benchmark Eager Multiplication --------
 // static void mat_multiplication_eager_tensor(benchmark::State &state) {

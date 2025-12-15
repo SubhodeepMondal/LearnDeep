@@ -1,7 +1,7 @@
 #ifndef LINEAR_ALGEBRA_FIXTURES_UNIT_HPP
 #define LINEAR_ALGEBRA_FIXTURES_UNIT_HPP
+#include <LearnDeep/api/tensor.h>
 #include <gtest/gtest.h>
-#include <tensor.h>
 
 class MathTest : public testing::Test {
 

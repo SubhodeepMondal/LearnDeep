@@ -1,8 +1,8 @@
 #include "LinearAlgebraFixtures.unit.hpp"
+#include <LearnDeep/api/tensor.h>
 #include <gtest/gtest.h>
-#include <tensor.h>
 
-TEST_F(FrameworkTest, DenseLayer) {
+TEST_F(FrameworkTest, DenseLayer_Forward) {
 
   std::float64_t input_data[] = {
       0.08734964, 0.23047710, 0.41106107, 0.31078270, 0.56595589, 0.54506370,
@@ -8374,31 +8374,42 @@ TEST_F(FrameworkTest, DenseLayer) {
   weight.tensor_of(weight_data);
   bias.tensor_of(bias_data);
 
-  tf::callback call_back(false);
+  tf::callback call_back(true);
 
   auto dense_1 = tf::layer::dense(24);
   auto dense_output = dense_1({x});
   dense_1.set_weight(weight);
   dense_1.set_bias(bias);
 
-  call_back.on_epoch_begin_get_trainable_parameter(
+  call_back.record_parameter_on_epoch_begin(
       dense_1, Layer_Parameter::dense_training_input, false);
-  call_back.on_epoch_end_get_trainable_parameter(
+
+  call_back.record_parameter_on_epoch_end(
+      dense_1, Layer_Parameter::dense_training_weight, false);
+
+  call_back.record_parameter_on_epoch_end(
       dense_1, Layer_Parameter::dense_training_output, false);
+
   tf::model mymodel({x}, dense_output);
   mymodel.shuffle(false);
   mymodel.fit({input}, {target_output}, call_back, 1, 512);
 
   std::vector<std::vector<tf::tensor>> outputs =
-      call_back.get_trainable_parameter_on_epoch_end(
+      call_back.get_parameter_on_epoch_end(
           dense_1, Layer_Parameter::dense_training_output);
 
+  std::vector<std::vector<tf::tensor>> training_weights =
+      call_back.get_parameter_on_epoch_end(
+          dense_1, Layer_Parameter::dense_training_weight);
+
+  //   for (std::vector<tf::tensor> training_weight : training_weights)
+  //     training_weight[0].print_data();
+
   for (auto output : outputs) {
-    int j = 0;
-    for (int i = 0; i < 24; i++)
-      EXPECT_NEAR(output[0].getData()[i + j * 24], output_data[i + j * 24],
-                  1e-6)
-          << "at: " << i + j * 24;
-    j++;
+    for (int j = 0; j < 512; j++)
+      for (int i = 0; i < 24; i++)
+        EXPECT_NEAR(output[0].getData()[i + j * 24], output_data[i + j * 24],
+                    1e-6)
+            << "at: " << i + j * 24;
   }
 }

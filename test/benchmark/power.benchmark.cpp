@@ -1,5 +1,5 @@
+#include <LearnDeep/api/tensor.h>
 #include <benchmark/benchmark.h>
-#include <tensor.h>
 
 // // -------- Benchmark Eager Power --------
 // static void mat_power_eager_tensor(benchmark::State &state) {

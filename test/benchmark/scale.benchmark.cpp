@@ -1,5 +1,5 @@
+#include <LearnDeep/api/tensor.h>
 #include <benchmark/benchmark.h>
-#include <tensor.h>
 
 // -------- Benchmark Graph scale --------
 static void mat_scale_graph_tensor(benchmark::State &state) {

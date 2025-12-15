@@ -75,16 +75,16 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(abseil)
 
  # first build corelibrary
-add_subdirectory(core)
+add_subdirectory(LearnDeep/core)
 
-add_subdirectory(model)
+add_subdirectory(LearnDeep/model)
 
-add_subdirectory(layers)
+add_subdirectory(LearnDeep/layers)
 
-add_subdirectory(callback)
+add_subdirectory(LearnDeep/callback)
 
 # then goes api
-add_subdirectory(api)
+add_subdirectory(LearnDeep/api)
 add_subdirectory(test)
 
 set(CMAKE_INSTALL_PREFIX ${CMAKE_SOURCE_DIR}/build/)

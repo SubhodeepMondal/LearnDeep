@@ -1,5 +1,5 @@
+#include <LearnDeep/api/tensor.h>
 #include <benchmark/benchmark.h>
-#include <tensor.h>
 
 // -------- Benchmark Eager Addition --------
 static void mat_add_eager_tensor(benchmark::State &state) {

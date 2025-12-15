@@ -1,7 +1,6 @@
 #include "LinearAlgebraFixtures.unit.hpp"
+#include <LearnDeep/api/tensor.h>
 #include <gtest/gtest.h>
-#include <tensor.h>
-
 TEST_F(MathTest, MatrixInitialization_test) {
   std::float64_t a[] = {0.00805433, 0.71604533, 0.53269858, 0.34661127,
                         0.56137041, 0.14270995, 0.62471964, 0.31898735,
