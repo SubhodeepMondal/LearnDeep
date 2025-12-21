@@ -10,48 +10,40 @@ tf::tensor::tensor(DataType dt_type, Tensor<std::float64_t> *ptr) {
     this->ptr = ptr;
     this->dt_type = dt_type;
   }
-  // for (Tensor<std::float64_t> *tensor_node : tensor_nodes)
-  //   if (tensor_node->ptr == this->ptr) {
-  //     break;
-  //   }
+  tensor_nodes.insert(this->ptr);
 }
 
 // --- Copy constructor
 tf::tensor::tensor(const tensor &other) {
   dt_type = other.dt_type;
-  if (other.ptr) {
-    ptr = other.ptr;
+  if (other.getPtr()) {
+    ptr = new Tensor<std::float64_t>(*other.getPtr());
   }
-
-  // bool flag = true;
-  // for (tensor *tensor_node : tensor_nodes)
-  //   if (tensor_node->ptr == this->ptr) {
-  //     flag = false;
-  //     break;
-  //   }
+  tensor_nodes.insert(this->ptr);
 }
 
 // --- Copy assignment
 tf::tensor &tf::tensor::operator=(const tensor &other) {
   if (this != &other) {
-    if (other.ptr) {
+    if (other.getPtr()) {
       if (this->ptr) {
         delete this->ptr;
         this->ptr = nullptr;
       }
-      this->ptr = other.ptr; // new Tensor<std::float64_t>(*other.ptr);
+      this->ptr = new Tensor<std::float64_t>(*other.getPtr());
       this->dt_type = other.dt_type;
     } else {
       ptr = nullptr;
     }
   }
+  tensor_nodes.insert(this->ptr);
   return *this;
 }
 
 // --- Move constructor
 tf::tensor::tensor(tensor &&other) noexcept {
   dt_type = other.dt_type;
-  ptr = other.ptr;
+  ptr = other.getPtr();
   other.ptr = nullptr;
 }
 
@@ -61,22 +53,17 @@ tf::tensor &tf::tensor::operator=(tensor &&other) noexcept {
     if (this->ptr)
       delete this->ptr;
     this->dt_type = other.dt_type;
-    this->ptr = other.ptr;
+    this->ptr = other.getPtr();
     other.ptr = nullptr;
   }
-  tensor_nodes.push_back(this->ptr);
-  Graph *g = GraphManager::instance().getCurrentGraph();
-  if (g)
-    std::erase(tensor_nodes, this->ptr);
 
   return *this;
 }
 
 // --- Destructor
 tf::tensor::~tensor() {
-  if (tensor_nodes.end() !=
-      std::find(tensor_nodes.begin(), tensor_nodes.end(), this->ptr)) {
-    std::erase(tensor_nodes, this->ptr);
+  if (tensor_nodes.count(this->ptr)) {
+    tensor_nodes.erase(this->ptr);
     if (this->ptr) {
       delete this->ptr;
       this->ptr = NULL;
@@ -96,14 +83,16 @@ void tf::tensor::assign_pointer(std::vector<unsigned> dimensions) {
   case tf_float64:
     this->ptr = new Tensor<std::float64_t>(dimensions.size(), dimensions.data(),
                                            this->dt_type);
-    tensor_nodes.push_back(this->ptr);
+    tensor_nodes.insert(this->ptr);
     break;
   default:
     ptr = nullptr;
   }
 }
 
-Tensor<std::float64_t> *tf::tensor::getPtr() { return this->ptr; }
+Tensor<std::float64_t> *tf::tensor::getPtr() const { return this->ptr; }
+
+const void tf::tensor::setPtr(Tensor<std::float64_t> *ptr) { this->ptr = ptr; }
 
 unsigned tf::tensor::getNoOfDimensions() {
   return this->ptr->getNoOfDimensions();
@@ -162,23 +151,20 @@ tf::tensor tf::tensor::matmul(tensor &input_b) {
   tensor output;
 
   if (this->dt_type == input_b.dt_type) {
-    opsPtr.push_back(new Opsmatmul);
+    this->opsPtr.push_back(new Opsmatmul);
+    tensor_ops.insert(this->opsPtr[opsPtr.size() - 1]);
     switch (dt_type) {
     case tf_float64: {
       output.dt_type = this->dt_type;
-      output.ptr = this->ptr->matmul(
-          *(input_b.getPtr()), std::span(opsPtr).subspan(opsPtr.size() - 1));
+      output = tensor(
+          this->dt_type,
+          this->ptr->matmul(*(input_b.getPtr()),
+                            std::span(opsPtr).subspan(opsPtr.size() - 1)));
       break;
     }
     default:
       LOG(ERROR) << "Invalid data type!";
     }
-  }
-  Graph *g = GraphManager::instance().getCurrentGraph();
-  if (g) {
-    std::erase(tensor_nodes, this->ptr);
-    std::erase(tensor_nodes, input_b.ptr);
-    std::erase(tensor_nodes, output.ptr);
   }
   return output;
 }
@@ -187,23 +173,19 @@ tf::tensor tf::tensor::add(tensor &input_b) {
   tensor output;
 
   if (this->dt_type == input_b.dt_type) {
-    opsPtr.push_back(new Opsadd);
+    this->opsPtr.push_back(new Opsadd);
+    tensor_ops.insert(this->opsPtr[opsPtr.size() - 1]);
     switch (dt_type) {
     case tf_float64: {
-      output.dt_type = this->dt_type;
-      output.ptr = this->ptr->add(*(input_b.getPtr()),
-                                  std::span(opsPtr).subspan(opsPtr.size() - 1));
+      output =
+          tensor(this->dt_type,
+                 this->ptr->add(*(input_b.getPtr()),
+                                std::span(opsPtr).subspan(opsPtr.size() - 1)));
       break;
     }
     default:
       LOG(ERROR) << "Invalid data type!";
     }
-  }
-  Graph *g = GraphManager::instance().getCurrentGraph();
-  if (g) {
-    std::erase(tensor_nodes, this->ptr);
-    std::erase(tensor_nodes, input_b.ptr);
-    std::erase(tensor_nodes, output.ptr);
   }
   return output;
 }
@@ -211,23 +193,19 @@ tf::tensor tf::tensor::add(tensor &input_b) {
 tf::tensor tf::tensor::operator+(tensor &input_b) {
   tensor output;
   if (this->dt_type == input_b.dt_type) {
-    opsPtr.push_back(new Opsadd);
+    this->opsPtr.push_back(new Opsadd);
+    tensor_ops.insert(this->opsPtr[opsPtr.size() - 1]);
     switch (dt_type) {
     case tf_float64: {
-      output.dt_type = this->dt_type;
-      output.ptr = this->ptr->add(*(input_b.getPtr()),
-                                  std::span(opsPtr).subspan(opsPtr.size() - 1));
+      output =
+          tensor(this->dt_type,
+                 this->ptr->add(*(input_b.getPtr()),
+                                std::span(opsPtr).subspan(opsPtr.size() - 1)));
       break;
     }
     default:
       LOG(ERROR) << "Invalid data type!";
     }
-  }
-  Graph *g = GraphManager::instance().getCurrentGraph();
-  if (g) {
-    std::erase(tensor_nodes, this->ptr);
-    std::erase(tensor_nodes, input_b.ptr);
-    std::erase(tensor_nodes, output.ptr);
   }
   return output;
 }
@@ -236,44 +214,37 @@ tf::tensor tf::tensor::operator*(tensor &input_b) {
   tensor output;
 
   if (this->dt_type == input_b.dt_type) {
-    opsPtr.push_back(new Opsmul);
+    this->opsPtr.push_back(new Opsmul);
+    tensor_ops.insert(this->opsPtr[opsPtr.size() - 1]);
     switch (dt_type) {
     case tf_float64: {
       output.dt_type = this->dt_type;
-      output.ptr = this->ptr->mul(*(input_b.getPtr()),
-                                  std::span(opsPtr).subspan(opsPtr.size() - 1));
+      output =
+          tensor(this->dt_type,
+                 this->ptr->mul(*(input_b.getPtr()),
+                                std::span(opsPtr).subspan(opsPtr.size() - 1)));
       break;
     }
     default:
       LOG(ERROR) << "Invalid data type!";
     }
   }
-  Graph *g = GraphManager::instance().getCurrentGraph();
-  if (g) {
-    std::erase(tensor_nodes, this->ptr);
-    std::erase(tensor_nodes, input_b.ptr);
-    std::erase(tensor_nodes, output.ptr);
-  }
   return output;
 }
 
 tf::tensor tf::tensor::sigmoid() {
   tensor output;
-  opsPtr.push_back(new Opssigmoid);
+  this->opsPtr.push_back(new Opssigmoid);
+  tensor_ops.insert(this->opsPtr[this->opsPtr.size() - 1]);
 
   switch (dt_type) {
   case tf_float64:
     output.dt_type = this->dt_type;
-    output.ptr =
-        this->ptr->sigmoid(std::span(opsPtr).subspan(opsPtr.size() - 1));
+    output = tensor(this->dt_type, this->ptr->sigmoid(std::span(opsPtr).subspan(
+                                       opsPtr.size() - 1)));
     break;
   default:
     LOG(ERROR) << "Invalid data type!";
-  }
-  Graph *g = GraphManager::instance().getCurrentGraph();
-  if (g) {
-    std::erase(tensor_nodes, this->ptr);
-    std::erase(tensor_nodes, output.ptr);
   }
   return output;
 }
@@ -281,20 +252,17 @@ tf::tensor tf::tensor::sigmoid() {
 tf::tensor tf::tensor::scale(const std::float64_t scaleFactor) {
   tensor output;
 
-  opsPtr.push_back(new Opsscale);
+  this->opsPtr.push_back(new Opsscale);
+  tensor_ops.insert(this->opsPtr[this->opsPtr.size() - 1]);
   switch (dt_type) {
   case tf_float64:
-    output.dt_type = this->dt_type;
-    output.ptr = this->ptr->scale(scaleFactor,
-                                  std::span(opsPtr).subspan(opsPtr.size() - 1));
+    output =
+        tensor(this->dt_type,
+               this->ptr->scale(scaleFactor,
+                                std::span(opsPtr).subspan(opsPtr.size() - 1)));
     break;
   default:
     LOG(ERROR) << "Invalid data type!";
-  }
-  Graph *g = GraphManager::instance().getCurrentGraph();
-  if (g) {
-    std::erase(tensor_nodes, this->ptr);
-    std::erase(tensor_nodes, output.ptr);
   }
   return output;
 }
@@ -302,129 +270,112 @@ tf::tensor tf::tensor::scale(const std::float64_t scaleFactor) {
 tf::tensor tf::tensor::sqrt() {
   tensor output;
 
-  opsPtr.push_back(new Opssqrt);
+  this->opsPtr.push_back(new Opssqrt);
+  tensor_ops.insert(this->opsPtr[this->opsPtr.size() - 1]);
   switch (dt_type) {
   case tf_float64:
-    output.dt_type = this->dt_type;
-    output.ptr = this->ptr->sqrt(std::span(opsPtr).subspan(opsPtr.size() - 1));
+    output =
+        tensor(this->dt_type,
+               this->ptr->sqrt(std::span(opsPtr).subspan(opsPtr.size() - 1)));
     break;
   default:
     LOG(ERROR) << "Invalid data type!";
-  }
-  Graph *g = GraphManager::instance().getCurrentGraph();
-  if (g) {
-    std::erase(tensor_nodes, this->ptr);
-    std::erase(tensor_nodes, output.ptr);
   }
   return output;
 }
 
 tf::tensor tf::tensor::sub(tensor &input_b) {
   tensor output;
-  opsPtr.push_back(new Opssub);
+  this->opsPtr.push_back(new Opssub);
+  tensor_ops.insert(this->opsPtr[this->opsPtr.size() - 1]);
 
   if (this->dt_type == input_b.dt_type) {
     switch (dt_type) {
     case tf_float64: {
       output.dt_type = this->dt_type;
-      output.ptr = this->ptr->sub(*(input_b.getPtr()),
-                                  std::span(opsPtr).subspan(opsPtr.size() - 1));
+      output =
+          tensor(this->dt_type,
+                 this->ptr->sub(*(input_b.getPtr()),
+                                std::span(opsPtr).subspan(opsPtr.size() - 1)));
       break;
     }
     default:
       LOG(ERROR) << "Invalid data type!";
     }
   }
-  Graph *g = GraphManager::instance().getCurrentGraph();
-  if (g) {
-    std::erase(tensor_nodes, this->ptr);
-    std::erase(tensor_nodes, input_b.ptr);
-    std::erase(tensor_nodes, output.ptr);
-  }
   return output;
 }
 
 tf::tensor tf::tensor::transpose() {
   tensor output;
-  opsPtr.push_back(new Opstranspose);
+  this->opsPtr.push_back(new Opstranspose);
+  tensor_ops.insert(this->opsPtr[this->opsPtr.size() - 1]);
 
   switch (dt_type) {
   case tf_float64:
     output.dt_type = this->dt_type;
-    output.ptr =
-        this->ptr->transpose(std::span(opsPtr).subspan(opsPtr.size() - 1));
+    output = tensor(
+        this->dt_type,
+        this->ptr->transpose(std::span(opsPtr).subspan(opsPtr.size() - 1)));
     break;
   default:
     LOG(ERROR) << "Invalid data type!";
-  }
-  Graph *g = GraphManager::instance().getCurrentGraph();
-  if (g) {
-    std::erase(tensor_nodes, this->ptr);
-    std::erase(tensor_nodes, output.ptr);
   }
   return output;
 }
 
 tf::tensor tf::tensor::pow(const unsigned exponent) {
   tensor output;
-  opsPtr.push_back(new Opspower);
+  this->opsPtr.push_back(new Opspower);
+  tensor_ops.insert(opsPtr[this->opsPtr.size() - 1]);
 
   switch (dt_type) {
   case tf_float64:
     output.dt_type = this->dt_type;
-    output.ptr =
-        this->ptr->pow(exponent, std::span(opsPtr).subspan(opsPtr.size() - 1));
+    output = tensor(
+        this->dt_type,
+        this->ptr->pow(exponent, std::span(opsPtr).subspan(opsPtr.size() - 1)));
     break;
   default:
     LOG(ERROR) << "Invalid data type!";
-  }
-
-  Graph *g = GraphManager::instance().getCurrentGraph();
-  if (g) {
-    std::erase(tensor_nodes, this->ptr);
-    std::erase(tensor_nodes, output.ptr);
   }
   return output;
 }
 
 tf::tensor tf::tensor::relu() {
   tensor output;
-  opsPtr.push_back(new Opsrelu);
+  this->opsPtr.push_back(new Opsrelu);
+  tensor_ops.insert(this->opsPtr[this->opsPtr.size() - 1]);
 
   switch (dt_type) {
   case tf_float64:
     output.dt_type = this->dt_type;
-    output.ptr = this->ptr->relu(std::span(opsPtr).subspan(opsPtr.size() - 1));
+    output =
+        tensor(this->dt_type,
+               this->ptr->relu(std::span(opsPtr).subspan(opsPtr.size() - 1)));
     break;
   default:
     LOG(ERROR) << "Invalid data type!";
-  }
-  Graph *g = GraphManager::instance().getCurrentGraph();
-  if (g) {
-    std::erase(tensor_nodes, this->ptr);
-    std::erase(tensor_nodes, output.ptr);
   }
   return output;
 }
 
 tf::tensor tf::tensor::mean(const unsigned dim) {
   tensor output;
-  opsPtr.push_back(new Opsreducesum);
-  opsPtr.push_back(new Opsscale);
+  this->opsPtr.push_back(new Opsreducesum);
+  tensor_ops.insert(this->opsPtr[this->opsPtr.size() - 1]);
+  this->opsPtr.push_back(new Opsscale);
+  tensor_ops.insert(this->opsPtr[this->opsPtr.size() - 1]);
 
   switch (dt_type) {
   case tf_float64:
     output.dt_type = this->dt_type;
-    output.ptr =
-        this->ptr->mean(dim, std::span(opsPtr).subspan(opsPtr.size() - 2));
+    output = tensor(
+        this->dt_type,
+        this->ptr->mean(dim, std::span(opsPtr).subspan(opsPtr.size() - 2)));
     break;
   default:
     LOG(ERROR) << "Invalid data type!";
-  }
-  Graph *g = GraphManager::instance().getCurrentGraph();
-  if (g) {
-    std::erase(tensor_nodes, this->ptr);
-    std::erase(tensor_nodes, output.ptr);
   }
   return output;
 }
@@ -433,23 +384,20 @@ tf::tensor tf::tensor::mul(tensor &input_b) {
   tensor output;
 
   if (this->dt_type == input_b.dt_type) {
-    opsPtr.push_back(new Opsmul);
+    this->opsPtr.push_back(new Opsmul);
+    tensor_ops.insert(this->opsPtr[this->opsPtr.size() - 1]);
     switch (dt_type) {
     case tf_float64: {
       output.dt_type = this->dt_type;
-      output.ptr = this->ptr->mul(*(input_b.getPtr()),
-                                  std::span(opsPtr).subspan(opsPtr.size() - 1));
+      output =
+          tensor(this->dt_type,
+                 this->ptr->mul(*(input_b.getPtr()),
+                                std::span(opsPtr).subspan(opsPtr.size() - 1)));
       break;
     }
     default:
       LOG(ERROR) << "Invalid data type!";
     }
-  }
-  Graph *g = GraphManager::instance().getCurrentGraph();
-  if (g) {
-    std::erase(tensor_nodes, this->ptr);
-    std::erase(tensor_nodes, input_b.ptr);
-    std::erase(tensor_nodes, output.ptr);
   }
   return output;
 }
@@ -459,9 +407,10 @@ tf::tensor tf::tensor::getReduction(std::vector<unsigned> reduction_dims) {
   opsPtr.push_back(new Opsreducesum);
   switch (dt_type) {
   case tf_float64:
-    output.dt_type = this->dt_type;
-    output.ptr = this->ptr->reducesum(
-        reduction_dims, std::span(opsPtr).subspan(opsPtr.size() - 1));
+    output = tensor(
+        this->dt_type,
+        this->ptr->reducesum(reduction_dims,
+                             std::span(opsPtr).subspan(opsPtr.size() - 1)));
     break;
 
   default:
@@ -469,8 +418,8 @@ tf::tensor tf::tensor::getReduction(std::vector<unsigned> reduction_dims) {
   }
   Graph *g = GraphManager::instance().getCurrentGraph();
   if (g) {
-    std::erase(tensor_nodes, this->ptr);
-    std::erase(tensor_nodes, output.ptr);
+    tensor_nodes.erase(this->ptr);
+    tensor_nodes.erase(output.getPtr());
   }
 
   return output;
@@ -486,7 +435,12 @@ void tf::tensor::gradient_required(bool is_grad_required) {
 // -------------- Graph Context ------------
 tf::graph_context::graph_context() { this->graph_ctx = new GraphContext(); }
 
-tf::graph_context::~graph_context() { delete graph_ctx; }
+tf::graph_context::~graph_context() {
+
+  graph_ctx->tensor_to_be_spared(tensor_nodes);
+  graph_ctx->ops_to_be_spared(tensor_ops);
+  delete graph_ctx;
+}
 
 tf::tensor tf::graph_context::get_gradient(tensor &a) {
   Tensor<std::float64_t> *temp_ptr =
@@ -494,7 +448,7 @@ tf::tensor tf::graph_context::get_gradient(tensor &a) {
           ->graph_get_gradient(a.getPtr());
 
   tensor output(a.dt_type, temp_ptr);
-  std::erase(tensor_nodes, output.ptr);
+  tensor_nodes.erase(output.getPtr());
 
   return output;
 }
@@ -522,7 +476,7 @@ tf::layer::dense::operator()(const std::vector<tf::tensor> &inputs) {
   std::vector<Tensor<std::float64_t> *> input_tensors;
 
   for (tf::tensor input : inputs) {
-    input_tensors.push_back(input.ptr);
+    input_tensors.push_back(input.getPtr());
   }
 
   std::vector<Tensor<std::float64_t> *> output_tensors =
@@ -530,7 +484,7 @@ tf::layer::dense::operator()(const std::vector<tf::tensor> &inputs) {
 
   std::vector<tf::tensor> outputs;
   for (Tensor<std::float64_t> *output_tensor : output_tensors) {
-    std::erase(tensor_nodes, output_tensor);
+    tensor_nodes.erase(output_tensor);
     outputs.push_back(tf::tensor(tf_float64, output_tensor));
   }
   return outputs;
@@ -559,15 +513,15 @@ std::vector<tf::tensor> tf::layer::dense::get_output_tensors() {
 }
 
 void tf::layer::dense::set_weight(tf::tensor weight_tensor) {
-  if (weight_tensor.ptr)
-    static_cast<Dense *>(dense_layer)->setWeight(weight_tensor.ptr);
+  if (weight_tensor.getPtr())
+    static_cast<Dense *>(dense_layer)->setWeight(weight_tensor.getPtr());
   else
     LOG(ERROR) << "Fatal! given tensor is not initialized with data\n";
 }
 
 void tf::layer::dense::set_bias(tf::tensor bias_tensor) {
-  if (bias_tensor.ptr)
-    static_cast<Dense *>(dense_layer)->setBias(bias_tensor.ptr);
+  if (bias_tensor.getPtr())
+    static_cast<Dense *>(dense_layer)->setBias(bias_tensor.getPtr());
   else
     LOG(ERROR) << "Fatal! given tensor is not initialized with data\n";
 }
@@ -586,10 +540,10 @@ tf::model::model(const std::vector<tf::tensor> &inputs,
   std::vector<Tensor<std::float64_t> *> output_tensors;
 
   for (tf::tensor input : inputs)
-    input_tensors.push_back(input.ptr);
+    input_tensors.push_back(input.getPtr());
 
   for (tf::tensor output : outputs)
-    output_tensors.push_back(output.ptr);
+    output_tensors.push_back(output.getPtr());
 
   this->model_ptr = new Model(input_tensors, output_tensors);
 }
@@ -605,17 +559,17 @@ void tf::model::fit(const std::vector<tf::tensor> &inputs,
   std::vector<Tensor<std::float64_t> *> validation_tensors;
 
   for (tf::tensor input : inputs) {
-    std::erase(tensor_nodes, input.ptr);
-    input_tensors.push_back(input.ptr);
+    tensor_nodes.erase(input.getPtr());
+    input_tensors.push_back(input.getPtr());
   }
 
   for (tf::tensor output : outputs) {
-    std::erase(tensor_nodes, output.ptr);
+    tensor_nodes.erase(output.getPtr());
     output_tensors.push_back(output.getPtr());
   }
 
   for (tf::tensor validation_data : validation_datas) {
-    std::erase(tensor_nodes, validation_data.ptr);
+    tensor_nodes.erase(validation_data.getPtr());
     validation_tensors.push_back(validation_data.getPtr());
   }
 

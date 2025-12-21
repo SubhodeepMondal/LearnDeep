@@ -19,12 +19,11 @@
 
 namespace tf {
 
-typedef struct tensor {
-private:
+class tensor {
   std::vector<Ops *> opsPtr;
+  Tensor<std::float64_t> *ptr{nullptr};
 
 public:
-  Tensor<std::float64_t> *ptr{nullptr};
   bool activateGraphSession;
   DataType dt_type;
 
@@ -136,12 +135,15 @@ public:
     return getReduction(dimensions);
   }
 
-  Tensor<std::float64_t> *getPtr();
+  Tensor<std::float64_t> *getPtr() const;
+
+  const void setPtr(Tensor<std::float64_t> *ptr);
 
   std::float64_t *getData() { return ptr->getData(); }
-} tensor;
+};
 
-static std::vector<Tensor<std::float64_t> *> tensor_nodes;
+static std::unordered_set<Tensor<std::float64_t> *> tensor_nodes;
+static std::unordered_set<Ops *> tensor_ops;
 
 typedef struct graph_context {
 private:

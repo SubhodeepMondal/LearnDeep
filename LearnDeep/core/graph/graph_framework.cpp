@@ -9,6 +9,7 @@
 #include <core/framework/MathLibrary.h>
 #include <core/graph/graph_framework.hpp>
 #include <core/kernel/opskernel.h>
+#include <unordered_set>
 
 std::string functionsToString(Functions func) {
   switch (func) {
@@ -415,11 +416,13 @@ Graph::~Graph() {
 
   LOG(INFO) << "Total data node in graph: " << data_nodes.size() << "\n";
   for (Tensor<std::float64_t> *data_node : data_nodes)
-    delete data_node;
+    if (!this->tensors_to_be_spared.count(data_node))
+      delete data_node;
 
   LOG(INFO) << "Total ops node in graph: " << ops_nodes.size() << "\n";
   for (Ops *ops_node : ops_nodes)
-    delete ops_node;
+    if (!this->ops_to_be_spared.count(ops_node))
+      delete ops_node;
 
   for (auto nodes : graph)
     delete nodes.second;
@@ -438,4 +441,14 @@ Graph::~Graph() {
 
   for (auto nodes : auto_diff_graph)
     delete nodes.second;
+}
+
+void Graph::setTensorToBeSpared(
+    const std::unordered_set<Tensor<std::float64_t> *> &tensors_to_be_spared) {
+  this->tensors_to_be_spared = tensors_to_be_spared;
+}
+
+void Graph::setOpsToBeSpared(
+    const std::unordered_set<Ops *> &ops_to_be_spared) {
+  this->ops_to_be_spared = ops_to_be_spared;
 }

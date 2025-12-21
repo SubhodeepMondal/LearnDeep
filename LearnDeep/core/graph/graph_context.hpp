@@ -1,6 +1,9 @@
 #ifndef GRAPH_CONTEXT
 #define GRAPH_CONTEXT
 
+// C++ Headers
+#include <unordered_set>
+
 // Library Headers
 #include "graph_framework.hpp"
 #include "graph_manager.hpp"
@@ -33,6 +36,15 @@ public:
   }
 
   void graph_initilize_gradient() { graph->createGradientGraph(); }
+
+  void tensor_to_be_spared(const std::unordered_set<Tensor<std::float64_t> *>
+                               &tensors_to_be_spared) {
+    graph->setTensorToBeSpared(tensors_to_be_spared);
+  }
+
+  void ops_to_be_spared(const std::unordered_set<Ops *> &ops_to_be_spared) {
+    graph->setOpsToBeSpared(ops_to_be_spared);
+  }
 };
 
 #endif // GRAPH_CONTEXT
