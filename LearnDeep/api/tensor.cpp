@@ -75,11 +75,6 @@ tf::tensor::~tensor() {
       delete this->ptr;
       this->ptr = NULL;
     }
-    if (opsPtr.size()) {
-      for (void *opsptr : this->opsPtr)
-        delete static_cast<Ops *>(opsptr);
-      opsPtr.clear();
-    }
   }
 }
 
@@ -170,15 +165,10 @@ tf::tensor tf::tensor::matmul(const tensor &input_b) const {
   tensor output;
 
   if (this->dt_type == input_b.dt_type) {
-    this->opsPtr.push_back(new Opsmatmul);
-    tensor_ops.insert(this->opsPtr[opsPtr.size() - 1]);
     switch (dt_type) {
     case tf_float64: {
       output.dt_type = this->dt_type;
-      output = tensor(
-          this->dt_type,
-          this->ptr->matmul(*(input_b.getPtr()),
-                            std::span(opsPtr).subspan(opsPtr.size() - 1)));
+      output = tensor(this->dt_type, this->ptr->matmul(*(input_b.getPtr())));
       break;
     }
     default:
@@ -192,14 +182,9 @@ tf::tensor tf::tensor::add(tensor &input_b) {
   tensor output;
 
   if (this->dt_type == input_b.dt_type) {
-    this->opsPtr.push_back(new Opsadd);
-    tensor_ops.insert(this->opsPtr[opsPtr.size() - 1]);
     switch (dt_type) {
     case tf_float64: {
-      output =
-          tensor(this->dt_type,
-                 this->ptr->add(*(input_b.getPtr()),
-                                std::span(opsPtr).subspan(opsPtr.size() - 1)));
+      output = tensor(this->dt_type, this->ptr->add(*(input_b.getPtr())));
       break;
     }
     default:
@@ -212,14 +197,9 @@ tf::tensor tf::tensor::add(tensor &input_b) {
 tf::tensor tf::tensor::operator+(tensor &input_b) {
   tensor output;
   if (this->dt_type == input_b.dt_type) {
-    this->opsPtr.push_back(new Opsadd);
-    tensor_ops.insert(this->opsPtr[opsPtr.size() - 1]);
     switch (dt_type) {
     case tf_float64: {
-      output =
-          tensor(this->dt_type,
-                 this->ptr->add(*(input_b.getPtr()),
-                                std::span(opsPtr).subspan(opsPtr.size() - 1)));
+      output = tensor(this->dt_type, this->ptr->add(*(input_b.getPtr())));
       break;
     }
     default:
@@ -233,15 +213,10 @@ tf::tensor tf::tensor::operator*(tensor &input_b) {
   tensor output;
 
   if (this->dt_type == input_b.dt_type) {
-    this->opsPtr.push_back(new Opsmul);
-    tensor_ops.insert(this->opsPtr[opsPtr.size() - 1]);
     switch (dt_type) {
     case tf_float64: {
       output.dt_type = this->dt_type;
-      output =
-          tensor(this->dt_type,
-                 this->ptr->mul(*(input_b.getPtr()),
-                                std::span(opsPtr).subspan(opsPtr.size() - 1)));
+      output = tensor(this->dt_type, this->ptr->mul(*(input_b.getPtr())));
       break;
     }
     default:
@@ -253,14 +228,11 @@ tf::tensor tf::tensor::operator*(tensor &input_b) {
 
 tf::tensor tf::tensor::sigmoid() {
   tensor output;
-  this->opsPtr.push_back(new Opssigmoid);
-  tensor_ops.insert(this->opsPtr[this->opsPtr.size() - 1]);
 
   switch (dt_type) {
   case tf_float64:
     output.dt_type = this->dt_type;
-    output = tensor(this->dt_type, this->ptr->sigmoid(std::span(opsPtr).subspan(
-                                       opsPtr.size() - 1)));
+    output = tensor(this->dt_type, this->ptr->sigmoid());
     break;
   default:
     LOG(ERROR) << "Invalid data type!";
@@ -271,14 +243,9 @@ tf::tensor tf::tensor::sigmoid() {
 tf::tensor tf::tensor::scale(const std::float64_t scaleFactor) {
   tensor output;
 
-  this->opsPtr.push_back(new Opsscale);
-  tensor_ops.insert(this->opsPtr[this->opsPtr.size() - 1]);
   switch (dt_type) {
   case tf_float64:
-    output =
-        tensor(this->dt_type,
-               this->ptr->scale(scaleFactor,
-                                std::span(opsPtr).subspan(opsPtr.size() - 1)));
+    output = tensor(this->dt_type, this->ptr->scale(scaleFactor));
     break;
   default:
     LOG(ERROR) << "Invalid data type!";
@@ -289,13 +256,9 @@ tf::tensor tf::tensor::scale(const std::float64_t scaleFactor) {
 tf::tensor tf::tensor::sqrt() {
   tensor output;
 
-  this->opsPtr.push_back(new Opssqrt);
-  tensor_ops.insert(this->opsPtr[this->opsPtr.size() - 1]);
   switch (dt_type) {
   case tf_float64:
-    output =
-        tensor(this->dt_type,
-               this->ptr->sqrt(std::span(opsPtr).subspan(opsPtr.size() - 1)));
+    output = tensor(this->dt_type, this->ptr->sqrt());
     break;
   default:
     LOG(ERROR) << "Invalid data type!";
@@ -305,17 +268,12 @@ tf::tensor tf::tensor::sqrt() {
 
 tf::tensor tf::tensor::sub(tensor &input_b) {
   tensor output;
-  this->opsPtr.push_back(new Opssub);
-  tensor_ops.insert(this->opsPtr[this->opsPtr.size() - 1]);
 
   if (this->dt_type == input_b.dt_type) {
     switch (dt_type) {
     case tf_float64: {
       output.dt_type = this->dt_type;
-      output =
-          tensor(this->dt_type,
-                 this->ptr->sub(*(input_b.getPtr()),
-                                std::span(opsPtr).subspan(opsPtr.size() - 1)));
+      output = tensor(this->dt_type, this->ptr->sub(*(input_b.getPtr())));
       break;
     }
     default:
@@ -327,15 +285,11 @@ tf::tensor tf::tensor::sub(tensor &input_b) {
 
 tf::tensor tf::tensor::transpose() {
   tensor output;
-  this->opsPtr.push_back(new Opstranspose);
-  tensor_ops.insert(this->opsPtr[this->opsPtr.size() - 1]);
 
   switch (dt_type) {
   case tf_float64:
     output.dt_type = this->dt_type;
-    output = tensor(
-        this->dt_type,
-        this->ptr->transpose(std::span(opsPtr).subspan(opsPtr.size() - 1)));
+    output = tensor(this->dt_type, this->ptr->transpose());
     break;
   default:
     LOG(ERROR) << "Invalid data type!";
@@ -345,15 +299,11 @@ tf::tensor tf::tensor::transpose() {
 
 tf::tensor tf::tensor::pow(const unsigned exponent) {
   tensor output;
-  this->opsPtr.push_back(new Opspower);
-  tensor_ops.insert(opsPtr[this->opsPtr.size() - 1]);
 
   switch (dt_type) {
   case tf_float64:
     output.dt_type = this->dt_type;
-    output = tensor(
-        this->dt_type,
-        this->ptr->pow(exponent, std::span(opsPtr).subspan(opsPtr.size() - 1)));
+    output = tensor(this->dt_type, this->ptr->pow(exponent));
     break;
   default:
     LOG(ERROR) << "Invalid data type!";
@@ -363,15 +313,11 @@ tf::tensor tf::tensor::pow(const unsigned exponent) {
 
 tf::tensor tf::tensor::relu() {
   tensor output;
-  this->opsPtr.push_back(new Opsrelu);
-  tensor_ops.insert(this->opsPtr[this->opsPtr.size() - 1]);
 
   switch (dt_type) {
   case tf_float64:
     output.dt_type = this->dt_type;
-    output =
-        tensor(this->dt_type,
-               this->ptr->relu(std::span(opsPtr).subspan(opsPtr.size() - 1)));
+    output = tensor(this->dt_type, this->ptr->relu());
     break;
   default:
     LOG(ERROR) << "Invalid data type!";
@@ -381,17 +327,11 @@ tf::tensor tf::tensor::relu() {
 
 tf::tensor tf::tensor::mean(const unsigned dim) {
   tensor output;
-  this->opsPtr.push_back(new Opsreducesum);
-  tensor_ops.insert(this->opsPtr[this->opsPtr.size() - 1]);
-  this->opsPtr.push_back(new Opsscale);
-  tensor_ops.insert(this->opsPtr[this->opsPtr.size() - 1]);
 
   switch (dt_type) {
   case tf_float64:
     output.dt_type = this->dt_type;
-    output = tensor(
-        this->dt_type,
-        this->ptr->mean(dim, std::span(opsPtr).subspan(opsPtr.size() - 2)));
+    output = tensor(this->dt_type, this->ptr->mean(dim));
     break;
   default:
     LOG(ERROR) << "Invalid data type!";
@@ -403,15 +343,10 @@ tf::tensor tf::tensor::mul(tensor &input_b) {
   tensor output;
 
   if (this->dt_type == input_b.dt_type) {
-    this->opsPtr.push_back(new Opsmul);
-    tensor_ops.insert(this->opsPtr[this->opsPtr.size() - 1]);
     switch (dt_type) {
     case tf_float64: {
       output.dt_type = this->dt_type;
-      output =
-          tensor(this->dt_type,
-                 this->ptr->mul(*(input_b.getPtr()),
-                                std::span(opsPtr).subspan(opsPtr.size() - 1)));
+      output = tensor(this->dt_type, this->ptr->mul(*(input_b.getPtr())));
       break;
     }
     default:
@@ -423,13 +358,9 @@ tf::tensor tf::tensor::mul(tensor &input_b) {
 
 tf::tensor tf::tensor::getReduction(std::vector<unsigned> reduction_dims) {
   tensor output;
-  opsPtr.push_back(new Opsreducesum);
   switch (dt_type) {
   case tf_float64:
-    output = tensor(
-        this->dt_type,
-        this->ptr->reducesum(reduction_dims,
-                             std::span(opsPtr).subspan(opsPtr.size() - 1)));
+    output = tensor(this->dt_type, this->ptr->reducesum(reduction_dims));
     break;
 
   default:
@@ -457,7 +388,6 @@ tf::graph_context::graph_context() { this->graph_ctx = new GraphContext(); }
 tf::graph_context::~graph_context() {
 
   graph_ctx->tensor_to_be_spared(tensor_nodes);
-  graph_ctx->ops_to_be_spared(tensor_ops);
   delete graph_ctx;
 }
 

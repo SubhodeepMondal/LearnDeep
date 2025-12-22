@@ -27,7 +27,6 @@ class Ops;
 
 class Graph {
   std::unordered_set<Tensor<std::float64_t> *> tensors_to_be_spared;
-  std::unordered_set<Ops *> ops_to_be_spared;
   std::unordered_set<Tensor<std::float64_t> *> data_nodes;
   std::unordered_set<Ops *> ops_nodes;
   std::unordered_set<Tensor<std::float64_t> *> grad_data_nodes;
@@ -94,8 +93,6 @@ public:
 
   void setTensorToBeSpared(
       const std::unordered_set<Tensor<std::float64_t> *> &tensors_to_be_spared);
-
-  void setOpsToBeSpared(const std::unordered_set<Ops *> &ops_to_be_spared);
 
   void topo_schedule_ops(std::unordered_set<Ops *> ops_nodes,
                          std::unordered_map<unsigned long, node *> graph);

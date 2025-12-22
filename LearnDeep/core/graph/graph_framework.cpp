@@ -421,8 +421,7 @@ Graph::~Graph() {
 
   LOG(INFO) << "Total ops node in graph: " << ops_nodes.size() << "\n";
   for (Ops *ops_node : ops_nodes)
-    if (!this->ops_to_be_spared.count(ops_node))
-      delete ops_node;
+    delete ops_node;
 
   for (auto nodes : graph)
     delete nodes.second;
@@ -446,9 +445,4 @@ Graph::~Graph() {
 void Graph::setTensorToBeSpared(
     const std::unordered_set<Tensor<std::float64_t> *> &tensors_to_be_spared) {
   this->tensors_to_be_spared = tensors_to_be_spared;
-}
-
-void Graph::setOpsToBeSpared(
-    const std::unordered_set<Ops *> &ops_to_be_spared) {
-  this->ops_to_be_spared = ops_to_be_spared;
 }

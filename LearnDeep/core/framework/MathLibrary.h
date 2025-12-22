@@ -44,13 +44,13 @@ public:
 
   void assign(Ops *ops) { ops->initializeoutput(this); }
 
-  Tensor<T> *add(Tensor<T> &input, std::span<Ops *> ops);
+  Tensor<T> *add(Tensor<T> &input);
 
-  Tensor<T> *matmul(Tensor<T> &input, std::span<Ops *> ops);
+  Tensor<T> *matmul(Tensor<T> &input);
 
   Tensor<T> *operator*(Tensor<T> &);
 
-  Tensor<T> *mul(Tensor<T> &input, std::span<Ops *> ops);
+  Tensor<T> *mul(Tensor<T> &input);
 
   Tensor<T> operator+(const Tensor<T>);
 
@@ -58,25 +58,25 @@ public:
 
   Tensor<T> vectoradd(const Tensor<T>);
 
-  Tensor<T> *reducesum(std::vector<unsigned> n, std::span<Ops *> ops);
+  Tensor<T> *reducesum(std::vector<unsigned> n);
 
-  Tensor<T> *scale(const std::float64_t scaleFactor, std::span<Ops *> ops);
+  Tensor<T> *scale(const std::float64_t scaleFactor);
 
-  Tensor<T> *sqrt(std::span<Ops *> ops);
+  Tensor<T> *sqrt();
 
-  Tensor<T> *sub(Tensor<T> &input, std::span<Ops *> ops);
+  Tensor<T> *sub(Tensor<T> &input);
 
-  Tensor<T> *pow(unsigned exponent, std::span<Ops *> ops);
+  Tensor<T> *pow(unsigned exponent);
 
-  Tensor<T> *relu(std::span<Ops *> ops);
+  Tensor<T> *relu();
 
-  Tensor<T> *sigmoid(std::span<Ops *> ops);
+  Tensor<T> *sigmoid();
 
   Tensor<T> *softmax(const unsigned axis);
 
-  Tensor<T> *mean(const unsigned dim, std::span<Ops *> ops);
+  Tensor<T> *mean(const unsigned dim);
 
-  Tensor<T> *transpose(std::span<Ops *> ops);
+  Tensor<T> *transpose();
 };
 
 // template class Tensor<std::float64_t>;

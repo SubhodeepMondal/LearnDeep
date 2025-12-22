@@ -34,7 +34,7 @@ TEST_F(MathTest, Eager_MatrixHarmandMultiplication_2D) {
   }
 }
 
-TEST_F(MathTest, Graph_MatrixElementWiseMultiplication_2D) {
+TEST_F(MathTest, Graph_MatrixHarmandMultiplication_2D) {
 
   std::float64_t a[] = {0.42602198, 0.51120308, 0.66381781, 0.79000792,
                         0.73980886, 0.1366799,  0.3818528,  0.40564105,
@@ -71,7 +71,7 @@ TEST_F(MathTest, Graph_MatrixElementWiseMultiplication_2D) {
   }
 }
 
-TEST_F(MathTest, Graph_MatrixElementWiseMultiplication_Grad_2D) {
+TEST_F(MathTest, Graph_MatrixHarmandMultiplication_Grad_2D) {
 
   std::float64_t a[] = {0.42602198, 0.51120308, 0.66381781, 0.79000792,
                         0.73980886, 0.1366799,  0.3818528,  0.40564105,

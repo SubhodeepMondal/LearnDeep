@@ -41,10 +41,6 @@ public:
                                &tensors_to_be_spared) {
     graph->setTensorToBeSpared(tensors_to_be_spared);
   }
-
-  void ops_to_be_spared(const std::unordered_set<Ops *> &ops_to_be_spared) {
-    graph->setOpsToBeSpared(ops_to_be_spared);
-  }
 };
 
 #endif // GRAPH_CONTEXT

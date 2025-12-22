@@ -22,7 +22,7 @@ class Callback;
 namespace tf {
 
 class tensor {
-  mutable std::vector<Ops *> opsPtr;
+  // mutable std::vector<Ops *> opsPtr;
   Tensor<std::float64_t> *ptr{nullptr};
 
 public:
@@ -152,7 +152,6 @@ public:
 };
 
 static std::unordered_set<Tensor<std::float64_t> *> tensor_nodes;
-static std::unordered_set<Ops *> tensor_ops;
 
 typedef struct graph_context {
 private:
