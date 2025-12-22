@@ -8,54 +8,50 @@
 #include <vector>
 
 // Library headers
-#include <callback/callback.hpp>
-#include <core/framework/MathLibrary.h>
+#include <api/tensor.h>
 #include <layers/layer_graph.hpp>
 
 class Model {
 private:
   unsigned batch_size;
   bool shuffle_input;
-  std::vector<Tensor<std::float64_t> *> inputs;
-  std::vector<Tensor<std::float64_t> *> outputs;
+  std::vector<const Tensor<std::float64_t> *> inputs;
+  std::vector<const Tensor<std::float64_t> *> outputs;
 
-  std::vector<Tensor<std::float64_t> *> local_training_inputs;
+  std::vector<tf::tensor> local_training_inputs;
 
-  std::unordered_map<Layer *, std::vector<Tensor<std::float64_t> *>>
+  std::unordered_map<Layer *, std::vector<const Tensor<std::float64_t> *>>
       layer_input_mappings;
-  std::unordered_map<Layer *, std::vector<Tensor<std::float64_t> *>>
-      layer_output_mappings;
+  std::unordered_map<Layer *, std::vector<tf::tensor *>> layer_output_mappings;
 
-  std::unordered_map<Layer *, std::vector<Tensor<std::float64_t> *>>
+  std::unordered_map<Layer *, std::vector<tf::tensor *>>
       layer_training_input_mappings;
-
-  std::unordered_map<Tensor<std::float64_t> *, std::vector<Layer *>>
+  std::unordered_map<const Tensor<std::float64_t> *, std::vector<Layer *>>
       input_layer_mappings;
 
   LayerGraph model_layer_graph;
   std::vector<Layer *> layers;
   std::vector<Layer *> input_layers;
 
-  std::vector<Tensor<std::float64_t> *>
-  getLayers(std::queue<Tensor<std::float64_t> *> &output_queue);
+  std::vector<const Tensor<std::float64_t> *> getLayersNBackTrackInputs(
+      std::queue<const Tensor<std::float64_t> *> &output_queue);
 
-  void getTrainingTensorsForInputLayer();
+  void setTrainingTensorsForInputLayer();
 
-  void doDummyAndTrainingTensorMapping(
-      const std::vector<Tensor<std::float64_t> *> &training_inputs);
+  void doDummyAndTrainingTensorMapping();
 
   void doTensorAndLayerMappings();
 
   void initializeLayerGraph();
 
-  void initilizeInputsForTraining(
-      std::vector<Tensor<std::float64_t> *> training_inputs);
+  void
+  initilizeInputsForTraining(const std::vector<tf::tensor> &training_inputs);
 
 public:
-  Model(std::vector<Tensor<std::float64_t> *> const inputs);
+  Model(std::vector<tf::tensor> const inputs);
 
-  Model(const std::vector<Tensor<std::float64_t> *> &inputs,
-        const std::vector<Tensor<std::float64_t> *> &outputs);
+  Model(const std::vector<tf::tensor> &inputs,
+        const std::vector<tf::tensor> &outputs);
 
   /** @file model.hpp basic model implementation */
   /** @brief Updates hyperparamers for training */
@@ -71,7 +67,7 @@ public:
   /** @param inputs std vector inputs for the training */
   /** @param output expected output for the training, used for loss calculation
    */
-  /** @param validation_data Tensor<std::float64_t> *,   output for the
+  /** @param validation_data tf::tensor ,   output for the
    * training, used for loss calculation
    */
   /** @param epochs unsigned, default 10; required, no of iterations to run for
@@ -86,20 +82,20 @@ public:
    * level 4: + validation loss
    * level 5: + va;odation metric */
   /** @return void */
-  void fit(std::vector<Tensor<std::float64_t> *> inputs,
-           std::vector<Tensor<std::float64_t> *> output,
-           std::vector<Tensor<std::float64_t> *> valdiation_data = {NULL},
+  void fit(const std::vector<tf::tensor> &inputs,
+           const std::vector<tf::tensor> &output,
+           const std::vector<tf::tensor> &valdiation_data = {},
            unsigned epochs = 10, unsigned batch_size = 1,
            Callback *callback = nullptr, unsigned verbose = 0);
 
   /** @file model.hpp basic model implementation */
   /** @brief Feeds the model with input and does a inference on it to predict
    * output */
-  /** @param input std vector of Tensor<std::float64_t> *, input tensor for the
+  /** @param input std vector of tf::tensor , input tensor for the
    * model, of dimension no_feature x batch_size fearture can be of any
    * dimension */
-  /** @return Tensor<std::float64_t> * output tensor after inference */
-  Tensor<std::float64_t> *predict(std::vector<Tensor<std::float64_t> *> input);
+  /** @return tf::tensor  output tensor after inference */
+  tf::tensor predict(std::vector<tf::tensor> input);
 
   void shuffle(bool shuffle);
 };

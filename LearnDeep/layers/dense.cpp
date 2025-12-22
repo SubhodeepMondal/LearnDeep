@@ -20,25 +20,23 @@ Dense::~Dense() {
   this->layer_outputs.clear();
 }
 
-std::vector<Tensor<std::float64_t> *>
-Dense::operator()(const std::vector<Tensor<std::float64_t> *> &input_tensors) {
+const std::vector<tf::tensor> &
+Dense::operator()(std::vector<tf::tensor> input_tensors) {
 
   // do a lazy initialization
   if (input_tensors.size() == 1) {
-    this->layer_inputs = input_tensors;
+    this->layer_inputs.push_back(input_tensors[0].getPtr());
 
-    unsigned arr[2];
+    std::vector<unsigned> arr(2);
     arr[0] = this->no_of_unit;
     arr[1] = 1;
 
-    this->weight = new Tensor<std::float64_t>(2, arr, tf_float64);
-    this->bias = new Tensor<std::float64_t>(2, arr, tf_float64);
-    this->matmul_result = new Tensor<std::float64_t>(2, arr, tf_float64);
-    Tensor<std::float64_t> *output =
-        new Tensor<std::float64_t>(2, arr, tf_float64);
+    this->weight.tf_create(arr, tf_float64);
+    this->bias.tf_create(arr, tf_float64);
+    this->matmul_result.tf_create(arr, tf_float64);
+    tf::tensor output;
+    output.tf_create(arr, tf_float64);
     this->layer_outputs.push_back(output);
-    this->ops.push_back(new Opsmatmul);
-    this->ops.push_back(new Opsadd);
 
   } else {
     LOG(ERROR) << "Fatal! Dense: Layer expects only one tensor as input.\n";
@@ -46,75 +44,64 @@ Dense::operator()(const std::vector<Tensor<std::float64_t> *> &input_tensors) {
   return this->layer_outputs;
 }
 
-std::vector<Tensor<std::float64_t> *>
-Dense::forward(std::vector<Tensor<std::float64_t> *> input,
-               unsigned batch_size) {
+std::vector<tf::tensor> Dense::forward(const std::vector<tf::tensor *> &input,
+                                       unsigned batch_size) {
   if (input.size() == 1) {
-    if (input[0]->getNoOfDimensions() == 2) {
-      this->no_of_features = input[0]->getDimensions()[0];
+    if (input[0]->getPtr()->getNoOfDimensions() == 2) {
+      this->no_of_features = input[0]->getPtr()->getDimensions()[0];
       this->batch_size = batch_size;
 
-      this->training_input = input[0];
+      this->training_input = input[0]->getPtr();
 
-      unsigned arr[2];
+      std::vector<unsigned> arr(2);
       arr[0] = this->no_of_unit;
       arr[1] = this->no_of_features;
-      this->weight->reshape(2, arr);
-      this->training_weight = new Tensor<std::float64_t>(2, arr, tf_float64);
+      this->weight.reshape(arr);
+      this->training_weight.tf_create(arr, tf_float64);
 
       arr[1] = this->batch_size;
-      this->training_matmul_result =
-          new Tensor<std::float64_t>(2, arr, tf_float64);
-      this->training_bias = new Tensor<std::float64_t>(2, arr, tf_float64);
-      this->training_output = new Tensor<std::float64_t>(2, arr, tf_float64);
+      this->training_matmul_result.tf_create(arr, tf_float64);
+      this->training_bias.tf_create(arr, tf_float64);
+      tf::tensor training_output;
+      training_output.tf_create(arr, tf_float64);
+      this->training_outputs.push_back(training_output);
 
       this->initializeWeight();
       this->initializeBias();
 
-      Graph *g = GraphManager::instance().getCurrentGraph();
-      if (g) {
-        this->training_matmul_result = this->training_input->matmul(
-            *(this->training_weight),
-            std::span(ops).subspan(0)); // matmul_result = input.matmul(weights)
-
-        this->training_output = this->training_matmul_result->add(
-            *(this->training_bias),
-            std::span(ops).subspan(1)); // output = matmul_result + bias
-      } else {
-        LOG(ERROR)
-            << "Fatal! There no active graph session for forward calculation";
-      }
+      // training_matmul_result = training_input->matmul(training_weight);
+      // training_output = training_matmul_result.add(training_bias);
     } else {
       LOG(ERROR)
           << "Fatal! Dense: Layer expects rank of 2, here input has rank of "
-          << input[0]->getNoOfDimensions() << ".\n";
+          << input[0]->getPtr()->getNoOfDimensions() << ".\n";
     }
   } else {
     LOG(ERROR) << "Fatal! Dense: Layer expects only one input tensors but here "
                   "given no of tensors are "
                << input.size() << ".\n";
   }
-  return {this->training_output};
+  return this->training_outputs;
 }
 
 void Dense::backward() {}
 
 LayerType Dense::getLayerType() { return this->layer_type; }
 
-std::vector<Tensor<std::float64_t> *> Dense::getInputTensors() {
+std::vector<const Tensor<std::float64_t> *> Dense::getInputTensors() {
   return this->layer_inputs;
 }
 
-std::vector<Tensor<std::float64_t> *> Dense::getOutputTensors() {
+std::vector<tf::tensor> Dense::getOutputTensors() {
   return this->layer_outputs;
 }
 
-std::vector<Tensor<std::float64_t> *> Dense::getInputTrainingTensors() {
+std::vector<const Tensor<std::float64_t> *> Dense::getInputTrainingTensors() {
   return {this->training_input};
 }
 
-std::vector<Tensor<std::float64_t> *> Dense::getOutputTrainingTensors() {
-  return {this->training_output};
+std::vector<tf::tensor> Dense::getOutputTrainingTensors() {
+  return this->training_outputs;
 }
 
 void Dense::setWeightInitializationMethod(
@@ -127,24 +114,24 @@ void Dense::setBiasInitializationMethod(
   this->bias_initialization_method = initilization_method;
 }
 
-void Dense::setWeight(Tensor<std::float64_t> *weight_tensor) {
+void Dense::setWeight(tf::tensor weight_tensor) {
   this->weight_initialization_method = InitializationMethod::MANUAL;
-  this->initialization_weight = *(weight_tensor);
+  this->initialization_weight = weight_tensor;
 }
 
-void Dense::setBias(Tensor<std::float64_t> *bias_tensor) {
+void Dense::setBias(tf::tensor bias_tensor) {
   this->bias_initialization_method = InitializationMethod::MANUAL;
-  this->initialization_bias = *(bias_tensor);
+  this->initialization_bias = bias_tensor;
 }
 
-std::vector<Tensor<std::float64_t> *>
+std::vector<tf::tensor>
 Dense::getLayerParameter(Layer_Parameter layer_parameter, bool print_flag) {
-  std::vector<Tensor<std::float64_t> *> layer_parameter_tensor;
+  std::vector<tf::tensor> layer_parameter_tensor;
   layer_parameter_tensor.clear();
   switch (layer_parameter) {
   case Layer_Parameter::dense_input:
     LOG(INFO) << "Layer: Dense, input:\n";
-    layer_parameter_tensor = layer_inputs;
+    // layer_parameter_tensor = layer_inputs;
     break;
   case Layer_Parameter::dense_weight:
     LOG(INFO) << "Layer: Dense, weight:\n";
@@ -160,7 +147,7 @@ Dense::getLayerParameter(Layer_Parameter layer_parameter, bool print_flag) {
     break;
   case Layer_Parameter::dense_training_input:
     LOG(INFO) << "Layer: Dense, training input:\n";
-    layer_parameter_tensor.push_back(this->training_input);
+    // layer_parameter_tensor.push_back(this->training_input);
     break;
   case Layer_Parameter::dense_training_weight:
     LOG(INFO) << "Layer: Dense, training weight:\n";
@@ -172,7 +159,7 @@ Dense::getLayerParameter(Layer_Parameter layer_parameter, bool print_flag) {
     break;
   case Layer_Parameter::dense_training_output:
     LOG(INFO) << "Layer: Dense, training output:\n";
-    layer_parameter_tensor.push_back(this->training_output);
+    layer_parameter_tensor = this->training_outputs;
     break;
   case Layer_Parameter::dense_grad_weight:
     LOG(INFO) << "Layer: Dense, grad weight:\n";
@@ -189,24 +176,24 @@ Dense::getLayerParameter(Layer_Parameter layer_parameter, bool print_flag) {
     break;
   }
   if (print_flag && layer_parameter_tensor.size())
-    layer_parameter_tensor[0]->printData();
+    layer_parameter_tensor[0].print_data();
   return layer_parameter_tensor;
 }
 
 void Dense::initializeWeight() {
   switch (this->weight_initialization_method) {
   case InitializationMethod::MANUAL: {
-    unsigned size = this->weight->getNoOfElem();
-    this->weight->initData(this->initialization_weight.getData());
-    this->training_weight->initData(this->weight->getData());
+    unsigned size = this->weight.getPtr()->getNoOfElem();
+    this->weight.getPtr()->initData(this->initialization_weight.getData());
+    this->training_weight.getPtr()->initData(this->weight.getPtr()->getData());
     break;
   }
   case InitializationMethod::ZEROS: {
-    this->training_weight->initData(0.0);
+    this->training_weight.getPtr()->initData(0.0);
     break;
   }
   case InitializationMethod::ONES: {
-    this->training_weight->initData(1.0);
+    this->training_weight.getPtr()->initData(1.0);
     break;
   }
   default:
@@ -218,22 +205,23 @@ void Dense::initializeWeight() {
 void Dense::initializeBias() {
   switch (this->bias_initialization_method) {
   case InitializationMethod::MANUAL: {
-    unsigned size = this->bias->getNoOfElem();
-    this->bias->initData(this->initialization_bias.getData());
+    unsigned size = this->bias.getPtr()->getNoOfElem();
+    this->bias.getPtr()->initData(this->initialization_bias.getData());
     for (unsigned i = 0; i < this->batch_size; i++) {
       unsigned index = i * size;
-      this->training_bias->initPartialData(index, size, this->bias->getData());
+      this->training_bias.getPtr()->initPartialData(
+          index, size, this->bias.getPtr()->getData());
     }
     break;
   }
   case InitializationMethod::ZEROS: {
-    this->bias->initData(0.0);
-    this->training_bias->initData(0.0);
+    this->bias.getPtr()->initData(0.0);
+    this->training_bias.getPtr()->initData(0.0);
     break;
   }
   case InitializationMethod::ONES: {
-    this->bias->initData(1.0);
-    this->training_bias->initData(1.0);
+    this->bias.getPtr()->initData(1.0);
+    this->training_bias.getPtr()->initData(1.0);
     break;
   }
   default:

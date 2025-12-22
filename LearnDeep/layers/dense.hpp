@@ -1,9 +1,11 @@
 #ifndef _TENSORFLOW_CORE_DENSE_LAYER_
 #define _TENSORFLOW_CORE_DENSE_LAYER_
 
+// C++ Headers
+
 // Library Headers
 #include "layers.hpp"
-#include <core/kernel/opskernel.h>
+#include <api/tensor.h>
 
 /** Tensor dimensions eager
  * input (features , 1)
@@ -43,24 +45,20 @@ class Dense : public Layer {
   InitializationMethod weight_initialization_method;
   InitializationMethod bias_initialization_method;
 
-  std::vector<Tensor<std::float64_t> *> layer_inputs; // parameter no 1
-  Tensor<std::float64_t> *weight;                     // parameter no 2
-  Tensor<std::float64_t> *bias;                       // parameter no 3
-  Tensor<std::float64_t> *matmul_result;
-  std::vector<Tensor<std::float64_t> *> layer_outputs; // parameter no 4
-  Tensor<std::float64_t> *training_input;              // parameter no 5
-  Tensor<std::float64_t> *training_weight;             // parameter no 6
-  Tensor<std::float64_t> *training_bias;               // parameter no 7
-  Tensor<std::float64_t> *training_matmul_result;      // parameter no 8
-  Tensor<std::float64_t> *training_output;             // parameter no 9
-  Tensor<std::float64_t> *grad_weight;                 // parameter no 10
-  Tensor<std::float64_t> *grad_bias;                   // parameter no 11
+  tf::tensor weight;
+  tf::tensor bias;
+  tf::tensor matmul_result;
+  const Tensor<std::float64_t> *training_input; // not own by dense layer
+  tf::tensor training_weight;
+  tf::tensor training_bias;
+  tf::tensor training_matmul_result;
+  std::vector<tf::tensor> training_outputs;
+  tf::tensor grad_weight;
+  tf::tensor grad_bias;
 
-  Tensor<std::float64_t> initialization_weight;
-  Tensor<std::float64_t> initialization_bias;
+  tf::tensor initialization_weight; // should own by dense layer
+  tf::tensor initialization_bias;   // should own by dense layer
   std::string layer_name;
-
-  std::vector<Ops *> ops;
 
   bool forwardGraphCreated;
   bool backwardGraphCrated;
@@ -77,22 +75,21 @@ public:
 
   ~Dense();
 
-  std::vector<Tensor<std::float64_t> *> operator()(
-      const std::vector<Tensor<std::float64_t> *> &input_tensors) override;
+  const std::vector<tf::tensor> &
+  operator()(std::vector<tf::tensor> input_tensors) override;
 
-  std::vector<Tensor<std::float64_t> *>
-  forward(std::vector<Tensor<std::float64_t> *> input,
-          unsigned batch_size) override;
+  std::vector<tf::tensor> forward(const std::vector<tf::tensor *> &input,
+                                  unsigned batch_size) override;
 
   void backward() override;
 
-  std::vector<Tensor<std::float64_t> *> getInputTensors() override;
+  std::vector<const Tensor<std::float64_t> *> getInputTensors() override;
 
-  std::vector<Tensor<std::float64_t> *> getOutputTensors() override;
+  std::vector<tf::tensor> getOutputTensors() override;
 
-  std::vector<Tensor<std::float64_t> *> getInputTrainingTensors();
+  std::vector<const Tensor<std::float64_t> *> getInputTrainingTensors();
 
-  std::vector<Tensor<std::float64_t> *> getOutputTrainingTensors();
+  std::vector<tf::tensor> getOutputTrainingTensors();
 
   LayerType getLayerType();
 
@@ -100,12 +97,11 @@ public:
 
   void setBiasInitializationMethod(InitializationMethod initilization_method);
 
-  void setWeight(Tensor<std::float64_t> *weight_tensor);
+  void setWeight(tf::tensor weight_tensor);
 
-  void setBias(Tensor<std::float64_t> *bias_tensor);
+  void setBias(tf::tensor bias_tensor);
 
-  std::vector<Tensor<std::float64_t> *>
-  getLayerParameter(Layer_Parameter layer_parameter,
-                    bool print_flag = false) override;
+  std::vector<tf::tensor> getLayerParameter(Layer_Parameter layer_parameter,
+                                            bool print_flag = false) override;
 };
 #endif // _TENSORFLOW_CORE_DENSE_LAYER

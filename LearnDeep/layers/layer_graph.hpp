@@ -13,35 +13,18 @@
 
 enum LayerGraphFunctions { compute };
 
-typedef struct LayerNode {
-  Layer *layer;
-  std::vector<LayerNode *> input_nodes;
-  std::vector<LayerNode *> output_nodes;
-
-  LayerNode(Layer *layer);
-  void addIncomingNode(LayerNode *incoming_node);
-  void addOutgoingNode(LayerNode *outgoing_node);
-} LayerNode;
-
 class LayerGraph {
-  std::unordered_map<Layer *, LayerNode *> layer_graph;
   std::unordered_set<Layer *> layers;
-
-  LayerNode *root_layer_node;
 
 public:
   LayerGraph();
 
-  std::vector<Tensor<std::float64_t> *>
-  forward(std::unordered_map<Layer *, std::vector<Tensor<std::float64_t> *>>
-              layer_input_map);
-
   void addNode(Layer *node);
 
   std::vector<Layer *>
-  getLayersOfIncomingTensor(Tensor<std::float64_t> *tensor);
+  getLayersOfIncomingTensor(const Tensor<std::float64_t> *tensor);
 
-  Layer *getLayerOfOutgoingTensor(Tensor<std::float64_t> *tensor);
+  Layer *getLayerOfOutgoingTensor(const Tensor<std::float64_t> *tensor);
 
   std::vector<Layer *> getAllLayers();
 };

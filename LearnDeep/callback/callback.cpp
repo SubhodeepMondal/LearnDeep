@@ -4,6 +4,8 @@
 
 // Library Headers
 #include "callback.hpp"
+#include <layers/layer_graph.hpp>
+#include <layers/layers.hpp>
 
 Callback::Callback(unsigned callback_level) {
   this->callback_level = callback_level;
@@ -24,11 +26,11 @@ void Callback::onEpochEndGetTrainableParameter(
   }
 }
 
-std::vector<std::vector<Tensor<std::float64_t> *>>
+std::vector<std::vector<tf::tensor>>
 Callback::getTrainableParameterEpochOnBegin(
     Layer *layer, Layer_Parameter trainable_parameter_no) {
 
-  std::vector<std::vector<Tensor<std::float64_t> *>> layer_parameter_output;
+  std::vector<std::vector<tf::tensor>> layer_parameter_output;
 
   std::vector<Layer *> layers(
       std::views::keys(this->layer_parameter_on_epoch_begin).begin(),
@@ -50,11 +52,10 @@ Callback::getTrainableParameterEpochOnBegin(
   return layer_parameter_output;
 }
 
-std::vector<std::vector<Tensor<std::float64_t> *>>
-Callback::getTrainableParameterEpochOnEnd(
+std::vector<std::vector<tf::tensor>> Callback::getTrainableParameterEpochOnEnd(
     Layer *layer, Layer_Parameter trainable_parameter_no) {
 
-  std::vector<std::vector<Tensor<std::float64_t> *>> layer_parameter_output;
+  std::vector<std::vector<tf::tensor>> layer_parameter_output;
 
   std::vector<Layer *> layers(
       std::views::keys(this->layer_parameter_on_epoch_end).begin(),
@@ -83,11 +84,10 @@ void Callback::callOnEpochBegin() {
                               std::views::keys(layers_on_epoch_begin).end());
   for (Layer *layer : layers) {
     for (auto [layer_parameter, flag] : layers_on_epoch_begin[layer]) {
-      std::vector<Tensor<std::float64_t> *> epoch_begin_tensors;
-      for (Tensor<std::float64_t> *tensor :
+      std::vector<tf::tensor> epoch_begin_tensors;
+      for (tf::tensor tensor :
            layer->getLayerParameter(layer_parameter, flag)) {
-        Tensor<std::float64_t> *temp_tensor =
-            new Tensor<std::float64_t>(*tensor);
+        tf::tensor temp_tensor = tensor;
 
         epoch_begin_tensors.push_back(temp_tensor);
       }
@@ -105,11 +105,10 @@ void Callback::callOnEpochEnd() {
 
   for (Layer *layer : layers) {
     for (auto [layer_parameter, flag] : layers_on_epoch_end[layer]) {
-      std::vector<Tensor<std::float64_t> *> epoch_end_tensors;
-      for (Tensor<std::float64_t> *tensor :
+      std::vector<tf::tensor> epoch_end_tensors;
+      for (tf::tensor tensor :
            layer->getLayerParameter(layer_parameter, flag)) {
-        Tensor<std::float64_t> *temp_tensor =
-            new Tensor<std::float64_t>(*tensor);
+        tf::tensor temp_tensor = tensor;
         epoch_end_tensors.push_back(temp_tensor);
       }
       this->layer_parameter_on_epoch_end[layer][layer_parameter].push_back(

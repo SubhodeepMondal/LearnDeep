@@ -1,6 +1,13 @@
 // Library Headers
 #include "tensor.h"
+
+// Third-party Headers
 #include <absl/log/log.h>
+
+// Library Headers
+#include <callback/callback.hpp>
+#include <layers/dense.hpp>
+#include <model/model.hpp>
 
 // --- Default Constructor
 tf::tensor::tensor() : ptr(NULL) {}
@@ -17,9 +24,9 @@ tf::tensor::tensor(DataType dt_type, Tensor<std::float64_t> *ptr) {
 tf::tensor::tensor(const tensor &other) {
   dt_type = other.dt_type;
   if (other.getPtr()) {
-    ptr = new Tensor<std::float64_t>(*other.getPtr());
+    ptr = other.getPtr();
   }
-  tensor_nodes.insert(this->ptr);
+  // tensor_nodes.insert(this->ptr);
 }
 
 // --- Copy assignment
@@ -30,13 +37,13 @@ tf::tensor &tf::tensor::operator=(const tensor &other) {
         delete this->ptr;
         this->ptr = nullptr;
       }
-      this->ptr = new Tensor<std::float64_t>(*other.getPtr());
+      this->ptr = other.getPtr();
       this->dt_type = other.dt_type;
     } else {
       ptr = nullptr;
     }
   }
-  tensor_nodes.insert(this->ptr);
+  // tensor_nodes.insert(this->ptr);
   return *this;
 }
 
@@ -104,6 +111,12 @@ const unsigned *tf::tensor::getDimensions() {
 
 unsigned tf::tensor::getNoOfElem() { return this->ptr->getNoOfElem(); }
 
+void tf::tensor::tf_create(std::vector<unsigned> dimensions, DataType d_type) {
+  this->dt_type = d_type;
+  this->ptr = new Tensor<std::float64_t>(dimensions.size(), dimensions.data(),
+                                         this->dt_type);
+}
+
 void tf::tensor::tensor_of(double low_limit, double upper_limit) {
 
   switch (dt_type) {
@@ -144,10 +157,16 @@ void tf::tensor::print_dimension() {
     LOG(ERROR) << "Invalid data type!";
   }
 }
+
+void tf::tensor::reshape(std::vector<unsigned> dimensions) {
+  if (this->ptr) {
+    this->ptr->reshape(dimensions.size(), dimensions.data());
+  }
+}
 // --- Utilty ---
 
 // ---------------- Eager Mode ---------------
-tf::tensor tf::tensor::matmul(tensor &input_b) {
+tf::tensor tf::tensor::matmul(const tensor &input_b) const {
   tensor output;
 
   if (this->dt_type == input_b.dt_type) {
@@ -473,55 +492,30 @@ tf::layer::dense::dense(unsigned unit) { dense_layer = new Dense(unit); }
 
 std::vector<tf::tensor>
 tf::layer::dense::operator()(const std::vector<tf::tensor> &inputs) {
-  std::vector<Tensor<std::float64_t> *> input_tensors;
 
-  for (tf::tensor input : inputs) {
-    input_tensors.push_back(input.getPtr());
-  }
+  std::vector<tf::tensor> outputs = (*this->dense_layer)(inputs);
 
-  std::vector<Tensor<std::float64_t> *> output_tensors =
-      (*this->dense_layer)(input_tensors);
-
-  std::vector<tf::tensor> outputs;
-  for (Tensor<std::float64_t> *output_tensor : output_tensors) {
-    tensor_nodes.erase(output_tensor);
-    outputs.push_back(tf::tensor(tf_float64, output_tensor));
-  }
   return outputs;
 }
 
-std::vector<tf::tensor> tf::layer::dense::get_input_tensors() {
-  std::vector<tf::tensor> input_tensors;
-
-  std::vector<Tensor<std::float64_t> *> incoming_tensors =
-      dense_layer->getInputTensors();
-
-  for (Tensor<std::float64_t> *incoming_tensor : incoming_tensors)
-    input_tensors.push_back(tf::tensor(tf_float64, incoming_tensor));
-  return input_tensors;
+std::vector<const tf::tensor *> tf::layer::dense::get_input_tensors() {
+  return {nullptr};
 }
 
 std::vector<tf::tensor> tf::layer::dense::get_output_tensors() {
-  std::vector<tf::tensor> output_tensors;
-
-  std::vector<Tensor<std::float64_t> *> outgoing_tensors =
-      dense_layer->getInputTensors();
-
-  for (Tensor<std::float64_t> *outgoing_tensor : outgoing_tensors)
-    output_tensors.push_back(tf::tensor(tf_float64, outgoing_tensor));
-  return output_tensors;
+  return dense_layer->getOutputTensors();
 }
 
 void tf::layer::dense::set_weight(tf::tensor weight_tensor) {
   if (weight_tensor.getPtr())
-    static_cast<Dense *>(dense_layer)->setWeight(weight_tensor.getPtr());
+    static_cast<Dense *>(dense_layer)->setWeight(weight_tensor);
   else
     LOG(ERROR) << "Fatal! given tensor is not initialized with data\n";
 }
 
 void tf::layer::dense::set_bias(tf::tensor bias_tensor) {
   if (bias_tensor.getPtr())
-    static_cast<Dense *>(dense_layer)->setBias(bias_tensor.getPtr());
+    static_cast<Dense *>(dense_layer)->setBias(bias_tensor);
   else
     LOG(ERROR) << "Fatal! given tensor is not initialized with data\n";
 }
@@ -539,13 +533,13 @@ tf::model::model(const std::vector<tf::tensor> &inputs,
   std::vector<Tensor<std::float64_t> *> input_tensors;
   std::vector<Tensor<std::float64_t> *> output_tensors;
 
-  for (tf::tensor input : inputs)
-    input_tensors.push_back(input.getPtr());
+  // for (tf::tensor input : inputs)
+  //   input_tensors.push_back(input.getPtr());
 
-  for (tf::tensor output : outputs)
-    output_tensors.push_back(output.getPtr());
+  // for (tf::tensor output : outputs)
+  //   output_tensors.push_back(output.getPtr());
 
-  this->model_ptr = new Model(input_tensors, output_tensors);
+  this->model_ptr = new Model(inputs, outputs);
 }
 
 void tf::model::fit(const std::vector<tf::tensor> &inputs,
@@ -554,27 +548,27 @@ void tf::model::fit(const std::vector<tf::tensor> &inputs,
                     const std::vector<tf::tensor> &validation_datas,
                     unsigned verbose) {
 
-  std::vector<Tensor<std::float64_t> *> input_tensors;
-  std::vector<Tensor<std::float64_t> *> output_tensors;
-  std::vector<Tensor<std::float64_t> *> validation_tensors;
+  // std::vector<Tensor<std::float64_t> *> input_tensors;
+  // std::vector<Tensor<std::float64_t> *> output_tensors;
+  // std::vector<Tensor<std::float64_t> *> validation_tensors;
 
-  for (tf::tensor input : inputs) {
-    tensor_nodes.erase(input.getPtr());
-    input_tensors.push_back(input.getPtr());
-  }
+  // for (tf::tensor input : inputs) {
+  //   tensor_nodes.erase(input.getPtr());
+  //   input_tensors.push_back(input.getPtr());
+  // }
 
-  for (tf::tensor output : outputs) {
-    tensor_nodes.erase(output.getPtr());
-    output_tensors.push_back(output.getPtr());
-  }
+  // for (tf::tensor output : outputs) {
+  //   tensor_nodes.erase(output.getPtr());
+  //   output_tensors.push_back(output.getPtr());
+  // }
 
-  for (tf::tensor validation_data : validation_datas) {
-    tensor_nodes.erase(validation_data.getPtr());
-    validation_tensors.push_back(validation_data.getPtr());
-  }
+  // for (tf::tensor validation_data : validation_datas) {
+  //   tensor_nodes.erase(validation_data.getPtr());
+  //   validation_tensors.push_back(validation_data.getPtr());
+  // }
 
-  this->model_ptr->fit(input_tensors, output_tensors, validation_tensors,
-                       epochs, batch_size, call_back.getCallbackPtr(), verbose);
+  this->model_ptr->fit(inputs, outputs, validation_datas, epochs, batch_size,
+                       call_back.getCallbackPtr(), verbose);
 }
 
 void tf::model::shuffle(bool shuffle) { model_ptr->shuffle(shuffle); }
@@ -608,7 +602,7 @@ std::vector<std::vector<tf::tensor>> tf::callback::get_parameter_on_epoch_begin(
     tf::layer::dense dense_layer, Layer_Parameter trainable_parameter_no) {
   std::vector<std::vector<tf::tensor>> trainable_parametes_on_epoch_begin;
 
-  std::vector<std::vector<Tensor<std::float64_t> *>> vector_vector_tensors =
+  std::vector<std::vector<tf::tensor>> vector_vector_tensors =
       callback_ptr->getTrainableParameterEpochOnBegin(dense_layer.getLayerPtr(),
                                                       trainable_parameter_no);
 
@@ -616,9 +610,8 @@ std::vector<std::vector<tf::tensor>> tf::callback::get_parameter_on_epoch_begin(
 
   unsigned i = 0;
   for (unsigned i = 0; i < vector_vector_tensors.size(); i++) {
-    for (Tensor<std::float64_t> *tensor : vector_vector_tensors[i])
-      trainable_parametes_on_epoch_begin[i].push_back(
-          tf::tensor(tf_float64, tensor));
+    for (tf::tensor tensor : vector_vector_tensors[i])
+      trainable_parametes_on_epoch_begin[i].push_back(tensor);
   }
 
   return trainable_parametes_on_epoch_begin;
@@ -628,7 +621,7 @@ std::vector<std::vector<tf::tensor>> tf::callback::get_parameter_on_epoch_end(
     tf::layer::dense dense_layer, Layer_Parameter trainable_parameter_no) {
   std::vector<std::vector<tf::tensor>> trainable_parametes_on_epoch_end;
 
-  std::vector<std::vector<Tensor<std::float64_t> *>> vector_vector_tensors =
+  std::vector<std::vector<tf::tensor>> vector_vector_tensors =
       callback_ptr->getTrainableParameterEpochOnEnd(dense_layer.getLayerPtr(),
                                                     trainable_parameter_no);
 
@@ -636,9 +629,8 @@ std::vector<std::vector<tf::tensor>> tf::callback::get_parameter_on_epoch_end(
 
   unsigned i = 0;
   for (unsigned i = 0; i < vector_vector_tensors.size(); i++) {
-    for (Tensor<std::float64_t> *tensor : vector_vector_tensors[i]) {
-      trainable_parametes_on_epoch_end[i].push_back(
-          tf::tensor(tf_float64, tensor));
+    for (tf::tensor tensor : vector_vector_tensors[i]) {
+      trainable_parametes_on_epoch_end[i].push_back(tensor);
     }
   }
 

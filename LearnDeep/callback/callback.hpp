@@ -7,9 +7,10 @@
 #include <vector>
 
 // Library Headers
-#include <core/framework/MathLibrary.h>
-#include <layers/layer_graph.hpp>
-#include <layers/layers.hpp>
+#include <api/tensor.h>
+#include <layers/layer_enum.hpp>
+
+class Layer;
 
 class Callback {
 
@@ -23,13 +24,11 @@ class Callback {
 
   std::unordered_map<
       Layer *,
-      std::unordered_map<Layer_Parameter,
-                         std::vector<std::vector<Tensor<std::float64_t> *>>>>
+      std::unordered_map<Layer_Parameter, std::vector<std::vector<tf::tensor>>>>
       layer_parameter_on_epoch_begin;
   std::unordered_map<
       Layer *,
-      std::unordered_map<Layer_Parameter,
-                         std::vector<std::vector<Tensor<std::float64_t> *>>>>
+      std::unordered_map<Layer_Parameter, std::vector<std::vector<tf::tensor>>>>
       layer_parameter_on_epoch_end;
 
 public:
@@ -43,11 +42,11 @@ public:
                                        Layer_Parameter trainable_paramter_no,
                                        bool print = false);
 
-  std::vector<std::vector<Tensor<std::float64_t> *>>
+  std::vector<std::vector<tf::tensor>>
   getTrainableParameterEpochOnBegin(Layer *layer,
                                     Layer_Parameter trainable_parameter_no);
 
-  std::vector<std::vector<Tensor<std::float64_t> *>>
+  std::vector<std::vector<tf::tensor>>
   getTrainableParameterEpochOnEnd(Layer *layer,
                                   Layer_Parameter trainable_parameter_no);
 

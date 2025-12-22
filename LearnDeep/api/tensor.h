@@ -9,18 +9,20 @@
 #include <vector>
 
 // Library Headers
-#include <callback/callback.hpp>
 #include <core/framework/MathLibrary.h>
 #include <core/graph/graph_context.hpp>
 #include <core/kernel/opskernel.h>
-#include <layers/dense.hpp>
-#include <layers/layers.hpp>
-#include <model/model.hpp>
+#include <layers/layer_enum.hpp>
+
+class Layer;
+class Dense;
+class Model;
+class Callback;
 
 namespace tf {
 
 class tensor {
-  std::vector<Ops *> opsPtr;
+  mutable std::vector<Ops *> opsPtr;
   Tensor<std::float64_t> *ptr{nullptr};
 
 public:
@@ -59,6 +61,7 @@ public:
     addDimensions(dimensions, Args...);
   }
 
+  // --- Utility ---
   template <typename... Args> void tf_create(DataType d_type, Args... args) {
     unsigned *arr;
     std::vector<unsigned> dimensions;
@@ -68,6 +71,8 @@ public:
     assign_pointer(dimensions);
   }
 
+  void tf_create(std::vector<unsigned> dims, DataType d_type);
+
   void assign_ptr(std::vector<unsigned> dimensions);
 
   unsigned getNoOfDimensions();
@@ -75,6 +80,7 @@ public:
   const unsigned *getDimensions();
 
   unsigned getNoOfElem();
+
   void tensor_of(double low_limit, double upper_limit);
 
   void tensor_of(std::float64_t *data);
@@ -85,6 +91,9 @@ public:
 
   void assign_pointer(std::vector<unsigned> dimensions);
 
+  void reshape(std::vector<unsigned> dimensions);
+  // --- End Of Utility ---
+
   // ------- eager operations --------
   tensor operator+(tensor &input_b);
 
@@ -94,7 +103,7 @@ public:
 
   tensor mean(const unsigned dim);
 
-  tensor matmul(tensor &input_b);
+  tensor matmul(const tensor &input_b) const;
 
   tensor mul(tensor &input_b);
 
@@ -174,7 +183,7 @@ public:
 
   std::vector<tf::tensor> operator()(const std::vector<tf::tensor> &inputs);
 
-  std::vector<tf::tensor> get_input_tensors();
+  std::vector<const tf::tensor *> get_input_tensors();
 
   std::vector<tf::tensor> get_output_tensors();
 
@@ -219,6 +228,7 @@ public:
   Callback *getCallbackPtr();
 
 } callback;
+
 typedef struct model {
 private:
   Model *model_ptr;
@@ -230,10 +240,11 @@ public:
   /** @file tensor.cpp basic model implementation */
   /** @brief Runs the training loop and updates the gradients */
   /** @param inputs std vector inputs for the training */
-  /** @param output expected output for the training, used for loss calculation
+  /** @param output expected output for the training, used for loss
+   * calculation
    */
-  /** @param epochs unsigned, default 10; required, no of iterations to run for
-   * training and optimization */
+  /** @param epochs unsigned, default 10; required, no of iterations to run
+   * for training and optimization */
   /** @param batch_size unsigned, default 1, batch size for each training */
   /** @param validation_data Tensor<std::float64_t> *,   output for the
    * training, used for loss calculation
@@ -257,18 +268,17 @@ public:
   void shuffle(bool shuffle);
 
 } model;
+// typedef struct optimizer {
 
-typedef struct optimizer {
+// } optimizer;
 
-} optimizer;
+// typedef struct metric {
 
-typedef struct metric {
+// } metric;
 
-} metric;
+// typedef struct loss {
 
-typedef struct loss {
-
-} loss;
+// } loss;
 
 } // namespace tf
 
