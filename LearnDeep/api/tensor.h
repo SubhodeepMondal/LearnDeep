@@ -33,7 +33,7 @@ public:
   tensor();
 
   // --- Overloaded constructor
-  tensor(DataType dt_type, Tensor<std::float64_t> *ptr);
+  tensor(DataType dt_type, const Tensor<std::float64_t> *ptr);
 
   // --- Destructor
   ~tensor();
@@ -71,13 +71,15 @@ public:
     assign_pointer(dimensions);
   }
 
+  tf::tensor deep_copy() const;
+
   void tf_create(std::vector<unsigned> dims, DataType d_type);
 
   void assign_ptr(std::vector<unsigned> dimensions);
 
   unsigned getNoOfDimensions();
 
-  const unsigned *getDimensions();
+  const unsigned *getDimensions() const;
 
   unsigned getNoOfElem();
 
@@ -85,7 +87,7 @@ public:
 
   void tensor_of(std::float64_t *data);
 
-  void print_data();
+  void print_data() const;
 
   void print_dimension();
 
@@ -180,6 +182,8 @@ private:
 public:
   dense(unsigned unit);
 
+  ~dense();
+
   std::vector<tf::tensor> operator()(const std::vector<tf::tensor> &inputs);
 
   std::vector<const tf::tensor *> get_input_tensors();
@@ -190,11 +194,11 @@ public:
 
   std::vector<tf::tensor> get_output_training_weight();
 
-  void set_weight(tf::tensor weight_tensor);
+  void set_weight(const tf::tensor &weight_tensor);
 
-  void set_bias(tf::tensor bias_tensor);
+  void set_bias(const tf::tensor &bias_tensor);
 
-  Layer *getLayerPtr();
+  Layer *getLayerPtr() const;
 } dense;
 
 } // namespace layer
@@ -208,23 +212,25 @@ public:
 
   callback(unsigned callback_level);
 
-  void record_parameter_on_epoch_begin(layer::dense dense_layer,
+  ~callback();
+
+  void record_parameter_on_epoch_begin(const layer::dense &dense_layer,
                                        Layer_Parameter trainable_parameter_no,
                                        bool print_flag = false);
 
-  void record_parameter_on_epoch_end(layer::dense dense_layer,
+  void record_parameter_on_epoch_end(const layer::dense &dense_layer,
                                      Layer_Parameter trainable_parameter_no,
                                      bool print_flag = false);
 
   std::vector<std::vector<tf::tensor>>
-  get_parameter_on_epoch_begin(layer::dense dense_layer,
+  get_parameter_on_epoch_begin(const layer::dense &dense_layer,
                                Layer_Parameter trainable_parameter_no);
 
   std::vector<std::vector<tf::tensor>>
-  get_parameter_on_epoch_end(layer::dense dense_layer,
+  get_parameter_on_epoch_end(const layer::dense &dense_layer,
                              Layer_Parameter trainable_parameter_no);
 
-  Callback *getCallbackPtr();
+  Callback *getCallbackPtr() const;
 
 } callback;
 
@@ -235,6 +241,8 @@ private:
 public:
   model(const std::vector<tf::tensor> &inputs,
         const std::vector<tf::tensor> &outputs);
+
+  ~model();
 
   /** @file tensor.cpp basic model implementation */
   /** @brief Runs the training loop and updates the gradients */
@@ -259,7 +267,7 @@ public:
   /** @return void */
   void fit(const std::vector<tf::tensor> &inputs,
            const std::vector<tf::tensor> &outputs,
-           callback call_back = callback(false), unsigned epochs = 10,
+           const callback &call_back = callback(false), unsigned epochs = 10,
            unsigned batch_size = 1,
            const std::vector<tf::tensor> &validation_datas = {tf::tensor()},
            unsigned verbose = 0);

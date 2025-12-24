@@ -34,6 +34,7 @@ class Callback {
 public:
   Callback(bool print_callback_log) : print_callback_log(print_callback_log){};
   Callback(unsigned callback_level);
+  ~Callback();
   void onEpochBeginGetTrainableParameter(Layer *layer,
                                          Layer_Parameter traiable_parameter_no,
                                          bool print = false);

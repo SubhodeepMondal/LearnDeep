@@ -4,6 +4,7 @@
 *.o
 *.so
 .vscode
+*.log
 
 **/build/*
 !**/build/.gitkeep

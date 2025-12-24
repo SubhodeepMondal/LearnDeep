@@ -11,6 +11,8 @@ Callback::Callback(unsigned callback_level) {
   this->callback_level = callback_level;
 }
 
+Callback::~Callback() {}
+
 void Callback::onEpochBeginGetTrainableParameter(
     Layer *layer, Layer_Parameter traiable_parameter_no, bool print) {
   if (std::ranges::contains(global_layer_graph.getAllLayers(), layer)) {
@@ -85,14 +87,19 @@ void Callback::callOnEpochBegin() {
   for (Layer *layer : layers) {
     for (auto [layer_parameter, flag] : layers_on_epoch_begin[layer]) {
       std::vector<tf::tensor> epoch_begin_tensors;
-      for (tf::tensor tensor :
+      for (tf::tensor *tensor :
            layer->getLayerParameter(layer_parameter, flag)) {
-        tf::tensor temp_tensor = tensor;
+        tf::tensor temp_tensor;
+        std::vector<unsigned> dims;
+        for (unsigned i = 0; i < tensor->getNoOfDimensions(); i++)
+          dims.push_back(tensor->getDimensions()[i]);
+        temp_tensor.tf_create(dims, tensor->dt_type);
+        temp_tensor.tensor_of(tensor->getData());
 
         epoch_begin_tensors.push_back(temp_tensor);
       }
       layer_parameter_on_epoch_begin[layer][layer_parameter].push_back(
-          layer->getLayerParameter(layer_parameter, flag));
+          epoch_begin_tensors);
     }
   }
 }
@@ -106,9 +113,14 @@ void Callback::callOnEpochEnd() {
   for (Layer *layer : layers) {
     for (auto [layer_parameter, flag] : layers_on_epoch_end[layer]) {
       std::vector<tf::tensor> epoch_end_tensors;
-      for (tf::tensor tensor :
+      for (tf::tensor *tensor :
            layer->getLayerParameter(layer_parameter, flag)) {
-        tf::tensor temp_tensor = tensor;
+        tf::tensor temp_tensor;
+        std::vector<unsigned> dims;
+        for (unsigned i = 0; i < tensor->getNoOfDimensions(); i++)
+          dims.push_back(tensor->getDimensions()[i]);
+        temp_tensor.tf_create(dims, tensor->dt_type);
+        temp_tensor.tensor_of(tensor->getData());
         epoch_end_tensors.push_back(temp_tensor);
       }
       this->layer_parameter_on_epoch_end[layer][layer_parameter].push_back(

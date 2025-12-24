@@ -8374,12 +8374,12 @@ TEST_F(FrameworkTest, DenseLayer_Forward) {
   weight.tensor_of(weight_data);
   bias.tensor_of(bias_data);
 
-  tf::callback call_back(true);
+  tf::callback call_back(false);
 
   auto dense_1 = tf::layer::dense(24);
   auto dense_output = dense_1({x});
-  dense_1.set_weight(weight);
   dense_1.set_bias(bias);
+  dense_1.set_weight(weight);
 
   call_back.record_parameter_on_epoch_begin(
       dense_1, Layer_Parameter::dense_training_input, false);
@@ -8401,9 +8401,6 @@ TEST_F(FrameworkTest, DenseLayer_Forward) {
   std::vector<std::vector<tf::tensor>> training_weights =
       call_back.get_parameter_on_epoch_end(
           dense_1, Layer_Parameter::dense_training_weight);
-
-  for (std::vector<tf::tensor> training_weight : training_weights)
-    training_weight[0].print_data();
 
   for (auto output : outputs) {
     for (int j = 0; j < 512; j++)

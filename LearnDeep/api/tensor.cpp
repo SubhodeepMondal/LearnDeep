@@ -12,9 +12,9 @@
 // --- Default Constructor
 tf::tensor::tensor() : ptr(NULL) {}
 
-tf::tensor::tensor(DataType dt_type, Tensor<std::float64_t> *ptr) {
+tf::tensor::tensor(DataType dt_type, const Tensor<std::float64_t> *ptr) {
   if (ptr) {
-    this->ptr = ptr;
+    this->ptr = const_cast<Tensor<std::float64_t> *>(ptr);
     this->dt_type = dt_type;
   }
   tensor_nodes.insert(this->ptr);
@@ -24,9 +24,8 @@ tf::tensor::tensor(DataType dt_type, Tensor<std::float64_t> *ptr) {
 tf::tensor::tensor(const tensor &other) {
   dt_type = other.dt_type;
   if (other.getPtr()) {
-    ptr = other.getPtr();
+    this->ptr = other.getPtr();
   }
-  // tensor_nodes.insert(this->ptr);
 }
 
 // --- Copy assignment
@@ -39,11 +38,8 @@ tf::tensor &tf::tensor::operator=(const tensor &other) {
       }
       this->ptr = other.getPtr();
       this->dt_type = other.dt_type;
-    } else {
-      ptr = nullptr;
     }
   }
-  // tensor_nodes.insert(this->ptr);
   return *this;
 }
 
@@ -79,6 +75,17 @@ tf::tensor::~tensor() {
 }
 
 // --- Utility ---
+tf::tensor tf::tensor::deep_copy() const {
+  tf::tensor out;
+  if (!this->ptr)
+    return out;
+  out.dt_type = this->dt_type;
+  out.ptr = new Tensor<std::float64_t>(*this->ptr);
+
+  tensor_nodes.insert(out.ptr);
+  return out;
+}
+
 void tf::tensor::assign_pointer(std::vector<unsigned> dimensions) {
 
   switch (this->dt_type) {
@@ -100,7 +107,7 @@ unsigned tf::tensor::getNoOfDimensions() {
   return this->ptr->getNoOfDimensions();
 }
 
-const unsigned *tf::tensor::getDimensions() {
+const unsigned *tf::tensor::getDimensions() const {
   return this->ptr->getDimensions();
 }
 
@@ -133,7 +140,7 @@ void tf::tensor::tensor_of(std::float64_t *data) {
   }
 }
 
-void tf::tensor::print_data() {
+void tf::tensor::print_data() const {
   switch (dt_type) {
   case tf_float64:
     this->ptr->printData();
@@ -167,7 +174,6 @@ tf::tensor tf::tensor::matmul(const tensor &input_b) const {
   if (this->dt_type == input_b.dt_type) {
     switch (dt_type) {
     case tf_float64: {
-      output.dt_type = this->dt_type;
       output = tensor(this->dt_type, this->ptr->matmul(*(input_b.getPtr())));
       break;
     }
@@ -366,12 +372,6 @@ tf::tensor tf::tensor::getReduction(std::vector<unsigned> reduction_dims) {
   default:
     break;
   }
-  Graph *g = GraphManager::instance().getCurrentGraph();
-  if (g) {
-    tensor_nodes.erase(this->ptr);
-    tensor_nodes.erase(output.getPtr());
-  }
-
   return output;
 }
 // ------------- End Eager Mode -------------
@@ -386,7 +386,6 @@ void tf::tensor::gradient_required(bool is_grad_required) {
 tf::graph_context::graph_context() { this->graph_ctx = new GraphContext(); }
 
 tf::graph_context::~graph_context() {
-
   graph_ctx->tensor_to_be_spared(tensor_nodes);
   delete graph_ctx;
 }
@@ -418,7 +417,12 @@ void tf::graph_context::compute_gradient() {
 // --- Layers ---
 
 // --- Dense ---
-tf::layer::dense::dense(unsigned unit) { dense_layer = new Dense(unit); }
+tf::layer::dense::dense(unsigned unit) {
+  dense_layer = new Dense(unit);
+  global_layer_graph.addNode(dense_layer);
+}
+
+tf::layer::dense::~dense() { delete this->dense_layer; }
 
 std::vector<tf::tensor>
 tf::layer::dense::operator()(const std::vector<tf::tensor> &inputs) {
@@ -436,21 +440,29 @@ std::vector<tf::tensor> tf::layer::dense::get_output_tensors() {
   return dense_layer->getOutputTensors();
 }
 
-void tf::layer::dense::set_weight(tf::tensor weight_tensor) {
-  if (weight_tensor.getPtr())
-    static_cast<Dense *>(dense_layer)->setWeight(weight_tensor);
-  else
+void tf::layer::dense::set_weight(const tf::tensor &weight_tensor) {
+  if (weight_tensor.getPtr()) {
+    if (auto *d = dynamic_cast<Dense *>(dense_layer)) {
+      d->setWeight(weight_tensor);
+    } else {
+      LOG(ERROR) << "Layer is not Dense";
+    }
+  } else
     LOG(ERROR) << "Fatal! given tensor is not initialized with data\n";
 }
 
-void tf::layer::dense::set_bias(tf::tensor bias_tensor) {
-  if (bias_tensor.getPtr())
-    static_cast<Dense *>(dense_layer)->setBias(bias_tensor);
-  else
+void tf::layer::dense::set_bias(const tf::tensor &bias_tensor) {
+  if (bias_tensor.getPtr()) {
+    if (auto *d = dynamic_cast<Dense *>(dense_layer)) {
+      d->setBias(bias_tensor);
+    } else {
+      LOG(ERROR) << "Layer is not Dense";
+    }
+  } else
     LOG(ERROR) << "Fatal! given tensor is not initialized with data\n";
 }
 
-Layer *tf::layer::dense::getLayerPtr() { return this->dense_layer; }
+Layer *tf::layer::dense::getLayerPtr() const { return this->dense_layer; }
 
 // --- End of Dense ---
 
@@ -460,42 +472,17 @@ Layer *tf::layer::dense::getLayerPtr() { return this->dense_layer; }
 
 tf::model::model(const std::vector<tf::tensor> &inputs,
                  const std::vector<tf::tensor> &outputs) {
-  std::vector<Tensor<std::float64_t> *> input_tensors;
-  std::vector<Tensor<std::float64_t> *> output_tensors;
-
-  // for (tf::tensor input : inputs)
-  //   input_tensors.push_back(input.getPtr());
-
-  // for (tf::tensor output : outputs)
-  //   output_tensors.push_back(output.getPtr());
-
   this->model_ptr = new Model(inputs, outputs);
 }
 
+tf::model::~model() { delete model_ptr; }
+
 void tf::model::fit(const std::vector<tf::tensor> &inputs,
-                    const std::vector<tf::tensor> &outputs, callback call_back,
-                    unsigned epochs, unsigned batch_size,
+                    const std::vector<tf::tensor> &outputs,
+                    const callback &call_back, unsigned epochs,
+                    unsigned batch_size,
                     const std::vector<tf::tensor> &validation_datas,
                     unsigned verbose) {
-
-  // std::vector<Tensor<std::float64_t> *> input_tensors;
-  // std::vector<Tensor<std::float64_t> *> output_tensors;
-  // std::vector<Tensor<std::float64_t> *> validation_tensors;
-
-  // for (tf::tensor input : inputs) {
-  //   tensor_nodes.erase(input.getPtr());
-  //   input_tensors.push_back(input.getPtr());
-  // }
-
-  // for (tf::tensor output : outputs) {
-  //   tensor_nodes.erase(output.getPtr());
-  //   output_tensors.push_back(output.getPtr());
-  // }
-
-  // for (tf::tensor validation_data : validation_datas) {
-  //   tensor_nodes.erase(validation_data.getPtr());
-  //   validation_tensors.push_back(validation_data.getPtr());
-  // }
 
   this->model_ptr->fit(inputs, outputs, validation_datas, epochs, batch_size,
                        call_back.getCallbackPtr(), verbose);
@@ -514,22 +501,25 @@ tf::callback::callback(unsigned callback_level) {
   callback_ptr = new Callback(callback_level);
 }
 
+tf::callback::~callback() { delete callback_ptr; }
+
 void tf::callback::record_parameter_on_epoch_begin(
-    tf::layer::dense dense_layer, Layer_Parameter trainable_parameter_no,
+    const tf::layer::dense &dense_layer, Layer_Parameter trainable_parameter_no,
     bool print_flag) {
   callback_ptr->onEpochBeginGetTrainableParameter(
       dense_layer.getLayerPtr(), trainable_parameter_no, print_flag);
 }
 
 void tf::callback::record_parameter_on_epoch_end(
-    tf::layer::dense dense_layer, Layer_Parameter trainable_parameter_no,
+    const tf::layer::dense &dense_layer, Layer_Parameter trainable_parameter_no,
     bool print_flag) {
   callback_ptr->onEpochEndGetTrainableParameter(
       dense_layer.getLayerPtr(), trainable_parameter_no, print_flag);
 }
 
 std::vector<std::vector<tf::tensor>> tf::callback::get_parameter_on_epoch_begin(
-    tf::layer::dense dense_layer, Layer_Parameter trainable_parameter_no) {
+    const tf::layer::dense &dense_layer,
+    Layer_Parameter trainable_parameter_no) {
   std::vector<std::vector<tf::tensor>> trainable_parametes_on_epoch_begin;
 
   std::vector<std::vector<tf::tensor>> vector_vector_tensors =
@@ -548,7 +538,8 @@ std::vector<std::vector<tf::tensor>> tf::callback::get_parameter_on_epoch_begin(
 }
 
 std::vector<std::vector<tf::tensor>> tf::callback::get_parameter_on_epoch_end(
-    tf::layer::dense dense_layer, Layer_Parameter trainable_parameter_no) {
+    const tf::layer::dense &dense_layer,
+    Layer_Parameter trainable_parameter_no) {
   std::vector<std::vector<tf::tensor>> trainable_parametes_on_epoch_end;
 
   std::vector<std::vector<tf::tensor>> vector_vector_tensors =
@@ -567,5 +558,5 @@ std::vector<std::vector<tf::tensor>> tf::callback::get_parameter_on_epoch_end(
   return trainable_parametes_on_epoch_end;
 }
 
-Callback *tf::callback::getCallbackPtr() { return this->callback_ptr; }
+Callback *tf::callback::getCallbackPtr() const { return this->callback_ptr; }
 // --- End Callback ---

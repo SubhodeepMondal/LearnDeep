@@ -22,9 +22,10 @@ private:
 
   std::unordered_map<Layer *, std::vector<const Tensor<std::float64_t> *>>
       layer_input_mappings;
-  std::unordered_map<Layer *, std::vector<tf::tensor *>> layer_output_mappings;
+  std::unordered_map<Layer *, std::vector<const tf::tensor *>>
+      layer_output_mappings;
 
-  std::unordered_map<Layer *, std::vector<tf::tensor *>>
+  std::unordered_map<Layer *, std::vector<const tf::tensor *>>
       layer_training_input_mappings;
   std::unordered_map<const Tensor<std::float64_t> *, std::vector<Layer *>>
       input_layer_mappings;

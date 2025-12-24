@@ -48,11 +48,13 @@ class Dense : public Layer {
   tf::tensor weight;
   tf::tensor bias;
   tf::tensor matmul_result;
-  const Tensor<std::float64_t> *training_input; // not own by dense layer
+  tf::tensor output;
+  const tf::tensor *training_inputs; // not own by dense layer
   tf::tensor training_weight;
   tf::tensor training_bias;
   tf::tensor training_matmul_result;
-  std::vector<tf::tensor> training_outputs;
+  tf::tensor training_output;
+  std::vector<tf::tensor *> training_outputs;
   tf::tensor grad_weight;
   tf::tensor grad_bias;
 
@@ -78,18 +80,18 @@ public:
   const std::vector<tf::tensor> &
   operator()(std::vector<tf::tensor> input_tensors) override;
 
-  std::vector<tf::tensor> forward(const std::vector<tf::tensor *> &input,
-                                  unsigned batch_size) override;
+  const std::vector<tf::tensor *> &
+  forward(std::vector<const tf::tensor *> &input, unsigned batch_size) override;
 
   void backward() override;
 
   std::vector<const Tensor<std::float64_t> *> getInputTensors() override;
 
-  std::vector<tf::tensor> getOutputTensors() override;
+  const std::vector<tf::tensor> &getOutputTensors() override;
 
-  std::vector<const Tensor<std::float64_t> *> getInputTrainingTensors();
+  std::vector<const tf::tensor *> getInputTrainingTensors();
 
-  std::vector<tf::tensor> getOutputTrainingTensors();
+  std::vector<tf::tensor *> getOutputTrainingTensors();
 
   LayerType getLayerType();
 
@@ -97,11 +99,11 @@ public:
 
   void setBiasInitializationMethod(InitializationMethod initilization_method);
 
-  void setWeight(tf::tensor weight_tensor);
+  void setWeight(const tf::tensor &weight_tensor);
 
-  void setBias(tf::tensor bias_tensor);
+  void setBias(const tf::tensor &bias_tensor);
 
-  std::vector<tf::tensor> getLayerParameter(Layer_Parameter layer_parameter,
-                                            bool print_flag = false) override;
+  std::vector<tf::tensor *> getLayerParameter(Layer_Parameter layer_parameter,
+                                              bool print_flag = false) override;
 };
 #endif // _TENSORFLOW_CORE_DENSE_LAYER

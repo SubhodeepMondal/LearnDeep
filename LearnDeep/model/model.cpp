@@ -61,11 +61,11 @@ void Model::fit(const std::vector<tf::tensor> &training_inputs,
 
     // Training Loop
     {
-      GraphContext ctx_compute_n_gradient;
+      tf::graph_context ctx_compute_n_gradient;
 
       this->doDummyAndTrainingTensorMapping();
 
-      ctx_compute_n_gradient.graph_initilize_gradient();
+      // ctx_compute_n_gradient.graph_initilize_gradient();
 
       for (int i = 0; i < epochs; i++) {
         if (this->shuffle_input) {
@@ -83,8 +83,8 @@ void Model::fit(const std::vector<tf::tensor> &training_inputs,
           it++;
         }
         callback->callOnEpochBegin();
-        ctx_compute_n_gradient.run();                    // forward propagation
-        ctx_compute_n_gradient.graph_compute_gradeint(); // back propagation
+        ctx_compute_n_gradient.run(); // forward propagation
+        // ctx_compute_n_gradient.graph_compute_gradeint(); // back propagation
         callback->callOnEpochEnd();
       }
     }
@@ -99,7 +99,7 @@ void Model::fit(const std::vector<tf::tensor> &training_inputs,
  * is tranculated to batch size*/
 void Model::initilizeInputsForTraining(
     const std::vector<tf::tensor> &incoming_training_inputs) {
-  for (tf::tensor input : incoming_training_inputs) {
+  for (const tf::tensor &input : incoming_training_inputs) {
     std::vector<unsigned> dims;
     for (unsigned i = 0; i < input.getPtr()->getNoOfDimensions() - 1; i++)
       dims.push_back(input.getPtr()->getDimensions()[i]);
@@ -108,8 +108,6 @@ void Model::initilizeInputsForTraining(
     tf::tensor temp_input;
     temp_input.tf_create(dims, tf_float64);
     this->local_training_inputs.push_back(temp_input);
-
-    dims.clear();
   }
 }
 
@@ -190,14 +188,15 @@ void Model::doDummyAndTrainingTensorMapping() {
      */
     if (!std::ranges::contains(this->layer_training_input_mappings[this_layer],
                                nullptr)) {
-      std::vector<tf::tensor> this_layer_training_outputs = this_layer->forward(
-          this->layer_training_input_mappings[this_layer], this->batch_size);
+      const std::vector<tf::tensor *> &this_layer_training_outputs =
+          this_layer->forward(this->layer_training_input_mappings[this_layer],
+                              this->batch_size);
 
       /* now find where each output is going*/
       for (Layer *layer : this->layers) {
         flag = false;
         unsigned i = 0;
-        for (tf::tensor *this_layer_output :
+        for (const tf::tensor *this_layer_output :
              this->layer_output_mappings[this_layer]) {
           auto it = std::find(this->layer_input_mappings[layer].begin(),
                               this->layer_input_mappings[layer].end(),
@@ -207,7 +206,7 @@ void Model::doDummyAndTrainingTensorMapping() {
             unsigned index =
                 std::distance(this->layer_input_mappings[layer].begin(), it);
             this->layer_training_input_mappings[layer][index] =
-                &this_layer_training_outputs[i++];
+                this_layer_training_outputs[i++];
             flag = true;
           }
         }

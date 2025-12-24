@@ -25,6 +25,7 @@ LayerGraph::getLayersOfIncomingTensor(const Tensor<std::float64_t> *tensor) {
   }
   return outgoing_layer;
 }
+void LayerGraph::removeNode(Layer *layer) { layers.erase(layer); }
 
 Layer *
 LayerGraph::getLayerOfOutgoingTensor(const Tensor<std::float64_t> *tensor) {

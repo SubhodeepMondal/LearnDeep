@@ -20,6 +20,7 @@ public:
   LayerGraph();
 
   void addNode(Layer *node);
+  void removeNode(Layer *node);
 
   std::vector<Layer *>
   getLayersOfIncomingTensor(const Tensor<std::float64_t> *tensor);
