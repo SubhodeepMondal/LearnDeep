@@ -17,18 +17,21 @@ class Callback {
   unsigned callback_level;
   bool print_callback_log;
 
+  std::vector<tf::tensor *> tensor_parameters_on_epoch_begin_vector;
+  std::vector<tf::tensor *> tensor_parameters_on_epoch_end_vector;
+
   std::unordered_map<Layer *, std::vector<std::pair<Layer_Parameter, bool>>>
       layers_on_epoch_begin;
   std::unordered_map<Layer *, std::vector<std::pair<Layer_Parameter, bool>>>
       layers_on_epoch_end;
 
-  std::unordered_map<
-      Layer *,
-      std::unordered_map<Layer_Parameter, std::vector<std::vector<tf::tensor>>>>
+  std::unordered_map<Layer *,
+                     std::unordered_map<Layer_Parameter,
+                                        std::vector<std::vector<tf::tensor *>>>>
       layer_parameter_on_epoch_begin;
-  std::unordered_map<
-      Layer *,
-      std::unordered_map<Layer_Parameter, std::vector<std::vector<tf::tensor>>>>
+  std::unordered_map<Layer *,
+                     std::unordered_map<Layer_Parameter,
+                                        std::vector<std::vector<tf::tensor *>>>>
       layer_parameter_on_epoch_end;
 
 public:
@@ -43,11 +46,11 @@ public:
                                        Layer_Parameter trainable_paramter_no,
                                        bool print = false);
 
-  std::vector<std::vector<tf::tensor>>
+  std::vector<std::vector<tf::tensor *>>
   getTrainableParameterEpochOnBegin(Layer *layer,
                                     Layer_Parameter trainable_parameter_no);
 
-  std::vector<std::vector<tf::tensor>>
+  std::vector<std::vector<tf::tensor *>>
   getTrainableParameterEpochOnEnd(Layer *layer,
                                   Layer_Parameter trainable_parameter_no);
 

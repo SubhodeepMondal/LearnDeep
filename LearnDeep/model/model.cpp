@@ -32,6 +32,11 @@ Model::Model(const std::vector<tf::tensor> &inputs,
   this->doTensorAndLayerMappings();
 }
 
+Model::~Model() {
+  for (auto local_training_input : local_training_inputs)
+    delete local_training_input;
+}
+
 void Model::fit(const std::vector<tf::tensor> &training_inputs,
                 const std::vector<tf::tensor> &training_target,
                 const std::vector<tf::tensor> &valdiation_data, unsigned epochs,
@@ -76,9 +81,9 @@ void Model::fit(const std::vector<tf::tensor> &training_inputs,
         }
         unsigned it = 0;
         for (auto local_training_input : this->local_training_inputs) {
-          element_size = local_training_input.getPtr()->getNoOfElem();
+          element_size = local_training_input->getPtr()->getNoOfElem();
           unsigned index = randIndex * element_size;
-          local_training_input.getPtr()->initPartialData(
+          local_training_input->getPtr()->initPartialData(
               0, element_size, training_inputs[it].getPtr()->getData() + index);
           it++;
         }
@@ -105,9 +110,9 @@ void Model::initilizeInputsForTraining(
       dims.push_back(input.getPtr()->getDimensions()[i]);
 
     dims.push_back(this->batch_size);
-    tf::tensor temp_input;
-    temp_input.tf_create(dims, tf_float64);
-    this->local_training_inputs.push_back(temp_input);
+    temp_training_input_tensor = new tf::tensor();
+    temp_training_input_tensor->tf_create(dims, tf_float64);
+    this->local_training_inputs.push_back(temp_training_input_tensor);
   }
 }
 
@@ -136,7 +141,7 @@ std::vector<const Tensor<std::float64_t> *> Model::getLayersNBackTrackInputs(
 
       for (unsigned i = 0; i < this_layer->getOutputTensors().size(); i++)
         layer_output_mappings[this_layer].push_back(
-            &this_layer->getOutputTensors()[i]);
+            this_layer->getOutputTensors()[i]);
 
       for (unsigned i = 0; i < layer_input_mappings[this_layer].size(); i++)
         output_queue.push(layer_input_mappings[this_layer][i]);
@@ -232,7 +237,7 @@ void Model::setTrainingTensorsForInputLayer() {
       if (it != this->inputs.end()) {
         unsigned index = std::distance(this->inputs.begin(), it);
         this->layer_training_input_mappings[layer][i] =
-            &this->local_training_inputs[index];
+            this->local_training_inputs[index];
       }
       i++;
     }

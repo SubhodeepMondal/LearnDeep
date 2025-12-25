@@ -8378,14 +8378,17 @@ TEST_F(FrameworkTest, DenseLayer_Forward) {
 
   auto dense_1 = tf::layer::dense(24);
   auto dense_output = dense_1({x});
-  dense_1.set_bias(bias);
   dense_1.set_weight(weight);
+  dense_1.set_bias(bias);
 
   call_back.record_parameter_on_epoch_begin(
       dense_1, Layer_Parameter::dense_training_input, false);
 
   call_back.record_parameter_on_epoch_end(
       dense_1, Layer_Parameter::dense_training_weight, false);
+
+  call_back.record_parameter_on_epoch_end(
+      dense_1, Layer_Parameter::dense_training_bias, false);
 
   call_back.record_parameter_on_epoch_end(
       dense_1, Layer_Parameter::dense_training_output, false);

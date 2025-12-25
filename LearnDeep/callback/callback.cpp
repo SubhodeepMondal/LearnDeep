@@ -11,7 +11,12 @@ Callback::Callback(unsigned callback_level) {
   this->callback_level = callback_level;
 }
 
-Callback::~Callback() {}
+Callback::~Callback() {
+  for (auto tensor : tensor_parameters_on_epoch_begin_vector)
+    delete tensor;
+  for (auto tensor : tensor_parameters_on_epoch_end_vector)
+    delete tensor;
+}
 
 void Callback::onEpochBeginGetTrainableParameter(
     Layer *layer, Layer_Parameter traiable_parameter_no, bool print) {
@@ -28,11 +33,11 @@ void Callback::onEpochEndGetTrainableParameter(
   }
 }
 
-std::vector<std::vector<tf::tensor>>
+std::vector<std::vector<tf::tensor *>>
 Callback::getTrainableParameterEpochOnBegin(
     Layer *layer, Layer_Parameter trainable_parameter_no) {
 
-  std::vector<std::vector<tf::tensor>> layer_parameter_output;
+  std::vector<std::vector<tf::tensor *>> layer_parameter_output;
 
   std::vector<Layer *> layers(
       std::views::keys(this->layer_parameter_on_epoch_begin).begin(),
@@ -54,10 +59,11 @@ Callback::getTrainableParameterEpochOnBegin(
   return layer_parameter_output;
 }
 
-std::vector<std::vector<tf::tensor>> Callback::getTrainableParameterEpochOnEnd(
+std::vector<std::vector<tf::tensor *>>
+Callback::getTrainableParameterEpochOnEnd(
     Layer *layer, Layer_Parameter trainable_parameter_no) {
 
-  std::vector<std::vector<tf::tensor>> layer_parameter_output;
+  std::vector<std::vector<tf::tensor *>> layer_parameter_output;
 
   std::vector<Layer *> layers(
       std::views::keys(this->layer_parameter_on_epoch_end).begin(),
@@ -86,17 +92,21 @@ void Callback::callOnEpochBegin() {
                               std::views::keys(layers_on_epoch_begin).end());
   for (Layer *layer : layers) {
     for (auto [layer_parameter, flag] : layers_on_epoch_begin[layer]) {
-      std::vector<tf::tensor> epoch_begin_tensors;
+      std::vector<tf::tensor *> epoch_begin_tensors;
       for (tf::tensor *tensor :
            layer->getLayerParameter(layer_parameter, flag)) {
-        tf::tensor temp_tensor;
         std::vector<unsigned> dims;
         for (unsigned i = 0; i < tensor->getNoOfDimensions(); i++)
           dims.push_back(tensor->getDimensions()[i]);
-        temp_tensor.tf_create(dims, tensor->dt_type);
-        temp_tensor.tensor_of(tensor->getData());
 
-        epoch_begin_tensors.push_back(temp_tensor);
+        this->tensor_parameters_on_epoch_begin_vector.emplace_back(
+            new tf::tensor());
+        this->tensor_parameters_on_epoch_begin_vector.back()->tf_create(
+            dims, tensor->dt_type);
+        this->tensor_parameters_on_epoch_begin_vector.back()->tensor_of(
+            tensor->getData());
+        epoch_begin_tensors.push_back(
+            this->tensor_parameters_on_epoch_begin_vector.back());
       }
       layer_parameter_on_epoch_begin[layer][layer_parameter].push_back(
           epoch_begin_tensors);
@@ -112,16 +122,22 @@ void Callback::callOnEpochEnd() {
 
   for (Layer *layer : layers) {
     for (auto [layer_parameter, flag] : layers_on_epoch_end[layer]) {
-      std::vector<tf::tensor> epoch_end_tensors;
+      std::vector<tf::tensor *> epoch_end_tensors;
       for (tf::tensor *tensor :
            layer->getLayerParameter(layer_parameter, flag)) {
-        tf::tensor temp_tensor;
+
         std::vector<unsigned> dims;
         for (unsigned i = 0; i < tensor->getNoOfDimensions(); i++)
           dims.push_back(tensor->getDimensions()[i]);
-        temp_tensor.tf_create(dims, tensor->dt_type);
-        temp_tensor.tensor_of(tensor->getData());
-        epoch_end_tensors.push_back(temp_tensor);
+
+        this->tensor_parameters_on_epoch_end_vector.emplace_back(
+            new tf::tensor());
+        this->tensor_parameters_on_epoch_end_vector.back()->tf_create(
+            dims, tensor->dt_type);
+        this->tensor_parameters_on_epoch_end_vector.back()->tensor_of(
+            tensor->getData());
+        epoch_end_tensors.push_back(
+            this->tensor_parameters_on_epoch_end_vector.back());
       }
       this->layer_parameter_on_epoch_end[layer][layer_parameter].push_back(
           epoch_end_tensors);

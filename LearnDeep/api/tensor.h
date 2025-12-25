@@ -6,6 +6,7 @@
 #include <cstddef>
 #include <iostream>
 #include <iterator>
+#include <unordered_map>
 #include <vector>
 
 // Library Headers
@@ -71,7 +72,7 @@ public:
     assign_pointer(dimensions);
   }
 
-  tf::tensor deep_copy() const;
+  // tf::tensor deep_copy() const;
 
   void tf_create(std::vector<unsigned> dims, DataType d_type);
 
@@ -150,10 +151,11 @@ public:
 
   const void setPtr(Tensor<std::float64_t> *ptr);
 
-  std::float64_t *getData() { return ptr->getData(); }
+  std::float64_t *getData() const { return ptr->getData(); }
 };
 
-static std::unordered_set<Tensor<std::float64_t> *> tensor_nodes;
+extern std::unordered_map<Tensor<std::float64_t> *, tensor *> tensor_nodes;
+extern std::unordered_set<Tensor<std::float64_t> *> tensor_to_be_spared;
 
 typedef struct graph_context {
 private:

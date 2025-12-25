@@ -18,7 +18,9 @@ private:
   std::vector<const Tensor<std::float64_t> *> inputs;
   std::vector<const Tensor<std::float64_t> *> outputs;
 
-  std::vector<tf::tensor> local_training_inputs;
+  tf::tensor *temp_training_input_tensor;
+
+  std::vector<tf::tensor *> local_training_inputs;
 
   std::unordered_map<Layer *, std::vector<const Tensor<std::float64_t> *>>
       layer_input_mappings;
@@ -53,6 +55,8 @@ public:
 
   Model(const std::vector<tf::tensor> &inputs,
         const std::vector<tf::tensor> &outputs);
+
+  ~Model();
 
   /** @file model.hpp basic model implementation */
   /** @brief Updates hyperparamers for training */

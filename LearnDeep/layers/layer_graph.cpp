@@ -33,8 +33,8 @@ LayerGraph::getLayerOfOutgoingTensor(const Tensor<std::float64_t> *tensor) {
   for (Layer *layer : this->layers) {
     std::vector<Tensor<std::float64_t> *> reference_output_tensors;
 
-    for (tf::tensor output_tensor : layer->getOutputTensors())
-      reference_output_tensors.push_back(output_tensor.getPtr());
+    for (tf::tensor *output_tensor : layer->getOutputTensors())
+      reference_output_tensors.push_back(output_tensor->getPtr());
 
     if (std::ranges::contains(reference_output_tensors, tensor)) {
       incoming_layer = layer;

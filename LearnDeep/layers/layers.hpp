@@ -15,22 +15,22 @@ protected:
 public:
   std::vector<const Tensor<std::float64_t> *>
       layer_inputs; // not own by any layer
-  std::vector<tf::tensor> layer_outputs;
+  std::vector<tf::tensor *> layer_outputs;
   virtual const std::vector<tf::tensor *> &
   forward(std::vector<const tf::tensor *> &input, unsigned batch_size) = 0;
 
   virtual void backward() = 0;
 
-  virtual const std::vector<tf::tensor> &
+  virtual const std::vector<tf::tensor *> &
   operator()(std::vector<tf::tensor> input_tensors) = 0;
 
-  virtual std::vector<const Tensor<std::float64_t> *> getInputTensors() = 0;
+  virtual std::vector<const Tensor<std::float64_t> *> &getInputTensors() = 0;
 
-  virtual const std::vector<tf::tensor> &getOutputTensors() = 0;
+  virtual const std::vector<tf::tensor *> &getOutputTensors() = 0;
 
   virtual std::vector<const tf::tensor *> getInputTrainingTensors() = 0;
 
-  virtual std::vector<tf::tensor *> getOutputTrainingTensors() = 0;
+  virtual const std::vector<tf::tensor *> &getOutputTrainingTensors() = 0;
 
   virtual LayerType getLayerType() = 0;
 

@@ -77,7 +77,7 @@ public:
 
   ~Dense();
 
-  const std::vector<tf::tensor> &
+  const std::vector<tf::tensor *> &
   operator()(std::vector<tf::tensor> input_tensors) override;
 
   const std::vector<tf::tensor *> &
@@ -85,13 +85,13 @@ public:
 
   void backward() override;
 
-  std::vector<const Tensor<std::float64_t> *> getInputTensors() override;
+  std::vector<const Tensor<std::float64_t> *> &getInputTensors() override;
 
-  const std::vector<tf::tensor> &getOutputTensors() override;
+  const std::vector<tf::tensor *> &getOutputTensors() override;
 
   std::vector<const tf::tensor *> getInputTrainingTensors();
 
-  std::vector<tf::tensor *> getOutputTrainingTensors();
+  const std::vector<tf::tensor *> &getOutputTrainingTensors();
 
   LayerType getLayerType();
 

@@ -431,7 +431,8 @@ Graph::~Graph() {
             << "\n";
   for (Tensor<std::float64_t> *grad_data_node : grad_data_nodes)
     if (!data_nodes.count(grad_data_node))
-      delete grad_data_node;
+      if (!this->tensors_to_be_spared.count(grad_data_node))
+        delete grad_data_node;
 
   LOG(INFO) << "Total ops node in gradient graph: " << grad_ops_nodes.size()
             << "\n";
