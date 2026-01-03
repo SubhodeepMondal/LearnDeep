@@ -148,7 +148,7 @@ void Opsmatmul::addGradGraph(Graph *gradient_graph) {
     tensor_ptr[0] = nullptr;
     tensor_ptr[1] = nullptr;
 
-    // d/dx = G * B.T & A.T * G
+    // d/dx = (G * B.T) & (A.T * G)
 
     Ops *ops_matmul = new Opsmatmul;
     if (i == 0) {

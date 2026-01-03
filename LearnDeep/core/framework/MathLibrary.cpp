@@ -3,7 +3,138 @@
 #include "NDynamicArray.h"
 #include <core/graph/graph_manager.hpp>
 // Eager Mode
-template <typename T> Tensor<T> *Tensor<T>::add(Tensor<T> &input) {
+
+template <typename T> Tensor<T> Tensor<T>::operator+(const Tensor<T> input) {
+  Tensor<T> output;
+
+  unsigned dim_x, dim_y, plane_offset, no_of_dimensions, flag;
+  DataType d_type = tf_float64;
+
+  flag = 1;
+
+  no_of_dimensions = Tensor<T>::getNoOfDimensions();
+
+  for (int i = 0; i < no_of_dimensions; i++)
+    if (this->getDimensions()[i] != input.getDimensions()[i]) {
+      flag = 0;
+      break;
+    }
+  if (flag) {
+    dim_x = this->getDimensions()[0];
+    dim_y = this->getDimensions()[1];
+    plane_offset = 0;
+
+    output =
+        Tensor<T>(this->getNoOfDimensions(), this->getDimensions(), d_type);
+
+    if (no_of_dimensions < 3) {
+    } else {
+      for (int i = 2; i < no_of_dimensions; i++)
+        for (int j = 0; j < this->getDimensions()[i]; j++) {
+          plane_offset += dim_x * dim_y;
+        }
+    }
+    return output;
+  } else {
+    std::cout << "Two metrix requires same shape to perform matrix addition, "
+                 "here matrix A ";
+    Tensor<T>::printDimensions();
+    std::cout << " and matrix B ";
+    input.printDimensions();
+    std::cout << " are of differenct shape.\n";
+    return output;
+  }
+}
+
+template <typename T> Tensor<T> Tensor<T>::operator-(const Tensor<T> input) {
+  Tensor<T> output;
+  DataType d_type = tf_float64;
+
+  unsigned dim_x, dim_y, plane_offset, no_of_dimensions, flag;
+
+  flag = 1;
+
+  no_of_dimensions = Tensor<T>::getNoOfDimensions();
+
+  for (int i = 0; i < no_of_dimensions; i++)
+    if (this->getDimensions()[i] != input.getDimensions()[i]) {
+      flag = 0;
+      break;
+    }
+  if (flag) {
+    dim_x = this->getDimensions()[0];
+    dim_y = this->getDimensions()[1];
+    plane_offset = 0;
+
+    output =
+        Tensor<T>(this->getNoOfDimensions(), this->getDimensions(), d_type);
+
+    unsigned *dimension_arr = new unsigned[this->getNoOfDimensions()];
+
+    return output;
+  } else {
+    std::cout << "Two metrix requires same shape to perform matrix addition, "
+                 "here matrix A ";
+    Tensor<T>::printDimensions();
+    std::cout << " and matrix B ";
+    input.printDimensions();
+    std::cout << " are of differenct shape.\n";
+    return output;
+  }
+}
+
+template <typename T> Tensor<T> *Tensor<T>::operator*(Tensor<T> &input) {
+  Tensor<T> *output;
+  Ops *ops;
+  DataType d_type = tf_float64;
+
+  unsigned flag = 1;
+
+  // no_of_dimensions = Tensor<T>::getNoOfDimensions();
+
+  for (int i = 0; i < this->getNoOfDimensions(); i++)
+    if (this->getDimensions()[i] != input.getDimensions()[i]) {
+      flag = 0;
+      break;
+    }
+  if (flag) {
+    ops = new Opsmul;
+    output =
+        new Tensor<T>(this->getNoOfDimensions(), this->getDimensions(), d_type);
+    Tensor<T> *inputs[2];
+    inputs[0] = this;
+    inputs[1] = &input;
+    ops->initializeinputs(inputs);
+    ops->initializeoutput(output);
+
+    Graph *g = GraphManager::instance().getCurrentGraph();
+    if (g) {
+      g->addNode(this);
+      g->addNode(&input);
+      g->addNode(ops);
+
+      g->addEdge(this, ops);
+      g->addEdge(&input, ops);
+
+      g->addNode(output);
+      g->addEdge(ops, output);
+    } else {
+      ops->compute();
+      delete ops;
+    }
+  } else {
+    std::cout << "Two metrix requires same shape to perform matrix addition, "
+                 "here matrix A ";
+    Tensor<T>::printDimensions();
+    std::cout << " and matrix B ";
+    input.printDimensions();
+    std::cout << " are of differenct shape.\n";
+  }
+  return output;
+}
+
+template <typename T>
+Tensor<T> *Tensor<T>::add(Tensor<T> &input, bool graph_flag) {
   Tensor<T> *output;
   DataType d_type = tf_float64;
 
@@ -51,7 +182,8 @@ template <typename T> Tensor<T> *Tensor<T>::add(Tensor<T> &input) {
   return output;
 }
 
-template <typename T> Tensor<T> *Tensor<T>::matmul(Tensor<T> &input) {
+template <typename T>
+Tensor<T> *Tensor<T>::matmul(Tensor<T> &input, bool graph_flag) {
   Tensor<T> *output;
   unsigned i, j, flag = 1;
   unsigned *output_dim;
@@ -113,57 +245,8 @@ template <typename T> Tensor<T> *Tensor<T>::matmul(Tensor<T> &input) {
   return output;
 }
 
-template <typename T> Tensor<T> *Tensor<T>::operator*(Tensor<T> &input) {
-  Tensor<T> *output;
-  Ops *ops;
-  DataType d_type = tf_float64;
-
-  unsigned flag = 1;
-
-  // no_of_dimensions = Tensor<T>::getNoOfDimensions();
-
-  for (int i = 0; i < this->getNoOfDimensions(); i++)
-    if (this->getDimensions()[i] != input.getDimensions()[i]) {
-      flag = 0;
-      break;
-    }
-  if (flag) {
-    ops = new Opsmul;
-    output =
-        new Tensor<T>(this->getNoOfDimensions(), this->getDimensions(), d_type);
-    Tensor<T> *inputs[2];
-    inputs[0] = this;
-    inputs[1] = &input;
-    ops->initializeinputs(inputs);
-    ops->initializeoutput(output);
-
-    Graph *g = GraphManager::instance().getCurrentGraph();
-    if (g) {
-      g->addNode(this);
-      g->addNode(&input);
-      g->addNode(ops);
-
-      g->addEdge(this, ops);
-      g->addEdge(&input, ops);
-
-      g->addNode(output);
-      g->addEdge(ops, output);
-    } else {
-      ops->compute();
-      delete ops;
-    }
-  } else {
-    std::cout << "Two metrix requires same shape to perform matrix addition, "
-                 "here matrix A ";
-    Tensor<T>::printDimensions();
-    std::cout << " and matrix B ";
-    input.printDimensions();
-    std::cout << " are of differenct shape.\n";
-  }
-  return output;
-}
-
-template <typename T> Tensor<T> *Tensor<T>::mul(Tensor<T> &input) {
+template <typename T>
+Tensor<T> *Tensor<T>::mul(Tensor<T> &input, bool graph_flag) {
   Tensor<T> *output;
   DataType d_type = tf_float64;
 
@@ -255,90 +338,11 @@ template <typename T> Tensor<T> Tensor<T>::vectoradd(const Tensor<T> input) {
     return output;
   }
 }
-
-template <typename T> Tensor<T> Tensor<T>::operator+(const Tensor<T> input) {
-  Tensor<T> output;
-
-  unsigned dim_x, dim_y, plane_offset, no_of_dimensions, flag;
-  DataType d_type = tf_float64;
-
-  flag = 1;
-
-  no_of_dimensions = Tensor<T>::getNoOfDimensions();
-
-  for (int i = 0; i < no_of_dimensions; i++)
-    if (this->getDimensions()[i] != input.getDimensions()[i]) {
-      flag = 0;
-      break;
-    }
-  if (flag) {
-    dim_x = this->getDimensions()[0];
-    dim_y = this->getDimensions()[1];
-    plane_offset = 0;
-
-    output =
-        Tensor<T>(this->getNoOfDimensions(), this->getDimensions(), d_type);
-
-    if (no_of_dimensions < 3) {
-    } else {
-      for (int i = 2; i < no_of_dimensions; i++)
-        for (int j = 0; j < this->getDimensions()[i]; j++) {
-          plane_offset += dim_x * dim_y;
-        }
-    }
-    return output;
-  } else {
-    std::cout << "Two metrix requires same shape to perform matrix addition, "
-                 "here matrix A ";
-    Tensor<T>::printDimensions();
-    std::cout << " and matrix B ";
-    input.printDimensions();
-    std::cout << " are of differenct shape.\n";
-    return output;
-  }
-}
-
-template <typename T> Tensor<T> Tensor<T>::operator-(const Tensor<T> input) {
-  Tensor<T> output;
-  DataType d_type = tf_float64;
-
-  unsigned dim_x, dim_y, plane_offset, no_of_dimensions, flag;
-
-  flag = 1;
-
-  no_of_dimensions = Tensor<T>::getNoOfDimensions();
-
-  for (int i = 0; i < no_of_dimensions; i++)
-    if (this->getDimensions()[i] != input.getDimensions()[i]) {
-      flag = 0;
-      break;
-    }
-  if (flag) {
-    dim_x = this->getDimensions()[0];
-    dim_y = this->getDimensions()[1];
-    plane_offset = 0;
-
-    output =
-        Tensor<T>(this->getNoOfDimensions(), this->getDimensions(), d_type);
-
-    unsigned *dimension_arr = new unsigned[this->getNoOfDimensions()];
-
-    return output;
-  } else {
-    std::cout << "Two metrix requires same shape to perform matrix addition, "
-                 "here matrix A ";
-    Tensor<T>::printDimensions();
-    std::cout << " and matrix B ";
-    input.printDimensions();
-    std::cout << " are of differenct shape.\n";
-    return output;
-  }
-}
-
-template <typename T> Tensor<T> *Tensor<T>::reducesum(std::vector<unsigned> n) {
+template <typename T>
+Tensor<T> *Tensor<T>::reducesum(std::vector<unsigned> n, bool graph_flag) {
   Tensor<T> *output;
   unsigned i, no_of_dimensions, count = 0;
-  bool flag = true;
+  bool flag;
 
   std::sort(n.begin(), n.end());
 
@@ -382,7 +386,7 @@ template <typename T> Tensor<T> *Tensor<T>::reducesum(std::vector<unsigned> n) {
 }
 
 template <typename T>
-Tensor<T> *Tensor<T>::scale(const std::float64_t scaleFactor) {
+Tensor<T> *Tensor<T>::scale(const std::float64_t scaleFactor, bool graph_flag) {
   Tensor<T> *output;
   DataType d_type = tf_float64;
   Ops *opsscale = new Opsscale();
@@ -411,7 +415,7 @@ Tensor<T> *Tensor<T>::scale(const std::float64_t scaleFactor) {
   return output;
 }
 
-template <typename T> Tensor<T> *Tensor<T>::sqrt() {
+template <typename T> Tensor<T> *Tensor<T>::sqrt(bool flag) {
   Tensor<T> *output;
   DataType d_type = tf_float64;
   Ops *opssqrt = new Opssqrt();
@@ -439,7 +443,8 @@ template <typename T> Tensor<T> *Tensor<T>::sqrt() {
   return output;
 }
 
-template <typename T> Tensor<T> *Tensor<T>::sub(Tensor<T> &input) {
+template <typename T>
+Tensor<T> *Tensor<T>::sub(Tensor<T> &input, bool graph_flag) {
   Tensor<T> *output;
   DataType d_type = tf_float64;
 
@@ -488,7 +493,8 @@ template <typename T> Tensor<T> *Tensor<T>::sub(Tensor<T> &input) {
   }
 }
 
-template <typename T> Tensor<T> *Tensor<T>::pow(const unsigned exponent) {
+template <typename T>
+Tensor<T> *Tensor<T>::pow(const unsigned exponent, bool graph_flag) {
   Tensor<T> *output;
   DataType d_type = tf_float64;
   Ops *opspow = new Opspower();
@@ -525,7 +531,7 @@ template <typename T> Tensor<T> *Tensor<T>::pow(const unsigned exponent) {
   return output;
 }
 
-template <typename T> Tensor<T> *Tensor<T>::relu() {
+template <typename T> Tensor<T> *Tensor<T>::relu(bool graph_flag) {
   Tensor<T> *output;
   DataType d_type = tf_float64;
   Ops *opsrelu = new Opsrelu();
@@ -553,7 +559,7 @@ template <typename T> Tensor<T> *Tensor<T>::relu() {
   return output;
 }
 
-template <typename T> Tensor<T> *Tensor<T>::sigmoid() {
+template <typename T> Tensor<T> *Tensor<T>::sigmoid(bool graph_flag) {
 
   Tensor<T> *output;
   DataType d_type = tf_float64;
@@ -582,7 +588,8 @@ template <typename T> Tensor<T> *Tensor<T>::sigmoid() {
   return output;
 }
 
-template <typename T> Tensor<T> *Tensor<T>::softmax(const unsigned axis) {
+template <typename T>
+Tensor<T> *Tensor<T>::softmax(const unsigned axis, bool graph_flag) {
 
   Tensor<T> *output;
   Ops *ops = new Opssoftmax;
@@ -611,7 +618,8 @@ template <typename T> Tensor<T> *Tensor<T>::softmax(const unsigned axis) {
   return output;
 }
 
-template <typename T> Tensor<T> *Tensor<T>::mean(const unsigned dim) {
+template <typename T>
+Tensor<T> *Tensor<T>::mean(const unsigned dim, bool graph_flag) {
   Tensor<T> *output;
   Tensor<T> *temp_reducesum;
   DataType d_type = tf_float64;
@@ -667,7 +675,7 @@ template <typename T> Tensor<T> *Tensor<T>::mean(const unsigned dim) {
   return output;
 }
 
-template <typename T> Tensor<T> *Tensor<T>::transpose() {
+template <typename T> Tensor<T> *Tensor<T>::transpose(bool graph_flag) {
   Tensor<T> *output;
   Ops *opstranspose = new Opstranspose();
   std::vector<unsigned> dims(this->getDimensions(),

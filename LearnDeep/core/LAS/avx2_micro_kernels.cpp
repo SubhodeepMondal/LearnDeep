@@ -34,7 +34,7 @@ void avx2::avx2_matmul_conventional_f64(std::float64_t **ptr, unsigned *arr) {
 #pragma omp parallel for
   for (int j = 0; j < z; j++) {
     for (int i = 0; i < x; i++) {
-      for (int k = 0; k <= y - 4; k += 4) {
+      for (int k = 0; k + 4 <= y; k += 4) {
 
         __m128i indices = _mm_setr_epi32(i + k * x, i + (k + 1) * x,
                                          i + (k + 2) * x, i + (k + 3) * x);
@@ -80,7 +80,7 @@ void avx2::avx2_matmul_f64(std::float64_t **ptr, unsigned *arr) {
 #pragma omp for
     for (int k = 0; k < z; k++) {
       for (int j = 0; j < y; j++) {
-        for (int i = 0; i <= x - 4; i += 4) {
+        for (int i = 0; i + 4 <= x; i += 4) {
           __m256d c_arr = _mm256_mul_pd(
               _mm256_loadu_pd(
                   reinterpret_cast<const double *>(b + (i + j * x))),
@@ -111,10 +111,11 @@ void avx2::avx2_add_f64(std::float64_t **ptr, unsigned *arr) {
   n_size = arr[1];
 
   n_elements = m_size * n_size;
+  unsigned vec_end = (n_elements / 4) * 4;
   omp_set_num_threads(std::thread::hardware_concurrency());
   LOG(INFO) << "avx256 kernel for add is running....\n";
 #pragma omp parallel for
-  for (i = 0; i <= n_elements - 4; i += 4) {
+  for (i = 0; i < vec_end; i += 4) {
     __m256d c_arr =
         _mm256_add_pd(_mm256_loadu_pd(reinterpret_cast<const double *>(a + i)),
                       _mm256_loadu_pd(reinterpret_cast<const double *>(b + i)));
@@ -138,11 +139,12 @@ void avx2::avx2_sub_f64(std::float64_t **ptr, unsigned *arr) {
   n_size = arr[1];
 
   n_elements = m_size * n_size;
+  unsigned vec_end = (n_elements / 4) * 4;
   omp_set_num_threads(std::thread::hardware_concurrency());
   LOG(INFO) << "avx256 kernel for sub is running....\n";
 
 #pragma omp parallel for
-  for (i = 0; i <= n_elements - 4; i += 4) {
+  for (i = 0; i < vec_end; i += 4) {
     __m256d c_arr =
         _mm256_sub_pd(_mm256_loadu_pd(reinterpret_cast<const double *>(a + i)),
                       _mm256_loadu_pd(reinterpret_cast<const double *>(b + i)));
@@ -165,12 +167,13 @@ void avx2::avx2_mul_f64(std::float64_t **ptr, unsigned *arr) {
   n_size = arr[1];
 
   n_elements = m_size * n_size;
+  unsigned vec_end = (n_elements / 4) * 4;
   omp_set_num_threads(std::thread::hardware_concurrency());
 
   LOG(INFO) << "avx256 kernel for mul is running....\n";
 
 #pragma omp parallel for
-  for (i = 0; i <= n_elements - 4; i += 4) {
+  for (i = 0; i < vec_end; i += 4) {
     __m256d c_arr =
         _mm256_mul_pd(_mm256_loadu_pd(reinterpret_cast<const double *>(a + i)),
                       _mm256_loadu_pd(reinterpret_cast<const double *>(b + i)));
@@ -193,12 +196,13 @@ void avx2::avx2_scale_f64(std::float64_t **ptr, unsigned *arr) {
   n_size = arr[1];
 
   n_elements = m_size * n_size;
+  unsigned vec_end = (n_elements / 4) * 4;
   omp_set_num_threads(std::thread::hardware_concurrency());
 
   LOG(INFO) << "avx256 kernel for scale is running....\n";
 
 #pragma omp parallel for
-  for (i = 0; i <= n_elements - 4; i += 4) {
+  for (i = 0; i < vec_end; i += 4) {
     __m256d c_arr =
         _mm256_mul_pd(_mm256_loadu_pd(reinterpret_cast<const double *>(a + i)),
                       _mm256_set1_pd(static_cast<const double>(b)));
@@ -220,11 +224,12 @@ void avx2::avx2_sqrt_f64(std::float64_t **ptr, unsigned *arr) {
   n_size = arr[1];
 
   n_elements = m_size * n_size;
+  unsigned vec_end = (n_elements / 4) * 4;
   omp_set_num_threads(std::thread::hardware_concurrency());
 
   LOG(INFO) << "avx256 kernel for sqrt is running....\n";
 #pragma omp parallel for
-  for (i = 0; i <= n_elements - 4; i += 4) {
+  for (i = 0; i < vec_end; i += 4) {
     __m256d c_arr = _mm256_sqrt_pd(
         _mm256_loadu_pd(reinterpret_cast<const double *>(a + i)));
     _mm256_storeu_pd(reinterpret_cast<double *>(c + i), c_arr);
@@ -243,11 +248,12 @@ void avx2::avx2_relu_f64(std::float64_t **ptr, unsigned *arr) {
   n_size = arr[1];
 
   n_elements = m_size * n_size;
+  unsigned vec_end = (n_elements / 4) * 4;
   omp_set_num_threads(std::thread::hardware_concurrency());
 
   LOG(INFO) << "avx256 kernel for relu is running....\n";
 #pragma omp parallel for
-  for (i = 0; i <= n_elements - 4; i += 4) {
+  for (i = 0; i < vec_end; i += 4) {
     __m256d zero = _mm256_setzero_pd();
     __m256d c_arr = _mm256_max_pd(
         _mm256_loadu_pd(reinterpret_cast<const double *>(a + i)), zero);
@@ -337,15 +343,12 @@ void avx2::avx2_sigmoid_f64(std::float64_t **ptr, unsigned *arr) {
   n_size = arr[1];
 
   n_elements = m_size * n_size;
-  // unsigned num_threads = (n_elements / 4) >=
-  // std::thread::hardware_concurrency()
-  //                            ? std::thread::hardware_concurrency()
-  //                            : (n_elements / 4) - 1;
+  unsigned vec_end = (n_elements / 4) * 4;
   omp_set_num_threads(std::thread::hardware_concurrency());
 
   LOG(INFO) << "avx256 kernel for sigmoid is running....\n";
 #pragma omp parallel for
-  for (i = 0; i <= n_elements - 4; i += 4) {
+  for (i = 0; i < vec_end; i += 4) {
     __m256d one = _mm256_set1_pd(1.0);
     __m256d neg = _mm256_set1_pd(-1.0);
     __m256d x = _mm256_loadu_pd(reinterpret_cast<const double *>(a + i));
@@ -368,11 +371,12 @@ void avx2::avx2_softmax_f64(std::float64_t **ptr, unsigned *arr) {
   n_size = arr[1];
 
   n_elements = m_size * n_size;
+  unsigned vec_end = (n_elements / 4) * 4;
   omp_set_num_threads(std::thread::hardware_concurrency());
 
   LOG(INFO) << "avx256 kernel for softmax is running....\n";
 #pragma omp parallel for
-  for (i = 0; i <= n_elements - 4; i += 4) {
+  for (i = 0; i < vec_end; i += 4) {
     __m256d one = _mm256_set1_pd(1.0);
     __m256d x = _mm256_loadu_pd(reinterpret_cast<const double *>(a + i));
     __m256d exp_val = exp256_pd(x);

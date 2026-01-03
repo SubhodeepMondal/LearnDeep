@@ -102,27 +102,27 @@ public:
 
   tensor operator*(tensor &input_b);
 
-  tensor add(tensor &input_b);
+  tensor add(tensor &input_b, bool graph_flag = true);
 
-  tensor mean(const unsigned dim);
+  tensor mean(const unsigned dim, bool graph_flag = true);
 
-  tensor matmul(const tensor &input_b) const;
+  tensor matmul(const tensor &input_b, bool graph_flag = true) const;
 
-  tensor mul(tensor &input_b);
+  tensor mul(tensor &input_b, bool graph_flag = true);
 
-  tensor pow(const unsigned exponent);
+  tensor pow(const unsigned exponent, bool graph_flag = true);
 
-  tensor relu();
+  tensor relu(bool graph_flag = true);
 
-  tensor sigmoid();
+  tensor sigmoid(bool graph_flag = true);
 
-  tensor scale(const std::float64_t scaleFactor);
+  tensor scale(const std::float64_t scaleFactor, bool graph_flag = true);
 
-  tensor sqrt();
+  tensor sqrt(bool graph_flag = true);
 
-  tensor sub(tensor &input_b);
+  tensor sub(const tensor &input_b, bool graph_flag = true);
 
-  tensor transpose();
+  tensor transpose(bool graph_flag = true);
 
   tensor getReduction(std::vector<unsigned> reduction_dims);
 

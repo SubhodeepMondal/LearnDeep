@@ -83,8 +83,13 @@ add_subdirectory(LearnDeep/layers)
 
 add_subdirectory(LearnDeep/callback)
 
+add_subdirectory(LearnDeep/losses)
+
+add_subdirectory(LearnDeep/optimizers)
+
 # then goes api
 add_subdirectory(LearnDeep/api)
+
 add_subdirectory(test)
 
 set(CMAKE_INSTALL_PREFIX ${CMAKE_SOURCE_DIR}/build/)

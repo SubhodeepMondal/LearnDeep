@@ -186,13 +186,14 @@ void tf::tensor::reshape(std::vector<unsigned> dimensions) {
 // --- Utilty ---
 
 // ---------------- Eager Mode ---------------
-tf::tensor tf::tensor::matmul(const tensor &input_b) const {
+tf::tensor tf::tensor::matmul(const tensor &input_b, bool graph_flag) const {
   tensor output;
 
   if (this->dt_type == input_b.dt_type) {
     switch (dt_type) {
     case tf_float64: {
-      output = tensor(this->dt_type, this->ptr->matmul(*(input_b.getPtr())));
+      output = tensor(this->dt_type,
+                      this->ptr->matmul(*(input_b.getPtr()), graph_flag));
       break;
     }
     default:
@@ -202,13 +203,14 @@ tf::tensor tf::tensor::matmul(const tensor &input_b) const {
   return output;
 }
 
-tf::tensor tf::tensor::add(tensor &input_b) {
+tf::tensor tf::tensor::add(tensor &input_b, bool graph_flag) {
   tensor output;
 
   if (this->dt_type == input_b.dt_type) {
     switch (dt_type) {
     case tf_float64: {
-      output = tensor(this->dt_type, this->ptr->add(*(input_b.getPtr())));
+      output = tensor(this->dt_type,
+                      this->ptr->add(*(input_b.getPtr()), graph_flag));
       break;
     }
     default:
@@ -250,13 +252,13 @@ tf::tensor tf::tensor::operator*(tensor &input_b) {
   return output;
 }
 
-tf::tensor tf::tensor::sigmoid() {
+tf::tensor tf::tensor::sigmoid(bool graph_flag) {
   tensor output;
 
   switch (dt_type) {
   case tf_float64:
     output.dt_type = this->dt_type;
-    output = tensor(this->dt_type, this->ptr->sigmoid());
+    output = tensor(this->dt_type, this->ptr->sigmoid(graph_flag));
     break;
   default:
     LOG(ERROR) << "Invalid data type!";
@@ -264,12 +266,13 @@ tf::tensor tf::tensor::sigmoid() {
   return output;
 }
 
-tf::tensor tf::tensor::scale(const std::float64_t scaleFactor) {
+tf::tensor tf::tensor::scale(const std::float64_t scaleFactor,
+                             bool graph_flag) {
   tensor output;
 
   switch (dt_type) {
   case tf_float64:
-    output = tensor(this->dt_type, this->ptr->scale(scaleFactor));
+    output = tensor(this->dt_type, this->ptr->scale(scaleFactor, graph_flag));
     break;
   default:
     LOG(ERROR) << "Invalid data type!";
@@ -277,12 +280,12 @@ tf::tensor tf::tensor::scale(const std::float64_t scaleFactor) {
   return output;
 }
 
-tf::tensor tf::tensor::sqrt() {
+tf::tensor tf::tensor::sqrt(bool graph_flag) {
   tensor output;
 
   switch (dt_type) {
   case tf_float64:
-    output = tensor(this->dt_type, this->ptr->sqrt());
+    output = tensor(this->dt_type, this->ptr->sqrt(graph_flag));
     break;
   default:
     LOG(ERROR) << "Invalid data type!";
@@ -290,14 +293,15 @@ tf::tensor tf::tensor::sqrt() {
   return output;
 }
 
-tf::tensor tf::tensor::sub(tensor &input_b) {
+tf::tensor tf::tensor::sub(const tensor &input_b, bool graph_flag) {
   tensor output;
 
   if (this->dt_type == input_b.dt_type) {
     switch (dt_type) {
     case tf_float64: {
       output.dt_type = this->dt_type;
-      output = tensor(this->dt_type, this->ptr->sub(*(input_b.getPtr())));
+      output = tensor(this->dt_type,
+                      this->ptr->sub(*(input_b.getPtr()), graph_flag));
       break;
     }
     default:
@@ -307,13 +311,13 @@ tf::tensor tf::tensor::sub(tensor &input_b) {
   return output;
 }
 
-tf::tensor tf::tensor::transpose() {
+tf::tensor tf::tensor::transpose(bool graph_flag) {
   tensor output;
 
   switch (dt_type) {
   case tf_float64:
     output.dt_type = this->dt_type;
-    output = tensor(this->dt_type, this->ptr->transpose());
+    output = tensor(this->dt_type, this->ptr->transpose(graph_flag));
     break;
   default:
     LOG(ERROR) << "Invalid data type!";
@@ -321,13 +325,13 @@ tf::tensor tf::tensor::transpose() {
   return output;
 }
 
-tf::tensor tf::tensor::pow(const unsigned exponent) {
+tf::tensor tf::tensor::pow(const unsigned exponent, bool graph_flag) {
   tensor output;
 
   switch (dt_type) {
   case tf_float64:
     output.dt_type = this->dt_type;
-    output = tensor(this->dt_type, this->ptr->pow(exponent));
+    output = tensor(this->dt_type, this->ptr->pow(exponent, graph_flag));
     break;
   default:
     LOG(ERROR) << "Invalid data type!";
@@ -335,13 +339,13 @@ tf::tensor tf::tensor::pow(const unsigned exponent) {
   return output;
 }
 
-tf::tensor tf::tensor::relu() {
+tf::tensor tf::tensor::relu(bool graph_flag) {
   tensor output;
 
   switch (dt_type) {
   case tf_float64:
     output.dt_type = this->dt_type;
-    output = tensor(this->dt_type, this->ptr->relu());
+    output = tensor(this->dt_type, this->ptr->relu(graph_flag));
     break;
   default:
     LOG(ERROR) << "Invalid data type!";
@@ -349,13 +353,13 @@ tf::tensor tf::tensor::relu() {
   return output;
 }
 
-tf::tensor tf::tensor::mean(const unsigned dim) {
+tf::tensor tf::tensor::mean(const unsigned dim, bool graph_flag) {
   tensor output;
 
   switch (dt_type) {
   case tf_float64:
     output.dt_type = this->dt_type;
-    output = tensor(this->dt_type, this->ptr->mean(dim));
+    output = tensor(this->dt_type, this->ptr->mean(dim, graph_flag));
     break;
   default:
     LOG(ERROR) << "Invalid data type!";
@@ -363,14 +367,15 @@ tf::tensor tf::tensor::mean(const unsigned dim) {
   return output;
 }
 
-tf::tensor tf::tensor::mul(tensor &input_b) {
+tf::tensor tf::tensor::mul(tensor &input_b, bool graph_flag) {
   tensor output;
 
   if (this->dt_type == input_b.dt_type) {
     switch (dt_type) {
     case tf_float64: {
       output.dt_type = this->dt_type;
-      output = tensor(this->dt_type, this->ptr->mul(*(input_b.getPtr())));
+      output = tensor(this->dt_type,
+                      this->ptr->mul(*(input_b.getPtr()), graph_flag));
       break;
     }
     default:

@@ -44,39 +44,39 @@ public:
 
   void assign(Ops *ops) { ops->initializeoutput(this); }
 
-  Tensor<T> *add(Tensor<T> &input);
-
-  Tensor<T> *matmul(Tensor<T> &input);
-
-  Tensor<T> *operator*(Tensor<T> &);
-
-  Tensor<T> *mul(Tensor<T> &input);
-
   Tensor<T> operator+(const Tensor<T>);
 
   Tensor<T> operator-(const Tensor<T>);
 
+  Tensor<T> *operator*(Tensor<T> &input);
+
+  Tensor<T> *add(Tensor<T> &input, bool graph_flag = true);
+
+  Tensor<T> *matmul(Tensor<T> &input, bool graph_flag = true);
+
+  Tensor<T> *mul(Tensor<T> &input, bool graph_flag = true);
+
   Tensor<T> vectoradd(const Tensor<T>);
 
-  Tensor<T> *reducesum(std::vector<unsigned> n);
+  Tensor<T> *reducesum(std::vector<unsigned> n, bool graph_flag = true);
 
-  Tensor<T> *scale(const std::float64_t scaleFactor);
+  Tensor<T> *scale(const std::float64_t scaleFactor, bool graph_flag = true);
 
-  Tensor<T> *sqrt();
+  Tensor<T> *sqrt(bool flag = true);
 
-  Tensor<T> *sub(Tensor<T> &input);
+  Tensor<T> *sub(Tensor<T> &input, bool graph_flag = true);
 
-  Tensor<T> *pow(unsigned exponent);
+  Tensor<T> *pow(unsigned exponent, bool graph_flag = true);
 
-  Tensor<T> *relu();
+  Tensor<T> *relu(bool flag = true);
 
-  Tensor<T> *sigmoid();
+  Tensor<T> *sigmoid(bool flag = true);
 
-  Tensor<T> *softmax(const unsigned axis);
+  Tensor<T> *softmax(const unsigned axis, bool graph_flag = true);
 
-  Tensor<T> *mean(const unsigned dim);
+  Tensor<T> *mean(const unsigned dim, bool graph_flag = true);
 
-  Tensor<T> *transpose();
+  Tensor<T> *transpose(bool flag = true);
 };
 
 // template class Tensor<std::float64_t>;

@@ -13,7 +13,9 @@ target_link_libraries(tensor_api
     PUBLIC
     core
     layer
+    loss
     model
+    optimizer
     callback
     absl::log
     absl::log_initialize

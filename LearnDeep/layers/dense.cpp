@@ -217,8 +217,8 @@ void Dense::initializeBias() {
     this->bias.getPtr()->initData(this->initialization_bias.getData());
     for (unsigned i = 0; i < this->batch_size; i++) {
       unsigned index = i * size;
-      this->training_bias.getPtr()->initPartialData(
-          index, size, this->bias.getPtr()->getData());
+      this->training_bias.getPtr()->initPartialData(index, size,
+                                                    this->bias.getData());
     }
     break;
   }
