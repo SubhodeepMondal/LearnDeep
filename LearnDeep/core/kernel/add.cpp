@@ -1,3 +1,4 @@
+#include <cstddef>
 #include <elf.h>
 #ifdef CUDA_ENABLED
 #include <core/LAS/gpu_interface.cuh>
@@ -8,69 +9,6 @@
 #include <core/LAS/CPULibrary.h>
 #include <core/LAS/avx2_micro_kernels.h>
 #include <core/framework/MathLibrary.h>
-
-void Opsadd::recursive_iterator(unsigned index, unsigned *dimension_arr,
-                                std::string function_name, unsigned *ui_arr,
-                                std::float64_t *dl_arr,
-                                Tensor<std::float64_t> *misc_arr) {
-  if (index < 2) {
-    unsigned i, inpA_x, inpA_y, inpB_x, inpB_y, out_x, out_y;
-    unsigned a_plane_size, b_plane_size, c_plane_size, a_index, b_index,
-        c_index;
-
-    inpA_x = (inputs[0]->getNoOfDimensions() > 0)
-                 ? inputs[0]->getDimensions()[0]
-                 : 1;
-    inpA_y = (inputs[0]->getNoOfDimensions() > 1)
-                 ? inputs[0]->getDimensions()[1]
-                 : 1;
-
-    inpB_x = (inputs[1]->getNoOfDimensions() > 0)
-                 ? inputs[1]->getDimensions()[0]
-                 : 1;
-    inpB_y = (inputs[1]->getNoOfDimensions() > 1)
-                 ? inputs[1]->getDimensions()[1]
-                 : 1;
-
-    out_x = (output->getNoOfDimensions() > 0) ? output->getDimensions()[0] : 1;
-    out_y = (output->getNoOfDimensions() > 1) ? output->getDimensions()[1] : 1;
-
-    a_plane_size = inpA_x * inpA_y;
-    b_plane_size = inpB_x * inpB_y;
-    c_plane_size = out_x * out_y;
-
-    a_index = b_index = c_index = 0;
-    if (inputs[1]->getNoOfDimensions() > 2)
-      for (i = 2; i < inputs[1]->getNoOfDimensions(); i++) {
-        a_index += a_plane_size * dimension_arr[i];
-        b_index += b_plane_size * dimension_arr[i];
-        c_index += c_plane_size * dimension_arr[i];
-
-        a_plane_size *= inputs[0]->getDimensions()[i];
-        b_plane_size *= inputs[1]->getDimensions()[i];
-        c_plane_size *= output->getDimensions()[i];
-      }
-    /* code */
-    unsigned a[2];
-    std::float64_t *ptr[3];
-
-    a[0] = inpA_x;
-    a[1] = inpA_y;
-
-    ptr[0] = inputs[0]->getData() + a_index;
-    ptr[1] = inputs[1]->getData() + b_index;
-    ptr[2] = output->getData() + c_index;
-
-    kernel_dispatch(ptr, a);
-
-  } else {
-    for (unsigned i = 0; i < inputs[0]->getDimensions()[index]; i++) {
-      dimension_arr[index] = i;
-      recursive_iterator(index - 1, dimension_arr, function_name, NULL, NULL,
-                         NULL);
-    }
-  }
-};
 
 void Opsadd::addGradGraph(Graph *gradient_graph) {
   // .......... reverse mode autodiff graph .........
@@ -128,16 +66,34 @@ void Opsadd::addGradGraph(Graph *gradient_graph) {
 }
 
 void Opsadd::compute() {
-  unsigned dim_x, dim_y;
-  dim_x = inputs[0]->getDimensions()[0];
-  dim_y = inputs[1]->getDimensions()[1];
+  std::vector<unsigned> indices;
+  unsigned j = 0;
+  for (unsigned i = 0; i < inputs[0]->getNoOfDimensions(); ++i) {
+    if (j < inputs[1]->getNoOfDimensions()) {
+      if (inputs[0]->getDimensions()[i] == inputs[1]->getDimensions()[j])
+        indices.push_back(inputs[1]->getDimensions()[j++]);
+      else if (inputs[0]->getDimensions()[i] != inputs[1]->getDimensions()[j] &&
+               inputs[1]->getDimensions()[j] == 1) {
+        indices.push_back(inputs[1]->getDimensions()[j++]);
+      } else {
+        throw std::runtime_error(
+            "Dimension of input a is not a match with input "
+            "b. and also not broad casting compatable");
+      }
+    } else {
+      indices.push_back(1);
+    }
+  }
 
-  unsigned *arr = new unsigned[inputs[0]->getNoOfDimensions()];
+  std::float64_t *ptr[3];
+  ptr[0] = inputs[0]->getData();
+  ptr[1] = inputs[1]->getData();
+  ptr[2] = output->getData();
 
-  recursive_iterator(inputs[0]->getNoOfDimensions() - 1, arr, "matrix_addition",
-                     NULL, NULL, NULL);
-
-  delete[] arr;
+  /* kernel dispatch*/
+  this->kernel_dispatch(ptr, inputs[0]->getNoOfDimensions(),
+                        inputs[0]->getDimensions(), indices.size(),
+                        indices.data());
 }
 
 void Opsadd::initializeinputs(Tensor<std::float64_t> **inputs) {
@@ -201,20 +157,24 @@ Opsadd::getIncomingGradientTensor(Tensor<std::float64_t> *tensor) {
   return incoming_gradient;
 }
 
-void Opsadd::kernel_dispatch(std::float64_t **ptr, unsigned *arr) {
+void Opsadd::kernel_dispatch(std::float64_t **ptr, const unsigned nDimA,
+                             const unsigned *dimA, unsigned nDimB,
+                             unsigned *dimB) {
 
-#ifdef CUDA_ENABLED
-  double *d_arr[3];
-  d_arr[0] = reinterpret_cast<double *>(ptr[0]);
-  d_arr[1] = reinterpret_cast<double *>(ptr[1]);
-  d_arr[2] = reinterpret_cast<double *>(ptr[2]);
+  // #ifdef CUDA_ENABLED
+  //   double *d_arr[3];
+  //   d_arr[0] = reinterpret_cast<double *>(ptr[0]);
+  //   d_arr[1] = reinterpret_cast<double *>(ptr[1]);
+  //   d_arr[2] = reinterpret_cast<double *>(ptr[2]);
 
-  gpu::gpu_mat_add_f64(d_arr, arr);
-#else
+  //   gpu::gpu_mat_add_f64(d_arr, arr);
+  // #else
   if (__builtin_cpu_supports("avx2")) {
-    avx2::avx2_add_f64(ptr, arr);
+    // avx2::avx2_add_f64(ptr, arr);
+    avx2::avx2_add_broadcast_f64(ptr, nDimA, dimA, nDimB, dimB);
   } else {
-    cpu::__madd(ptr, arr);
+    // cpu::__madd(ptr, arr);
+    cpu::__madd_broadcast(ptr, nDimA, dimA, nDimB, dimB);
   }
-#endif
+  // #endif
 }

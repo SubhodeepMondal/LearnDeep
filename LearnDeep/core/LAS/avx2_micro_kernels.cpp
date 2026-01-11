@@ -127,6 +127,114 @@ void avx2::avx2_add_f64(std::float64_t **ptr, unsigned *arr) {
     c[i] = a[i] + b[i];
 }
 
+void avx2::avx2_add_broadcast_f64(std::float64_t **ptr, const unsigned nDimA,
+                                  const unsigned *dimA, const unsigned nDimB,
+                                  const unsigned *dimB) {
+  unsigned grid_x, grid_y;
+  unsigned n_dim_A = nDimA;
+  bool isBroadCast = false;
+  std::float64_t *a, *b, *c;
+  a = ptr[0];
+  b = ptr[1];
+  c = ptr[2];
+
+  if (nDimA == nDimB) {
+    for (int i = 0; i < nDimA; i++)
+      if (dimA[i] != dimB[i] && dimB[i] == 1) {
+        isBroadCast = true;
+        break;
+      }
+    if (nDimA > 1) {
+      grid_x = dimA[0];
+      unsigned total_lines = 1;
+      for (unsigned i = 1; i < nDimA; i++)
+        total_lines *= dimA[i];
+      grid_y = total_lines;
+    } else if (nDimA > 0) {
+      grid_x = dimA[0];
+      grid_y = 1;
+    } else {
+      throw std::runtime_error("Addtion is not possible with tensors without "
+                               "any elements and dimensions zero.\n");
+    }
+  }
+
+  omp_set_num_threads(1);
+
+  if (!isBroadCast) {
+#pragma omp for
+    for (unsigned line_it = 0; line_it < grid_y; ++line_it) {
+      unsigned idx = line_it * grid_x;
+      for (unsigned i = 0; i + 4 <= grid_x; i += 4) {
+        __m256d c_arr = _mm256_add_pd(
+            _mm256_loadu_pd(reinterpret_cast<const double *>(a + i + idx)),
+            _mm256_loadu_pd(reinterpret_cast<const double *>(b + i + idx)));
+
+        _mm256_storeu_pd(reinterpret_cast<double *>(c + i + idx), c_arr);
+      }
+
+      // tackling remaining elements if any
+      for (unsigned i = grid_x - (grid_x % 4); i < grid_x; i++) {
+        ptr[2][idx + i] = ptr[1][idx + i] + ptr[0][idx + i];
+      }
+    }
+  } else {
+    // clang-format off
+#pragma omp parallel 
+{
+      // clang-format on
+
+      alignas(64) unsigned indices[64];
+#pragma omp for
+      for (unsigned line_it = 0; line_it < grid_y; ++line_it) {
+
+        unsigned total_line_a = grid_y / dimA[nDimA - 1];
+        unsigned index_a = line_it;
+        for (unsigned i = nDimA - 1; i > 0; i--) {
+          indices[i] = index_a / total_line_a;
+          index_a -= indices[i] * total_line_a;
+          total_line_a /= dimA[i - 1];
+        }
+
+        unsigned idx_b = 0;
+        unsigned total_line_b = dimB[0];
+        for (unsigned i = 1; i < nDimB; i++) {
+          idx_b += indices[i] * total_line_b * (dimB[i] != 1);
+          total_line_b *= dimB[i];
+        }
+
+        unsigned idx = line_it * grid_x;
+
+        // unrolling the loop from 0 to n*4
+        for (unsigned i = 0; i + 4 <= grid_x; i += 4) {
+          if (dimB[0] != 1) {
+            __m256d c_arr = _mm256_add_pd(
+                _mm256_loadu_pd(reinterpret_cast<const double *>(a + idx + i)),
+                _mm256_loadu_pd(reinterpret_cast<const double *>(
+                    b + idx_b + i * (dimB[0] != 1))));
+
+            _mm256_storeu_pd(reinterpret_cast<double *>(c + idx + i), c_arr);
+          } else {
+            __m256d c_arr = _mm256_add_pd(
+                _mm256_loadu_pd(reinterpret_cast<const double *>(a + idx + i)),
+                _mm256_set1_pd(static_cast<const double>(*(b + idx_b))));
+
+            _mm256_storeu_pd(reinterpret_cast<double *>(c + idx + i), c_arr);
+          }
+        }
+
+        // tackling remaining elements if any
+        for (unsigned i = grid_x - (grid_x % 4); i < grid_x; i++) {
+          ptr[2][idx + i] =
+              ptr[0][idx + i] + ptr[1][idx_b + i * (dimB[0] != 1)];
+        }
+      }
+      // clang-format off
+}
+    // clang-format on
+  }
+}
+
 void avx2::avx2_sub_f64(std::float64_t **ptr, unsigned *arr) {
 
   std::float64_t *a, *b, *c;

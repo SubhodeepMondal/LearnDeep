@@ -1,6 +1,8 @@
 #ifndef CPULIBRARY_H
 #define CPULIBRARY_H
 
+// C++ Headers
+#include <cstddef>
 #include <stdfloat>
 
 namespace cpu {
@@ -14,6 +16,10 @@ void __matmul_conventional(std::float64_t **, unsigned *);
 void __mscalermul(std::float64_t **, unsigned *);
 
 void __madd(std::float64_t **, unsigned *);
+
+void __madd_broadcast(std::float64_t *const *const ptr, const unsigned nDimA,
+                      const unsigned *dimA, const unsigned nDimB,
+                      const unsigned *dimB);
 
 void __msub(std::float64_t **, unsigned *);
 

@@ -127,12 +127,9 @@ class Opsadd : public Ops {
   Tensor<std::float64_t> *output;
   Tensor<std::float64_t> *incoming_gradient;
   std::vector<Tensor<std::float64_t> *> outgoing_gradients;
-  void recursive_iterator(unsigned index, unsigned *dimension_arr,
-                          std::string function_name, unsigned *ui_arr,
-                          std::float64_t *dl_arr,
-                          Tensor<std::float64_t> *misc_arr);
 
-  void kernel_dispatch(std::float64_t **, unsigned *);
+  void kernel_dispatch(std::float64_t **ptr, const unsigned nDimA,
+                       const unsigned *dimA, unsigned nDimB, unsigned *dimB);
 
 public:
   Opsadd() = default;

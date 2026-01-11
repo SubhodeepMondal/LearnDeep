@@ -138,47 +138,40 @@ Tensor<T> *Tensor<T>::add(Tensor<T> &input, bool graph_flag) {
   Tensor<T> *output;
   DataType d_type = tf_float64;
 
-  unsigned flag = 1;
+  Ops *opsadd = new Opsadd();
+  output =
+      new Tensor<T>(this->getNoOfDimensions(), this->getDimensions(), d_type);
+  Tensor<T> *inputs[2];
+  inputs[0] = this;
+  inputs[1] = &input;
+  opsadd->initializeinputs(inputs);
+  opsadd->initializeoutput(output);
 
-  for (int i = 0; i < this->getNoOfDimensions(); i++)
-    if (this->getDimensions()[i] != input.getDimensions()[i]) {
-      flag = 0;
-      break;
-    }
-  if (flag) {
-    Ops *opsadd = new Opsadd();
-    output =
-        new Tensor<T>(this->getNoOfDimensions(), this->getDimensions(), d_type);
-    Tensor<T> *inputs[2];
-    inputs[0] = this;
-    inputs[1] = &input;
-    opsadd->initializeinputs(inputs);
-    opsadd->initializeoutput(output);
+  Graph *g = GraphManager::instance().getCurrentGraph();
+  if (g) {
+    g->addNode(this);
+    g->addNode(&input);
+    g->addNode(opsadd);
 
-    Graph *g = GraphManager::instance().getCurrentGraph();
-    if (g) {
-      g->addNode(this);
-      g->addNode(&input);
-      g->addNode(opsadd);
+    g->addEdge(this, opsadd);
+    g->addEdge(&input, opsadd);
 
-      g->addEdge(this, opsadd);
-      g->addEdge(&input, opsadd);
-
-      g->addNode(output);
-      g->addEdge(opsadd, output);
-    } else {
-      opsadd->compute();
-      delete opsadd;
-    }
-
+    g->addNode(output);
+    g->addEdge(opsadd, output);
   } else {
-    std::cout << "Two metrix requires same shape to perform matrix addition, "
-                 "here matrix A ";
-    Tensor<T>::printDimensions();
-    std::cout << " and matrix B ";
-    input.printDimensions();
-    std::cout << " are of differenct shape.\n";
+    opsadd->compute();
+    delete opsadd;
   }
+
+  // } else {
+  //   std::cout << "Two metrix requires same shape to perform matrix addition,
+  //   "
+  //                "here matrix A ";
+  //   Tensor<T>::printDimensions();
+  //   std::cout << " and matrix B ";
+  //   input.printDimensions();
+  //   std::cout << " are of differenct shape.\n";
+  // }
   return output;
 }
 
