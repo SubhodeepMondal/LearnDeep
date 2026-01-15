@@ -121,7 +121,11 @@ public:
 };
 
 class Opsadd : public Ops {
-  unsigned no_of_inputs;
+
+  bool isPreInitializationDone;
+  bool isBroadCast;
+  std::vector<unsigned> broadCastAxies;
+  std::vector<unsigned> broadCastDimensionSizes;
 
   std::vector<Tensor<std::float64_t> *> inputs;
   Tensor<std::float64_t> *output;
@@ -129,13 +133,18 @@ class Opsadd : public Ops {
   std::vector<Tensor<std::float64_t> *> outgoing_gradients;
 
   void kernel_dispatch(std::float64_t **ptr, const unsigned nDimA,
-                       const unsigned *dimA, unsigned nDimB, unsigned *dimB);
+                       const unsigned *dimA, const unsigned nDimB,
+                       const unsigned *dimB, const bool isBroadCast);
 
 public:
-  Opsadd() = default;
+  Opsadd() : isPreInitializationDone(false), isBroadCast(false){};
+
   ~Opsadd() {}
+
   void compute();
+
   void addGradGraph(Graph *gradient_graph);
+
   Tensor<std::float64_t> *
   getOutgoingGradientTensor(Tensor<std::float64_t> *gradient_input);
 
@@ -146,13 +155,14 @@ public:
     return grads;
   };
   void initializeinputs(Tensor<std::float64_t> **inputs);
+
   void initializeoutput(Tensor<std::float64_t> *output);
 
   std::vector<Tensor<std::float64_t> *> getinputs() { return inputs; }
 
   Tensor<std::float64_t> *getoutput() { return output; }
 
-  unsigned getnoofinputs() { return no_of_inputs; }
+  unsigned getnoofinputs() { return 2; }
 
   void printinputs();
   void printoutput();

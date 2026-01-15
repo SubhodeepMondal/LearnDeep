@@ -154,15 +154,69 @@ __global__ void gpu_kernel::cudaMatrixMul(double *a, double *b, double *d,
   }
 }
 
-__global__ void gpu_kernel::matrixSum(double *a, double *b, double *c,
-                                      unsigned x, unsigned y) {
-  unsigned id_x, id_y, lin_idx;
-  id_x = threadIdx.x + (blockDim.x * blockIdx.x);
-  id_y = threadIdx.y + (blockDim.y * blockIdx.y);
-  lin_idx = id_x + id_y * x;
+__global__ void
+gpu_kernel::matrixSum(double *const input_1, double *const input_2,
+                      double *const output, const unsigned x_axis_dim,
+                      const unsigned y_axis_dim, const unsigned plane_count) {
+  unsigned idx_x, idx_y, idx_z;
+  idx_x = threadIdx.x + (blockDim.x * blockIdx.x);
+  idx_y = threadIdx.y + (blockDim.y * blockIdx.y);
+  idx_z = threadIdx.z + (blockDim.z * blockIdx.z);
+  size_t index = idx_x + idx_y * x_axis_dim + idx_z * x_axis_dim * y_axis_dim;
 
-  if (id_x < x && id_y < y)
-    c[lin_idx] = a[lin_idx] + b[lin_idx];
+  if (idx_x < x_axis_dim && idx_y < y_axis_dim && idx_z < plane_count)
+    output[index] = input_1[index] + input_2[index];
+}
+
+__global__ void gpu_kernel::matrixSumBroadCast(
+    double *const input_1, double *const input_2, double *const output,
+    const unsigned nDimInput_1, const unsigned *const dimInput_1,
+    const unsigned nDimInput_2, const unsigned *const dimInput_2,
+    const unsigned plane_count, const unsigned plane_cout_b) {
+
+  size_t idx_x = threadIdx.x + (blockIdx.x * blockDim.x);
+  size_t idx_y = threadIdx.y + (blockIdx.y * blockDim.y);
+  size_t idx_z = threadIdx.z + (blockIdx.z * blockDim.z);
+
+  __shared__ size_t x_axis_inp_1, y_axis_inp_1;
+  __shared__ size_t x_axis_inp_2, y_axis_inp_2;
+  __shared__ size_t a_plane_count, b_plane_count;
+  __shared__ size_t idx_a, idx_b;
+  __shared__ size_t i;
+
+  __shared__ unsigned indices;
+  if (threadIdx.x == 0 && threadIdx.y == 0) {
+    x_axis_inp_1 = dimInput_1[0];
+    y_axis_inp_1 = (nDimInput_1 > 1) ? dimInput_1[1] : 1;
+
+    x_axis_inp_2 = dimInput_2[0];
+    y_axis_inp_2 = (nDimInput_2 > 1) ? dimInput_2[1] : 1;
+
+    a_plane_count = plane_count / dimInput_1[nDimInput_1 - 1];
+    b_plane_count = plane_cout_b / dimInput_2[nDimInput_2 - 1];
+    idx_a = idx_z;
+    idx_b = 0;
+    for (i = nDimInput_1 - 1; i > 1; i--) {
+      indices = idx_a / a_plane_count;
+      idx_a -= indices * a_plane_count;
+      a_plane_count /= dimInput_1[i - 1];
+
+      idx_b += indices * b_plane_count * (dimInput_2[i] != 1);
+      b_plane_count /= dimInput_2[i - 1];
+    }
+    idx_b *= x_axis_inp_2 * y_axis_inp_2;
+  }
+  __syncthreads();
+
+  size_t index_b = idx_b;
+
+  size_t index =
+      idx_x + idx_y * x_axis_inp_1 + idx_z * x_axis_inp_1 * y_axis_inp_1;
+  index_b +=
+      idx_x * (x_axis_inp_2 != 1) + idx_y * (y_axis_inp_2 != 1) * x_axis_inp_2;
+  if (idx_x < x_axis_inp_1 && idx_y < y_axis_inp_1 && idx_z < plane_count) {
+    output[index] = input_1[index] + input_2[index_b];
+  }
 }
 
 __global__ void gpu_kernel::matrixHadamardMul(double *a, double *b, double *c,

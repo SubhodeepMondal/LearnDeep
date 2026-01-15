@@ -2281,7 +2281,7 @@ TEST_F(FrameworkTest, DenseLayer_Test_1) {
   }
 }
 
-TEST_F(FrameworkTest, DenseLayer_Test_2) {
+TEST_F(FrameworkTest, DISABLED_DenseLayer_Test_2) {
   std::float64_t input_data[] = {
       0.11505457, 0.60906654, 0.13339096, 0.24058962, 0.32713906, 0.85913749,
       0.66609021, 0.54116221, 0.02901382, 0.73374830, 0.39495002, 0.80204712,

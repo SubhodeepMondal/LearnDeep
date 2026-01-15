@@ -238,6 +238,34 @@ TEST_F(MathTest, Graph_MatrixAddition2_2D) {
   }
 }
 
+TEST_F(MathTest, Graph_MatrixAddition3_2D) {
+  //--------------- Test 1 -----------------
+  tf::tensor A_56_64, B_56, C_56_64;
+  A_56_64.tf_create(tf_float64, 13, 7);
+  B_56.tf_create(tf_float64, 1);
+  C_56_64.tf_create(tf_float64, 13, 7);
+
+  A_56_64.tensor_of(graph_a_double_13_7);
+  B_56.tensor_of(graph_b_double_1);
+
+  {
+    tf::graph_context ctx;
+
+    C_56_64 = A_56_64.add(B_56);
+
+    ctx.run();
+
+    for (int j = 0; j < 7; j++) {
+      for (int i = 0; i < 13; i++) {
+        unsigned index = i + j * 13;
+        EXPECT_NEAR(C_56_64.getData()[index], graph_out_double_13_7[index],
+                    1e-6)
+            << "at: " << index << " .";
+      }
+    }
+  }
+}
+
 TEST_F(MathTest, Graph_MatrixAddition_Grad_2D) {
 
   //--------------- Test 1 -----------------

@@ -66,23 +66,28 @@ void Opsadd::addGradGraph(Graph *gradient_graph) {
 }
 
 void Opsadd::compute() {
-  std::vector<unsigned> indices;
   unsigned j = 0;
-  for (unsigned i = 0; i < inputs[0]->getNoOfDimensions(); ++i) {
-    if (j < inputs[1]->getNoOfDimensions()) {
-      if (inputs[0]->getDimensions()[i] == inputs[1]->getDimensions()[j])
-        indices.push_back(inputs[1]->getDimensions()[j++]);
-      else if (inputs[0]->getDimensions()[i] != inputs[1]->getDimensions()[j] &&
-               inputs[1]->getDimensions()[j] == 1) {
-        indices.push_back(inputs[1]->getDimensions()[j++]);
+  if (!this->isPreInitializationDone) {
+    for (unsigned i = 0; i < inputs[0]->getNoOfDimensions(); ++i) {
+      if (j < inputs[1]->getNoOfDimensions()) {
+        if (inputs[0]->getDimensions()[i] == inputs[1]->getDimensions()[j])
+          broadCastDimensionSizes.push_back(inputs[1]->getDimensions()[j++]);
+        else if (inputs[0]->getDimensions()[i] !=
+                     inputs[1]->getDimensions()[j] &&
+                 inputs[1]->getDimensions()[j] == 1) {
+          broadCastDimensionSizes.push_back(inputs[1]->getDimensions()[j++]);
+          this->isBroadCast = true;
+        } else {
+          throw std::runtime_error(
+              "Dimension of input a is not a match with input "
+              "b. and also not broad casting compatable");
+        }
       } else {
-        throw std::runtime_error(
-            "Dimension of input a is not a match with input "
-            "b. and also not broad casting compatable");
+        broadCastDimensionSizes.push_back(1);
+        this->isBroadCast = true;
       }
-    } else {
-      indices.push_back(1);
     }
+    this->isPreInitializationDone = true;
   }
 
   std::float64_t *ptr[3];
@@ -92,16 +97,14 @@ void Opsadd::compute() {
 
   /* kernel dispatch*/
   this->kernel_dispatch(ptr, inputs[0]->getNoOfDimensions(),
-                        inputs[0]->getDimensions(), indices.size(),
-                        indices.data());
+                        inputs[0]->getDimensions(),
+                        broadCastDimensionSizes.size(),
+                        broadCastDimensionSizes.data(), isBroadCast);
 }
 
 void Opsadd::initializeinputs(Tensor<std::float64_t> **inputs) {
-  unsigned i;
-  this->no_of_inputs = 2;
-  for (i = 0; i < this->no_of_inputs; i++) {
-    this->inputs.push_back(inputs[i]);
-  }
+  this->inputs.push_back(inputs[0]);
+  this->inputs.push_back(inputs[1]);
 }
 
 void Opsadd::initializeoutput(Tensor<std::float64_t> *output) {
@@ -129,7 +132,7 @@ void Opsadd::initializeoutput(Tensor<std::float64_t> *output) {
 
 void Opsadd::printinputs() {
   unsigned i;
-  for (i = 0; i < this->no_of_inputs; i++) {
+  for (i = 0; i < 2; i++) {
     std::cout << "Input: " << i << "\n";
     inputs[i]->printData();
   }
@@ -158,23 +161,24 @@ Opsadd::getIncomingGradientTensor(Tensor<std::float64_t> *tensor) {
 }
 
 void Opsadd::kernel_dispatch(std::float64_t **ptr, const unsigned nDimA,
-                             const unsigned *dimA, unsigned nDimB,
-                             unsigned *dimB) {
+                             const unsigned *dimA, const unsigned nDimB,
+                             const unsigned *dimB, const bool isBroadCast) {
 
-  // #ifdef CUDA_ENABLED
-  //   double *d_arr[3];
-  //   d_arr[0] = reinterpret_cast<double *>(ptr[0]);
-  //   d_arr[1] = reinterpret_cast<double *>(ptr[1]);
-  //   d_arr[2] = reinterpret_cast<double *>(ptr[2]);
+#ifdef CUDA_ENABLED
 
-  //   gpu::gpu_mat_add_f64(d_arr, arr);
-  // #else
+  double *d_arr[3];
+  d_arr[0] = reinterpret_cast<double *>(ptr[0]);
+  d_arr[1] = reinterpret_cast<double *>(ptr[1]);
+  d_arr[2] = reinterpret_cast<double *>(ptr[2]);
+  gpu::gpu_mat_add_broadcast_f64(d_arr, nDimA, dimA, nDimB, dimB, isBroadCast);
+
+#else
+
   if (__builtin_cpu_supports("avx2")) {
-    // avx2::avx2_add_f64(ptr, arr);
-    avx2::avx2_add_broadcast_f64(ptr, nDimA, dimA, nDimB, dimB);
+    avx2::avx2_add_broadcast_f64(ptr, nDimA, dimA, nDimB, dimB, isBroadCast);
   } else {
-    // cpu::__madd(ptr, arr);
-    cpu::__madd_broadcast(ptr, nDimA, dimA, nDimB, dimB);
+    cpu::__madd_broadcast(ptr, nDimA, dimA, nDimB, dimB, isBroadCast);
   }
-  // #endif
+
+#endif
 }

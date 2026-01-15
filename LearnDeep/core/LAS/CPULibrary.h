@@ -19,7 +19,7 @@ void __madd(std::float64_t **, unsigned *);
 
 void __madd_broadcast(std::float64_t *const *const ptr, const unsigned nDimA,
                       const unsigned *dimA, const unsigned nDimB,
-                      const unsigned *dimB);
+                      const unsigned *dimB, const bool isBroadCast);
 
 void __msub(std::float64_t **, unsigned *);
 
