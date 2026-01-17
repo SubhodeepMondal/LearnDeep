@@ -4,7 +4,7 @@
 
 #include "addition.data.hpp"
 
-TEST_F(MathTest, Eager_MatrixAddition1_2D) {
+TEST_F(MathTest, MatrixAddition_Eager_Test_1) {
 
   //--------------- Test 1 -----------------
   /*
@@ -32,7 +32,7 @@ TEST_F(MathTest, Eager_MatrixAddition1_2D) {
   //----------- End Of Test 1 --------------
 }
 
-TEST_F(MathTest, Eager_MatrixAddition2_2D) {
+TEST_F(MathTest, MatrixAddition_Eager_Test_2) {
 
   //--------------- Test 2 -----------------
   /*
@@ -60,7 +60,7 @@ TEST_F(MathTest, Eager_MatrixAddition2_2D) {
   //----------- End Of Test 2 --------------
 }
 
-TEST_F(MathTest, Eager_MatrixAddition3_3D) {
+TEST_F(MathTest, MatrixAddition_Eager_Test_3) {
 
   //--------------- Test 3 -----------------
   /*
@@ -90,7 +90,7 @@ TEST_F(MathTest, Eager_MatrixAddition3_3D) {
   //----------- End Of Test 3 --------------
 }
 
-TEST_F(MathTest, Eager_MatrixAddition4_3D) {
+TEST_F(MathTest, MatrixAddition_Eager_Test_4) {
 
   //--------------- Test 4 -----------------
   /*
@@ -121,7 +121,7 @@ TEST_F(MathTest, Eager_MatrixAddition4_3D) {
   //----------- End Of Test 3 --------------
 }
 
-TEST_F(MathTest, Eager_MatrixAddition5_3D) {
+TEST_F(MathTest, MatrixAddition_Eager_Test_5) {
 
   //--------------- Test 5 -----------------
   /*
@@ -151,7 +151,7 @@ TEST_F(MathTest, Eager_MatrixAddition5_3D) {
   //----------- End Of Test 5 --------------
 }
 
-TEST_F(MathTest, Eager_MatrixAddition6_3D) {
+TEST_F(MathTest, MatrixAddition_Eager_Test_6) {
 
   //--------------- Test 5 -----------------
   /*
@@ -182,7 +182,7 @@ TEST_F(MathTest, Eager_MatrixAddition6_3D) {
   //----------- End Of Test 5 --------------
 }
 
-TEST_F(MathTest, Graph_MatrixAddition1_2D) {
+TEST_F(MathTest, MatrixAddition_Graph_Test_7) {
 
   //--------------- Test 1 -----------------
   tf::tensor A_16_8, B_16_8, C_16_8;
@@ -210,7 +210,7 @@ TEST_F(MathTest, Graph_MatrixAddition1_2D) {
   }
 }
 
-TEST_F(MathTest, Graph_MatrixAddition2_2D) {
+TEST_F(MathTest, MatrixAddition_Graph_Test_8) {
   //--------------- Test 1 -----------------
   tf::tensor A_56_64, B_56, C_56_64;
   A_56_64.tf_create(tf_float64, 56, 64);
@@ -235,38 +235,70 @@ TEST_F(MathTest, Graph_MatrixAddition2_2D) {
             << "at: " << index << " .";
       }
     }
-  }
-}
 
-TEST_F(MathTest, Graph_MatrixAddition3_2D) {
-  //--------------- Test 1 -----------------
-  tf::tensor A_56_64, B_56, C_56_64;
-  A_56_64.tf_create(tf_float64, 13, 7);
-  B_56.tf_create(tf_float64, 1);
-  C_56_64.tf_create(tf_float64, 13, 7);
+    ctx.initialize_gradient();
+    ctx.compute_gradient();
 
-  A_56_64.tensor_of(graph_a_double_13_7);
-  B_56.tensor_of(graph_b_double_1);
+    tf::tensor A_56_64_grad = ctx.get_gradient(A_56_64);
+    tf::tensor B_56_grad = ctx.get_gradient(B_56);
 
-  {
-    tf::graph_context ctx;
-
-    C_56_64 = A_56_64.add(B_56);
-
-    ctx.run();
-
-    for (int j = 0; j < 7; j++) {
-      for (int i = 0; i < 13; i++) {
-        unsigned index = i + j * 13;
-        EXPECT_NEAR(C_56_64.getData()[index], graph_out_double_13_7[index],
-                    1e-6)
+    for (int j = 0; j < 64; j++) {
+      for (int i = 0; i < 56; i++) {
+        unsigned index = i + j * 56;
+        EXPECT_NEAR(A_56_64_grad.getData()[index], 1.0, 1e-6)
             << "at: " << index << " .";
       }
+    }
+
+    for (int i = 0; i < 56; i++) {
+      unsigned index = i;
+      EXPECT_NEAR(B_56_grad.getData()[index], 64.0, 1e-6)
+          << "at: " << index << " .";
     }
   }
 }
 
-TEST_F(MathTest, Graph_MatrixAddition_Grad_2D) {
+TEST_F(MathTest, MatrixAddition_Graph_Test_9) {
+  //--------------- Test 1 -----------------
+  tf::tensor A_13_7, B_1, C_13_7;
+  A_13_7.tf_create(tf_float64, 13, 7);
+  B_1.tf_create(tf_float64, 1);
+  C_13_7.tf_create(tf_float64, 13, 7);
+
+  A_13_7.tensor_of(graph_a_double_13_7);
+  B_1.tensor_of(graph_b_double_1);
+
+  {
+    tf::graph_context ctx;
+
+    C_13_7 = A_13_7.add(B_1);
+
+    ctx.run();
+    ctx.initialize_gradient();
+
+    for (int j = 0; j < 7; j++) {
+      for (int i = 0; i < 13; i++) {
+        unsigned index = i + j * 13;
+        EXPECT_NEAR(C_13_7.getData()[index], graph_out_double_13_7[index], 1e-6)
+            << "at: " << index << " .";
+      }
+    }
+    ctx.compute_gradient();
+    tf::tensor A_13_7_grad = ctx.get_gradient(A_13_7);
+    tf::tensor B_1_grad = ctx.get_gradient(B_1);
+
+    for (int j = 0; j < 7; j++) {
+      for (int i = 0; i < 13; i++) {
+        unsigned index = i + j * 13;
+        EXPECT_NEAR(A_13_7_grad.getData()[index], 1, 1e-6)
+            << "at: " << index << " .";
+      }
+    }
+    EXPECT_NEAR(B_1_grad.getData()[0], 91, 1e-6) << "at: " << 0 << " .";
+  }
+}
+
+TEST_F(MathTest, MatrixAddition_GraphGradient_Test_10) {
 
   //--------------- Test 1 -----------------
   tf::tensor A, A_grad, B, B_grad, C, C_grad, D, D_grad, E, E_grad, F, F_grad;
@@ -337,6 +369,100 @@ TEST_F(MathTest, Graph_MatrixAddition_Grad_2D) {
     for (int j = 0; j < 56; j++)
       for (int i = 0; i < 28; i++)
         EXPECT_NEAR(D_grad.getData()[i + j * 28], d_d[i + j * 28], 1e-6);
+  }
+
+  //----------- End Of Test 1 --------------
+}
+
+TEST_F(MathTest, MatrixAddition_GraphGradient_Test_11) {
+
+  //--------------- Test 1 -----------------
+  tf::tensor A_16_33, B_16, C_16_33, D_16_33, E_16_33, F_16_33;
+  A_16_33.tf_create(tf_float64, 16, 33);
+  B_16.tf_create(tf_float64, 16);
+  C_16_33.tf_create(tf_float64, 16, 33);
+  D_16_33.tf_create(tf_float64, 16, 33);
+  E_16_33.tf_create(tf_float64, 16, 33);
+  F_16_33.tf_create(tf_float64, 16, 33);
+
+  A_16_33.tensor_of(a_16_33_Graph_MatrixAddition2_Grad_2D);
+  B_16.tensor_of(b_16_Graph_MatrixAddition2_Grad_2D);
+  E_16_33.tensor_of(e_16_33_Graph_MatrixAddition2_Grad_2D);
+
+  {
+
+    // Directed acyclic graph for
+    // A         B
+    //  \       /
+    //   \     /
+    //      +
+    //      |
+    //  E   C
+    //   \ / \
+    //    *  |
+    //    |  |
+    //    D  C
+    //    \ /
+    //     *
+    //     |
+    //     F
+    tf::graph_context ctx;
+    C_16_33 = A_16_33.add(B_16);
+    D_16_33 = C_16_33.mul(E_16_33);
+    F_16_33 = C_16_33.mul(D_16_33);
+
+    ctx.run();
+
+    for (int j = 0; j < 33; j++)
+      for (int i = 0; i < 16; i++) {
+        unsigned index = i + j * 16;
+        EXPECT_NEAR(F_16_33.getData()[index],
+                    f_16_33_Graph_MatrixAddition2_Grad_2D[index], 1e-6);
+      }
+
+    ctx.initialize_gradient();
+    ctx.compute_gradient();
+
+    tf::tensor A_grad = ctx.get_gradient(A_16_33);
+    tf::tensor B_grad = ctx.get_gradient(B_16);
+    tf::tensor C_grad = ctx.get_gradient(C_16_33);
+    tf::tensor D_grad = ctx.get_gradient(D_16_33);
+    tf::tensor E_grad = ctx.get_gradient(E_16_33);
+
+    for (int j = 0; j < 33; j++)
+      for (int i = 0; i < 16; i++) {
+        unsigned index = i + j * 16;
+        EXPECT_NEAR(A_grad.getData()[index],
+                    a_16_33_grad_Graph_MatrixAddition2_Grad_2D[index], 1e-6);
+      }
+
+    for (int i = 0; i < 16; i++) {
+      unsigned index = i;
+      EXPECT_NEAR(B_grad.getData()[index],
+                  b_16_grad_Graph_MatrixAddition2_Grad_2D[index], 1e-6)
+          << "\nat : " << index << "\n";
+    }
+
+    for (int j = 0; j < 33; j++)
+      for (int i = 0; i < 16; i++) {
+        unsigned index = i + j * 16;
+        EXPECT_NEAR(C_grad.getData()[index],
+                    c_16_grad_Graph_MatrixAddition2_Grad_2D[index], 1e-6);
+      }
+
+    for (int j = 0; j < 33; j++)
+      for (int i = 0; i < 16; i++) {
+        unsigned index = i + j * 16;
+        EXPECT_NEAR(D_grad.getData()[index],
+                    d_16_grad_Graph_MatrixAddition2_Grad_2D[index], 1e-6);
+      }
+
+    for (int j = 0; j < 33; j++)
+      for (int i = 0; i < 16; i++) {
+        unsigned index = i + j * 16;
+        EXPECT_NEAR(E_grad.getData()[index],
+                    e_16_grad_Graph_MatrixAddition2_Grad_2D[index], 1e-6);
+      }
   }
 
   //----------- End Of Test 1 --------------

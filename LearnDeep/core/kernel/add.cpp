@@ -1,3 +1,4 @@
+#include <cctype>
 #include <cstddef>
 #include <elf.h>
 #ifdef CUDA_ENABLED
@@ -61,8 +62,31 @@ void Opsadd::addGradGraph(Graph *gradient_graph) {
     this->incoming_gradient->initData(1.0);
   }
 
-  for (unsigned i = 0; i < 2; i++)
+  if (!this->isBroadCast) {
+    for (unsigned i = 0; i < 2; i++)
+      this->outgoing_gradients.push_back(this->incoming_gradient);
+  } else {
+    // for first input we can directly push the incoming gradient to previous
+    // layer
     this->outgoing_gradients.push_back(this->incoming_gradient);
+
+    // for second input we need to calculate broadcast dimentions and then do a
+    // reduction sum then push the incoming gradient to previous layer.
+    Tensor<std::float64_t> *reduction_result = new Tensor<std::float64_t>();
+    Ops *opsreducesum = new Opsreducesum();
+    opsreducesum->initializeinputs(&this->incoming_gradient);
+    opsreducesum->initializeReductionDims(this->broadCastAxies.size(),
+                                          this->broadCastAxies.data());
+    opsreducesum->initializeoutput(reduction_result);
+
+    gradient_graph->addGradientNode(opsreducesum);
+    gradient_graph->addGradientNode(this->incoming_gradient);
+    gradient_graph->addGradientNode(reduction_result);
+    gradient_graph->addGradientEdge(this->incoming_gradient, opsreducesum);
+    gradient_graph->addGradientEdge(opsreducesum, reduction_result);
+
+    this->outgoing_gradients.push_back(reduction_result);
+  }
 }
 
 void Opsadd::compute() {
@@ -70,12 +94,14 @@ void Opsadd::compute() {
   if (!this->isPreInitializationDone) {
     for (unsigned i = 0; i < inputs[0]->getNoOfDimensions(); ++i) {
       if (j < inputs[1]->getNoOfDimensions()) {
-        if (inputs[0]->getDimensions()[i] == inputs[1]->getDimensions()[j])
+        if (inputs[0]->getDimensions()[i] == inputs[1]->getDimensions()[j]) {
+          this->broadCastDimensionSizes.push_back(
+              inputs[1]->getDimensions()[j++]);
+        } else if (inputs[0]->getDimensions()[i] !=
+                       inputs[1]->getDimensions()[j] &&
+                   inputs[1]->getDimensions()[j] == 1) {
           broadCastDimensionSizes.push_back(inputs[1]->getDimensions()[j++]);
-        else if (inputs[0]->getDimensions()[i] !=
-                     inputs[1]->getDimensions()[j] &&
-                 inputs[1]->getDimensions()[j] == 1) {
-          broadCastDimensionSizes.push_back(inputs[1]->getDimensions()[j++]);
+          this->broadCastAxies.push_back(i);
           this->isBroadCast = true;
         } else {
           throw std::runtime_error(
@@ -83,7 +109,8 @@ void Opsadd::compute() {
               "b. and also not broad casting compatable");
         }
       } else {
-        broadCastDimensionSizes.push_back(1);
+        this->broadCastAxies.push_back(i);
+        this->broadCastDimensionSizes.push_back(1);
         this->isBroadCast = true;
       }
     }
