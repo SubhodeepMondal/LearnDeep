@@ -107,7 +107,9 @@ void gpu_mat_mul_f64(double **ptr, unsigned *arr);
 // arr[1] is the number of columns of the matrix.
 void gpu_mat_scale_f64(double **ptr, unsigned *arr);
 
-void gpu_mat_sub_f64(double **ptr, unsigned *arr);
+void gpu_mat_sub_broadcast_f64(double *const *const ptr, const unsigned nDimA,
+                               const unsigned *dimA, const unsigned nDimB,
+                               const unsigned *dimB, const bool isBoradCast);
 
 void gpu_mat_sqrt_f64(double **ptr, unsigned *arr);
 

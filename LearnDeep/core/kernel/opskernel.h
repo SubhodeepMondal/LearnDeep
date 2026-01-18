@@ -150,6 +150,7 @@ public:
 
   Tensor<std::float64_t> *
   getIncomingGradientTensor(Tensor<std::float64_t> *tensor) override;
+
   std::vector<Tensor<std::float64_t> *> getAllOutgoingGradientTensors() {
     std::vector<Tensor<std::float64_t> *> grads;
     return grads;
@@ -384,26 +385,31 @@ public:
 };
 
 class Opssub : public Ops {
-  unsigned no_of_inputs;
+
+  bool isPreInitializationDone;
+  bool isBroadCast;
+  std::vector<unsigned> broadCastAxies;
+  std::vector<unsigned> broadCastDimensionSizes;
 
   std::vector<Tensor<std::float64_t> *> inputs;
   Tensor<std::float64_t> *output;
-  Tensor<std::float64_t> *outgoing_gradient;
-  void recursive_iterator(unsigned index, unsigned *dimension_arr,
-                          std::string function_name, unsigned *ui_arr,
-                          std::float64_t *dl_arr,
-                          Tensor<std::float64_t> *misc_arr);
+  Tensor<std::float64_t> *incoming_gradient;
+  std::vector<Tensor<std::float64_t> *> outgoing_gradients;
 
-  void kernel_dispatch(std::float64_t **, unsigned *);
+  void kernel_dispatch(std::float64_t **ptr, const unsigned nDimA,
+                       const unsigned *dimA, const unsigned nDimB,
+                       const unsigned *dimB, const bool isBroadCast);
 
 public:
   Opssub() = default;
   ~Opssub() {}
   void compute();
-  void addGradGraph(Graph *gradient_graph) {}
-  Tensor<std::float64_t> *getOutgoingGradientTensor() {
-    return outgoing_gradient;
-  }
+  void addGradGraph(Graph *gradient_graph);
+  Tensor<std::float64_t> *
+  getOutgoingGradientTensor(Tensor<std::float64_t> *gradient_input);
+
+  Tensor<std::float64_t> *
+  getIncomingGradientTensor(Tensor<std::float64_t> *tensor) override;
 
   std::vector<Tensor<std::float64_t> *> getAllOutgoingGradientTensors() {
     std::vector<Tensor<std::float64_t> *> grads;
@@ -416,7 +422,7 @@ public:
 
   Tensor<std::float64_t> *getoutput() { return output; }
 
-  unsigned getnoofinputs() { return no_of_inputs; }
+  unsigned getnoofinputs() { return 2; }
 
   void printinputs();
   void printoutput();

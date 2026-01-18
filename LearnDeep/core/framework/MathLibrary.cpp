@@ -162,16 +162,6 @@ Tensor<T> *Tensor<T>::add(Tensor<T> &input, bool graph_flag) {
     opsadd->compute();
     delete opsadd;
   }
-
-  // } else {
-  //   std::cout << "Two metrix requires same shape to perform matrix addition,
-  //   "
-  //                "here matrix A ";
-  //   Tensor<T>::printDimensions();
-  //   std::cout << " and matrix B ";
-  //   input.printDimensions();
-  //   std::cout << " are of differenct shape.\n";
-  // }
   return output;
 }
 
@@ -442,48 +432,31 @@ Tensor<T> *Tensor<T>::sub(Tensor<T> &input, bool graph_flag) {
   DataType d_type = tf_float64;
 
   unsigned flag = 1;
+  Ops *opssub = new Opssub();
+  output =
+      new Tensor<T>(this->getNoOfDimensions(), this->getDimensions(), d_type);
+  Tensor<T> *inputs[2];
+  inputs[0] = this;
+  inputs[1] = &input;
+  opssub->initializeinputs(inputs);
+  opssub->initializeoutput(output);
 
-  for (int i = 0; i < this->getNoOfDimensions(); i++)
-    if (this->getDimensions()[i] != input.getDimensions()[i]) {
-      flag = 0;
-      break;
-    }
-  if (flag) {
-    Ops *opssub = new Opssub();
-    output =
-        new Tensor<T>(this->getNoOfDimensions(), this->getDimensions(), d_type);
-    Tensor<T> *inputs[2];
-    inputs[0] = this;
-    inputs[1] = &input;
-    opssub->initializeinputs(inputs);
-    opssub->initializeoutput(output);
+  Graph *g = GraphManager::instance().getCurrentGraph();
+  if (g) {
+    g->addNode(this);
+    g->addNode(&input);
+    g->addNode(opssub);
 
-    Graph *g = GraphManager::instance().getCurrentGraph();
-    if (g) {
-      g->addNode(this);
-      g->addNode(&input);
-      g->addNode(opssub);
+    g->addEdge(this, opssub);
+    g->addEdge(&input, opssub);
 
-      g->addEdge(this, opssub);
-      g->addEdge(&input, opssub);
-
-      g->addNode(output);
-      g->addEdge(opssub, output);
-    } else {
-      opssub->compute();
-      delete opssub;
-    }
-    return output;
+    g->addNode(output);
+    g->addEdge(opssub, output);
   } else {
-    std::cout << "Two metrix requires same shape to perform matrix addition, "
-                 "here matrix A ";
-    Tensor<T>::printDimensions();
-    std::cout << " and matrix B ";
-    input.printDimensions();
-    std::cout << " are of differenct shape.\n";
-
-    return output;
+    opssub->compute();
+    delete opssub;
   }
+  return output;
 }
 
 template <typename T>
