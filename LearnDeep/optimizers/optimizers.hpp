@@ -5,15 +5,20 @@
 
 // Library Headers
 #include <api/tensor.h>
-
-class optimizers {
+class Optimizer {
 protected:
   double learning_rate;
-  void updatePratmeter(tf::tensor *param, tf::tensor gradient_param);
+
+public:
+  virtual void updateParameter(tf::tensor *param, tf::tensor *gradient_param) {}
 };
 
-class SGD : protected optimizers {
+class SGD : public Optimizer {
+public:
+  SGD() = default;
+
+  ~SGD(){};
   void updateParameter(tf::tensor *param, tf::tensor *gradient_param) override;
-}
+};
 
 #endif // _TENSORFLOW_OPTIMIZERS_

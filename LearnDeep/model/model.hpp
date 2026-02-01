@@ -2,7 +2,6 @@
 #define _TENSOR_CORE_LAYER_
 
 // C++ Headers
-#include <queue>
 #include <stdfloat>
 #include <unordered_map>
 #include <vector>
@@ -15,8 +14,8 @@ class Model {
 private:
   unsigned batch_size;
   bool shuffle_input;
-  std::vector<const Tensor<std::float64_t> *> inputs;
-  std::vector<const Tensor<std::float64_t> *> outputs;
+  std::vector<Tensor<std::float64_t> *> inputs;
+  std::vector<Tensor<std::float64_t> *> outputs;
 
   tf::tensor *temp_training_input_tensor;
 
@@ -35,6 +34,16 @@ private:
   LayerGraph model_layer_graph;
   std::vector<Layer *> layers;
   std::vector<Layer *> input_layers;
+
+  tf::optimizer optimizer;
+  std::vector<tf::loss *> losses;
+  std::unordered_map<tf::loss *,
+                     std::vector<Tensor<std::float64_t> *>>
+      loss_input_mappings; // this maps loss and all the input tensor that
+                           // is feed
+  std::unordered_map<tf::loss *, std::vector<tf::tensor *>>
+      loss_training_input_mappings;
+  //   tf::metric metric;
 
   std::vector<const Tensor<std::float64_t> *> getLayersNBackTrackInputs(
       std::queue<const Tensor<std::float64_t> *> &output_queue);
@@ -66,6 +75,14 @@ public:
   /** @return void */
   // void compile(tf::optimizer = tf::optimizer(), tf::loss = tf::loss(),
   //              tf::metric = tf::metric());
+
+  /** @file model.hpp basic model implementation */
+  /** @brief Updates hyperparamers for training */
+  /** @param Optimizer class will be used for optimization */
+  /** @param Loss loss to be used */
+  /** @param Metric metric to be used */
+  /** @return void */
+  void compile(const OptimizerType optimizer_type, const LossType loss_type);
 
   /** @file model.hpp basic model implementation */
   /** @brief Runs the training loop and updates the gradients */
@@ -103,6 +120,8 @@ public:
   tf::tensor predict(std::vector<tf::tensor> input);
 
   void shuffle(bool shuffle);
+
+  tf::loss getModelLoss(Tensor<std::float64_t> *output_tensor);
 };
 
 #endif // _TENSOR_CORE_MODEL_

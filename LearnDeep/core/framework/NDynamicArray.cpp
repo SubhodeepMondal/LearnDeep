@@ -7,7 +7,6 @@
 template <typename T> ndarray<T>::ndarray() {
   dim_iterator = 0;
   nDim = 0;
-  // no_of_gpu = 0;
   dimension = nullptr;
   arr_dim = nullptr;
   data = nullptr;

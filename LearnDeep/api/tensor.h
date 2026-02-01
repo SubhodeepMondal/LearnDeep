@@ -14,14 +14,18 @@
 #include <core/graph/graph_context.hpp>
 #include <core/kernel/opskernel.h>
 #include <layers/layer_enum.hpp>
+#include <losses/loss_type.hpp>
+#include <optimizers/optimizer_type.hpp>
 
-class Layer;
-class Dense;
-class Model;
 class Callback;
+class Dense;
+class Layer;
+class Loss;
+class Model;
+class Optimizer;
 
 namespace tf {
-
+typedef struct loss loss;
 class tensor {
   // mutable std::vector<Ops *> opsPtr;
   Tensor<std::float64_t> *ptr{nullptr};
@@ -224,6 +228,12 @@ public:
                                      Layer_Parameter trainable_parameter_no,
                                      bool print_flag = false);
 
+  void record_scalar_loss(tf::loss loss, bool printFlag = false);
+
+  void record_tensor_loss(tf::loss loss, bool printFlag = false);
+
+  void record_loss_tensoor(tf::loss loss, bool printFlag = false);
+
   std::vector<std::vector<tf::tensor>>
   get_parameter_on_epoch_begin(const layer::dense &dense_layer,
                                Layer_Parameter trainable_parameter_no);
@@ -231,6 +241,10 @@ public:
   std::vector<std::vector<tf::tensor>>
   get_parameter_on_epoch_end(const layer::dense &dense_layer,
                              Layer_Parameter trainable_parameter_no);
+
+  std::vector<std::float64_t> get_scaler_loss(tf::loss loss);
+
+  std::vector<std::vector<tf::tensor>> get_tensor_loss(tf::loss loss);
 
   Callback *getCallbackPtr() const;
 
@@ -245,6 +259,23 @@ public:
         const std::vector<tf::tensor> &outputs);
 
   ~model();
+
+  /** @file model.hpp basic model implementation */
+  /** @brief Updates hyperparamers for training */
+  /** @param Optimizer class will be used for optimization */
+  /** @param Loss loss to be used */
+  /** @param Metric metric to be used */
+  /** @return void */
+  // void compile(tf::optimizer = tf::optimizer(), tf::loss = tf::loss(),
+  //              tf::metric = tf::metric());
+
+  /** @file model.hpp basic model implementation */
+  /** @brief Updates hyperparamers for training */
+  /** @param Optimizer class will be used for optimization */
+  /** @param Loss loss to be used */
+  /** @param Metric metric to be used */
+  /** @return void */
+  void compile(const OptimizerType optimizerType, const LossType lossType);
 
   /** @file tensor.cpp basic model implementation */
   /** @brief Runs the training loop and updates the gradients */
@@ -276,18 +307,46 @@ public:
 
   void shuffle(bool shuffle);
 
+  tf::loss get_model_loss(tf::tensor output) const;
+
 } model;
-// typedef struct optimizer {
+typedef struct optimizer {
+private:
+  OptimizerType optimizer_type;
+  Optimizer *optimizer_ptr;
 
-// } optimizer;
+public:
+  optimizer() = default;
 
-// typedef struct metric {
+  optimizer(OptimizerType optimizer_type);
 
-// } metric;
+} optimizer;
 
-// typedef struct loss {
+typedef struct metric {
 
-// } loss;
+} metric;
+
+typedef struct loss {
+
+private:
+  LossType loss_type;
+  Loss *loss_ptr;
+
+public:
+  loss() = default;
+
+  loss(const LossType lossType,
+       std::vector<Tensor<std::float64_t> *> input_preds);
+
+  void forward(std::vector<tf::tensor *> inputs, const unsigned batch_size);
+
+  const std::float64_t get_loss();
+
+  void set_target_output(std::vector<tf::tensor> target_output);
+
+  Loss *const get_loss_ptr();
+
+} loss;
 
 } // namespace tf
 

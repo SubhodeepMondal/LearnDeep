@@ -2,9 +2,11 @@
 #include <algorithm>
 #include <iterator>
 #include <queue>
+#include <stdexcept>
 
 // Library Headers
 #include "model.hpp"
+#include <absl/log/log.h>
 #include <callback/callback.hpp>
 #include <core/utility/initializers.hpp>
 
@@ -47,6 +49,21 @@ void Model::fit(const std::vector<tf::tensor> &training_inputs,
       this->layer_training_input_mappings[layer].assign(
           this->layer_input_mappings[layer].size(), nullptr);
 
+    for (tf::loss *loss : this->losses)
+      this->loss_training_input_mappings[loss].assign(
+          loss_input_mappings[loss].size(), nullptr);
+
+    std::vector<tf::tensor> local_temp_outputs(training_target.size());
+    unsigned i = 0;
+    for (tf::tensor tensor : training_target) {
+      std::vector<unsigned> dims;
+      for (unsigned it = 0; it < tensor.getNoOfDimensions() - 1; it++)
+        dims.push_back(tensor.getDimensions()[it]);
+      dims.push_back(batch_size);
+
+      local_temp_outputs[i++].tf_create(dims, tensor.dt_type);
+    }
+
     this->batch_size = batch_size;
     this->initilizeInputsForTraining(training_inputs);
 
@@ -68,9 +85,10 @@ void Model::fit(const std::vector<tf::tensor> &training_inputs,
     {
       tf::graph_context ctx_compute_n_gradient;
 
-      this->doDummyAndTrainingTensorMapping();
+      this->doDummyAndTrainingTensorMapping(); // this requireds to be within
+                                               // graph context
 
-      // ctx_compute_n_gradient.graph_initilize_gradient();
+      ctx_compute_n_gradient.initialize_gradient();
 
       for (int i = 0; i < epochs; i++) {
         if (this->shuffle_input) {
@@ -87,10 +105,43 @@ void Model::fit(const std::vector<tf::tensor> &training_inputs,
               0, element_size, training_inputs[it].getPtr()->getData() + index);
           it++;
         }
+
+        for (tf::loss *loss : this->losses) {
+          std::vector<tf::tensor> temp_tensor(
+              this->loss_input_mappings[loss].size());
+          unsigned index = 0;
+          for (Tensor<std::float64_t> *tensor :
+               this->loss_input_mappings[loss]) {
+            auto it =
+                std::find(this->outputs.begin(), this->outputs.end(), tensor);
+            unsigned index = 0;
+            if (it != this->outputs.end()) {
+              index = std::distance(this->outputs.begin(), it);
+
+              std::vector<unsigned> dims;
+              unsigned stride = 1;
+              for (unsigned j = 0;
+                   j < local_temp_outputs[index].getNoOfDimensions(); j++) {
+                dims.push_back(local_temp_outputs[index].getDimensions()[j]);
+                if (j != local_temp_outputs[index].getNoOfDimensions() - 1)
+                  stride *= local_temp_outputs[index].getDimensions()[j];
+              }
+              temp_tensor[index].tf_create(dims,
+                                           training_target[index].dt_type);
+              temp_tensor[index].tensor_of(training_target[index].getData() +
+                                           stride * randIndex);
+            }
+            loss->set_target_output(temp_tensor);
+          }
+        }
+
         callback->callOnEpochBegin();
-        ctx_compute_n_gradient.run(); // forward propagation
-        // ctx_compute_n_gradient.graph_compute_gradeint(); // back propagation
+
+        ctx_compute_n_gradient.run();              // forward propagation
+        ctx_compute_n_gradient.compute_gradient(); // back propagation
+
         callback->callOnEpochEnd();
+        callback->recordLossOnEpochEnd();
       }
     }
   } else {
@@ -178,6 +229,7 @@ void Model::doTensorAndLayerMappings() {
  * call forward() on them recursively. */
 void Model::doDummyAndTrainingTensorMapping() {
   std::queue<Layer *> training_layers;
+  std::queue<tf::loss *> training_losses;
   bool flag;
 
   for (Layer *layer : this->input_layers)
@@ -218,9 +270,37 @@ void Model::doDummyAndTrainingTensorMapping() {
         if (flag)
           training_layers.push(layer);
       }
+      /* map training layer output with loss training input */
+      for (tf::loss *loss : this->losses) {
+        unsigned i = 0;
+        for (const tf::tensor *this_layer_output :
+             this->layer_output_mappings[this_layer]) {
+          auto it = std::find(this->loss_input_mappings[loss].begin(),
+                              this->loss_input_mappings[loss].end(),
+                              this_layer_output->getPtr());
 
+          if (it != this->loss_input_mappings[loss].end()) {
+            unsigned index =
+                std::distance(this->loss_input_mappings[loss].begin(), it);
+            this->loss_training_input_mappings[loss][index] =
+                this_layer_training_outputs[i++];
+          }
+        }
+      }
     } else {
       training_layers.push(this_layer);
+    }
+  }
+
+  /* Call forward on loss to create forward graph on loss.*/
+  for (tf::loss *loss : this->losses) {
+    if (!std::ranges::contains(this->loss_training_input_mappings[loss],
+                               nullptr))
+      loss->forward(this->loss_training_input_mappings[loss], this->batch_size);
+    else {
+      LOG(ERROR) << "Fatal! a loss is not properly mapped with layer output.";
+      throw std::runtime_error(
+          "Exiting due to mismatch with loss and layer output.");
     }
   }
 }
@@ -245,3 +325,30 @@ void Model::setTrainingTensorsForInputLayer() {
 }
 
 void Model::shuffle(bool shuffle) { this->shuffle_input = shuffle; }
+
+void Model::compile(const OptimizerType optimizer_type,
+                    const LossType loss_type) {
+
+  this->optimizer = tf::optimizer(optimizer_type);
+  for (unsigned i = 0; i < outputs.size(); i++) {
+    tf::loss *temp_loss = new tf::loss(loss_type, {outputs[i]});
+    this->losses.push_back(temp_loss);
+    loss_input_mappings[temp_loss].push_back(outputs[i]);
+  }
+  // this->metric = tf::metric(metric_type);
+}
+
+tf::loss Model::getModelLoss(Tensor<std::float64_t> *output_tensor) {
+  tf::loss *loss = nullptr;
+  for (tf::loss *temp_loss : losses) {
+    if (std::ranges::contains(this->loss_input_mappings[temp_loss],
+                              output_tensor))
+      loss = temp_loss;
+  }
+  if (loss)
+    return *loss;
+  else {
+    LOG(ERROR) << "Fatal! Can't retrive the loss for the given output.\n";
+    throw std::runtime_error("Exiting due to prior violation.\n");
+  }
+}

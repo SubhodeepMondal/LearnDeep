@@ -5,8 +5,6 @@
 #include <stdfloat>
 #include <vector>
 
-#include "absl/log/log.h"
-
 template <typename T> class Tensor;
 class Ops;
 class Graph;
@@ -29,7 +27,7 @@ public:
 
   node(unsigned long id, type t, Tensor<std::float64_t> *input = nullptr,
        Ops *ops = nullptr)
-      : node_id(id), node_type(t), tensor(input), ops(ops) {};
+      : node_id(id), node_type(t), tensor(input), ops(ops){};
 
   // void addGradient(Graph *autodiff_graph);
 

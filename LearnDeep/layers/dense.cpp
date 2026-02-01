@@ -2,6 +2,7 @@
 #include "dense.hpp"
 #include "layer_graph.hpp"
 #include "layers.hpp"
+#include <absl/log/log.h>
 #include <core/graph/graph_framework.hpp>
 #include <core/graph/graph_manager.hpp>
 
@@ -59,9 +60,9 @@ Dense::forward(std::vector<const tf::tensor *> &input, unsigned batch_size) {
 
       arr[1] = this->batch_size;
       this->training_matmul_result.tf_create(arr, tf_float64);
-      this->training_bias.tf_create(arr, tf_float64);
       this->training_output.tf_create(arr, tf_float64);
-
+      arr[1] = 1;
+      this->training_bias.tf_create(arr, tf_float64);
       this->initializeWeight();
       this->initializeBias();
 
@@ -213,13 +214,11 @@ void Dense::initializeWeight() {
 void Dense::initializeBias() {
   switch (this->bias_initialization_method) {
   case InitializationMethod::MANUAL: {
-    unsigned size = this->bias.getPtr()->getNoOfElem();
+    // unsigned size = this->bias.getPtr()->getNoOfElem();
     this->bias.getPtr()->initData(this->initialization_bias.getData());
-    for (unsigned i = 0; i < this->batch_size; i++) {
-      unsigned index = i * size;
-      this->training_bias.getPtr()->initPartialData(index, size,
-                                                    this->bias.getData());
-    }
+    // for (unsigned i = 0; i < this->batch_size; i++) {
+    //   unsigned index = i * size;
+    this->training_bias.getPtr()->initData(this->bias.getData());
     break;
   }
   case InitializationMethod::ZEROS: {

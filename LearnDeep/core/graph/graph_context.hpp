@@ -35,7 +35,7 @@ public:
     return graph->getGradientTensor(input_tensor);
   }
 
-  void graph_initilize_gradient() { graph->createGradientGraph(); }
+  void graph_initialize_gradient() { graph->createGradientGraph(); }
 
   void tensor_to_be_spared(const std::unordered_set<Tensor<std::float64_t> *>
                                &tensors_to_be_spared) {

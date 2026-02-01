@@ -2,56 +2,58 @@
 #define _TENSORFLOW_CORE_LOSS_
 
 // C++ Headers
+#include <unordered_map>
 #include <vector>
 
 // Library Headers
 #include <api/tensor.h>
 
-enum class LossType {
-  squared_error,
-  mean_squared_error,
-  absolute_error,
-  mena_absolute_error
-};
-
 enum class LossParameter { output_predict, output_target, loss };
 
 class Loss {
 protected:
-  std::vector<tf::tensor *> output_predicts; // not owning
-  std::vector<tf::tensor *> output_targets;  // not owning
-  std::vector<tf::tensor *> losses;          // owning
+  std::vector<Tensor<std::float64_t> *> input_predicts; // not owning
+  std::float64_t loss_value;
 
 public:
-  virtual void forward() = 0;
+  virtual void forward(std::vector<tf::tensor *> inputs,
+                       const unsigned batch_size) = 0;
 
   virtual void
-  setTargetOutput(const std::vector<tf::tensor *> &output_predicts) = 0;
+  setTargetOutput(const std::vector<tf::tensor> output_predicts) = 0;
   virtual void
   setPredictedOutput(const std::vector<tf::tensor *> &output_targets) = 0;
-  virtual const std::vector<tf::tensor *> &getLoss() = 0;
-  virtual std::vector<tf::tensor *>
-  getLossParameter(LossParameter loss_parameter) = 0;
+  virtual std::float64_t const getScalerLoss() = 0;
+
+  virtual std::vector<tf::tensor *> getLossTensor() = 0;
 };
 
-class SquaredError : protected Loss {
+class SquaredError : public Loss {
 
-  std::vector<tf::tensor *> differences;
+  std::vector<tf::tensor *> training_inputs;
+  std::vector<tf::tensor *> target_outputs;
+  tf::tensor *differences;
+  tf::tensor *loss_tensor;
+  tf::tensor *loss_gradient;
 
 public:
   SquaredError() = default;
 
+  SquaredError(std::vector<Tensor<std::float64_t> *> input_preds);
+
   ~SquaredError();
 
-  void forward() override;
+  void forward(std::vector<tf::tensor *> inputs,
+               const unsigned batch_size) override;
+
+  void setTargetOutput(const std::vector<tf::tensor> output_predicts) override;
 
   void
-  setTargetOutput(const std::vector<tf::tensor *> &output_predicts) override;
-  void
   setPredictedOutput(const std::vector<tf::tensor *> &output_targets) override;
-  const std::vector<tf::tensor *> &getLoss() override;
-  std::vector<tf::tensor *>
-  getLossParameter(LossParameter loss_parameter) override;
+
+  std::float64_t const getScalerLoss() override;
+
+  std::vector<tf::tensor *> getLossTensor() override;
 };
 
 #endif // _TENSORFLOW_CORE_LOSS_

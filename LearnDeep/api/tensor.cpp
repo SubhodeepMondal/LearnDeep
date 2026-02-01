@@ -7,7 +7,10 @@
 // Library Headers
 #include <callback/callback.hpp>
 #include <layers/dense.hpp>
+#include <losses/loss.hpp>
 #include <model/model.hpp>
+#include <optimizers/optimizers.hpp>
+#include <vector>
 
 std::unordered_map<Tensor<std::float64_t> *, tf::tensor *> tf::tensor_nodes;
 std::unordered_set<Tensor<std::float64_t> *> tf::tensor_to_be_spared;
@@ -17,13 +20,14 @@ tf::tensor::tensor() : ptr(NULL) {}
 
 tf::tensor::tensor(DataType dt_type, const Tensor<std::float64_t> *ptr) {
   if (ptr) {
-    if (tf::tensor_nodes[this->ptr] == this) {
-      tf::tensor_nodes.erase(this->ptr);
-      if (this->ptr) {
-        delete this->ptr;
-        this->ptr = NULL;
+    if (this->ptr)
+      if (tf::tensor_nodes[this->ptr] == this) {
+        tf::tensor_nodes.erase(this->ptr);
+        if (this->ptr) {
+          delete this->ptr;
+          this->ptr = NULL;
+        }
       }
-    }
     this->ptr = const_cast<Tensor<std::float64_t> *>(ptr);
     this->dt_type = dt_type;
     tf::tensor_nodes[this->ptr] = this;
@@ -78,8 +82,8 @@ tf::tensor &tf::tensor::operator=(tensor &&other) noexcept {
 
 // --- Destructor
 tf::tensor::~tensor() {
-  if (tf::tensor_nodes[this->ptr] == this) {
-    if (this->ptr) {
+  if (this->ptr) {
+    if (tf::tensor_nodes[this->ptr] == this) {
       delete this->ptr;
       this->ptr = NULL;
     }
@@ -90,9 +94,9 @@ void tf::tensor::assign_pointer(std::vector<unsigned> dimensions) {
 
   switch (this->dt_type) {
   case tf_float64:
-    if (tf::tensor_nodes[this->ptr] == this) {
-      tf::tensor_nodes.erase(this->ptr);
-      if (this->ptr) {
+    if (this->ptr) {
+      if (tf::tensor_nodes[this->ptr] == this) {
+        tf::tensor_nodes.erase(this->ptr);
         delete this->ptr;
         this->ptr = NULL;
       }
@@ -123,9 +127,9 @@ unsigned tf::tensor::getNoOfElem() { return this->ptr->getNoOfElem(); }
 
 void tf::tensor::tf_create(std::vector<unsigned> dimensions, DataType d_type) {
 
-  if (tf::tensor_nodes[this->ptr] == this) {
-    tf::tensor_nodes.erase(this->ptr);
-    if (this->ptr) {
+  if (this->ptr) {
+    if (tf::tensor_nodes[this->ptr] == this) {
+      tf::tensor_nodes.erase(this->ptr);
       delete this->ptr;
       this->ptr = NULL;
     }
@@ -435,7 +439,7 @@ void tf::graph_context::run() {
 }
 
 void tf::graph_context::initialize_gradient() {
-  static_cast<GraphContext *>(this->graph_ctx)->graph_initilize_gradient();
+  static_cast<GraphContext *>(this->graph_ctx)->graph_initialize_gradient();
 }
 
 void tf::graph_context::compute_gradient() {
@@ -523,6 +527,14 @@ void tf::model::fit(const std::vector<tf::tensor> &inputs,
 
 void tf::model::shuffle(bool shuffle) { model_ptr->shuffle(shuffle); }
 
+void tf::model::compile(const OptimizerType optimizerType,
+                        const LossType lossType) {
+  this->model_ptr->compile(optimizerType, lossType);
+}
+
+tf::loss tf::model::get_model_loss(tf::tensor output) const {
+  return this->model_ptr->getModelLoss(output.getPtr());
+}
 // --- End Model ---
 
 // --- Callback ---
@@ -548,6 +560,14 @@ void tf::callback::record_parameter_on_epoch_end(
     bool print_flag) {
   callback_ptr->onEpochEndGetTrainableParameter(
       dense_layer.getLayerPtr(), trainable_parameter_no, print_flag);
+}
+
+void tf::callback::record_scalar_loss(tf::loss loss, bool print_flag) {
+  this->callback_ptr->recordScalerLoss(loss.get_loss_ptr(), print_flag);
+}
+
+void tf::callback::record_tensor_loss(tf::loss loss, bool print_flag) {
+  this->callback_ptr->recordTensorLoss(loss.get_loss_ptr(), print_flag);
 }
 
 std::vector<std::vector<tf::tensor>> tf::callback::get_parameter_on_epoch_begin(
@@ -591,5 +611,66 @@ std::vector<std::vector<tf::tensor>> tf::callback::get_parameter_on_epoch_end(
   return trainable_parametes_on_epoch_end;
 }
 
+std::vector<std::float64_t> tf::callback::get_scaler_loss(tf::loss loss) {
+  return this->callback_ptr->getScalerLoss(loss.get_loss_ptr());
+}
+
+std::vector<std::vector<tf::tensor>>
+tf::callback::get_tensor_loss(tf::loss loss) {
+  std::vector<std::vector<tf::tensor>> tensor_losses;
+
+  std::vector<std::vector<tf::tensor *>> tensor_loss_ptrs =
+      this->callback_ptr->getTensorLoss(loss.get_loss_ptr());
+
+  tensor_losses.resize(tensor_loss_ptrs.size());
+  unsigned i = 0;
+  for (std::vector<tf::tensor *> epochs : tensor_loss_ptrs) {
+    for (tf::tensor *tensor_ptr : epochs)
+      tensor_losses[i++].push_back(*tensor_ptr);
+  }
+  return tensor_losses;
+}
+
 Callback *tf::callback::getCallbackPtr() const { return this->callback_ptr; }
 // --- End Callback ---
+
+// --- Optimizer ---
+tf::optimizer::optimizer(OptimizerType optimizerType) {
+  switch (optimizerType) {
+  case (OptimizerType::SGD): {
+    this->optimizer_ptr = new SGD();
+    break;
+  }
+  }
+}
+
+// --- End Optimizer ---
+
+// --- Losses ---
+tf::loss::loss(const LossType lossType,
+               std::vector<Tensor<std::float64_t> *> input_preds) {
+  switch (lossType) {
+  case (LossType::squared_error): {
+    this->loss_ptr = new SquaredError(input_preds);
+    break;
+  }
+  }
+}
+
+void tf::loss::forward(std::vector<tf::tensor *> inputs,
+                       const unsigned batch_size) {
+  if (this->loss_ptr) {
+    loss_ptr->forward(inputs, batch_size);
+  }
+}
+
+const std::float64_t tf::loss::get_loss() {
+  return this->loss_ptr->getScalerLoss();
+}
+
+void tf::loss::set_target_output(std::vector<tf::tensor> target_output) {
+  this->loss_ptr->setTargetOutput(target_output);
+}
+
+Loss *const tf::loss::get_loss_ptr() { return this->loss_ptr; }
+// --- End Losses --
