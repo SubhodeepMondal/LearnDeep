@@ -83,14 +83,24 @@ void Model::fit(const std::vector<tf::tensor> &training_inputs,
 
     // Training Loop
     {
+      /* this sequence is very importent
+       * 1. doDummyAndTrainingTensorMapping
+       * 2. initialize_gradient()
+       * 3. layer backward
+       */
       tf::graph_context ctx_compute_n_gradient;
 
       this->doDummyAndTrainingTensorMapping(); // this requireds to be within
-                                               // graph context
+      // graph context
 
       ctx_compute_n_gradient.initialize_gradient();
 
+      for (Layer *layer : this->layers)
+        layer->backward(optimizer.getPtr());
+
       for (int i = 0; i < epochs; i++) {
+
+        /* receiving randomized input */
         if (this->shuffle_input) {
           randIndex =
               util::random_engine().rand_unsigned(lower_bound, upper_bound);
@@ -106,6 +116,10 @@ void Model::fit(const std::vector<tf::tensor> &training_inputs,
           it++;
         }
 
+        for (Layer *layer : this->layers)
+          layer->initializeParameters();
+
+        /* making loss graph */
         for (tf::loss *loss : this->losses) {
           std::vector<tf::tensor> temp_tensor(
               this->loss_input_mappings[loss].size());
@@ -139,6 +153,7 @@ void Model::fit(const std::vector<tf::tensor> &training_inputs,
 
         ctx_compute_n_gradient.run();              // forward propagation
         ctx_compute_n_gradient.compute_gradient(); // back propagation
+        optimizer.execute_optimizer();
 
         callback->callOnEpochEnd();
         callback->recordLossOnEpochEnd();

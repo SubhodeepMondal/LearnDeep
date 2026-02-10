@@ -383,7 +383,7 @@ Tensor<T> *Tensor<T>::scale(const std::float64_t scaleFactor, bool graph_flag) {
   opsscale->initializeoutput(output);
 
   Graph *g = GraphManager::instance().getCurrentGraph();
-  if (g) {
+  if (g && graph_flag) {
     g->addNode(this);
     g->addNode(opsscale);
 
@@ -442,7 +442,7 @@ Tensor<T> *Tensor<T>::sub(Tensor<T> &input, bool graph_flag) {
   opssub->initializeoutput(output);
 
   Graph *g = GraphManager::instance().getCurrentGraph();
-  if (g) {
+  if (g && graph_flag) {
     g->addNode(this);
     g->addNode(&input);
     g->addNode(opssub);

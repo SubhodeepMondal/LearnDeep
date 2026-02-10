@@ -320,6 +320,10 @@ public:
 
   optimizer(OptimizerType optimizer_type);
 
+  Optimizer *getPtr();
+
+  void execute_optimizer();
+
 } optimizer;
 
 typedef struct metric {

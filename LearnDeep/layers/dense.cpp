@@ -1,18 +1,20 @@
 // Library Headers
 #include "dense.hpp"
+#include "layer_enum.hpp"
 #include "layer_graph.hpp"
 #include "layers.hpp"
 #include <absl/log/log.h>
 #include <core/graph/graph_framework.hpp>
 #include <core/graph/graph_manager.hpp>
+#include <optimizers/optimizers.hpp>
 
 // --- Constructor
 Dense::Dense(unsigned unit)
     : no_of_unit(unit), no_of_features(1), batch_size(1),
       forwardGraphCreated(false), backwardGraphCrated(false),
-      layer_type(tf_dense){
+      layer_type(tf_dense), isGradRecorded(false){
 
-      };
+                            };
 
 // ---Destructor
 Dense::~Dense() {
@@ -57,14 +59,14 @@ Dense::forward(std::vector<const tf::tensor *> &input, unsigned batch_size) {
       arr[1] = this->no_of_features;
       this->weight.reshape(arr);
       this->training_weight.tf_create(arr, tf_float64);
+      this->grad_weight.tf_create(arr, tf_float64);
 
       arr[1] = this->batch_size;
       this->training_matmul_result.tf_create(arr, tf_float64);
       this->training_output.tf_create(arr, tf_float64);
       arr[1] = 1;
       this->training_bias.tf_create(arr, tf_float64);
-      this->initializeWeight();
-      this->initializeBias();
+      this->grad_bias.tf_create(arr, tf_float64);
 
       this->training_matmul_result = training_inputs->matmul(training_weight);
       this->training_output = training_matmul_result.add(training_bias);
@@ -83,7 +85,23 @@ Dense::forward(std::vector<const tf::tensor *> &input, unsigned batch_size) {
   return this->training_outputs;
 }
 
-void Dense::backward() {}
+void Dense::backward(Optimizer *optimizer) {
+  if (!this->isGradRecorded) {
+
+    Graph *g = GraphManager::instance().getCurrentGraph();
+    this->grad_weight =
+        tf::tensor(this->grad_weight.dt_type,
+                   g->getGradientTensor(this->training_weight.getPtr()));
+    this->grad_bias =
+        tf::tensor(this->grad_bias.dt_type,
+                   g->getGradientTensor(this->training_bias.getPtr()));
+    optimizer->createParameterUpdateGraph(
+        this->training_weight, this->updated_weight, this->grad_weight);
+    optimizer->createParameterUpdateGraph(this->training_bias,
+                                          this->updated_bias, this->grad_bias);
+    this->isGradRecorded = true;
+  }
+}
 
 LayerType Dense::getLayerType() { return this->layer_type; }
 
@@ -214,21 +232,26 @@ void Dense::initializeWeight() {
 void Dense::initializeBias() {
   switch (this->bias_initialization_method) {
   case InitializationMethod::MANUAL: {
-    // unsigned size = this->bias.getPtr()->getNoOfElem();
     this->bias.getPtr()->initData(this->initialization_bias.getData());
-    // for (unsigned i = 0; i < this->batch_size; i++) {
-    //   unsigned index = i * size;
     this->training_bias.getPtr()->initData(this->bias.getData());
+    this->bias_initialization_method = InitializationMethod::UPDATE_FROM_GRAD;
     break;
   }
   case InitializationMethod::ZEROS: {
     this->bias.getPtr()->initData(0.0);
     this->training_bias.getPtr()->initData(0.0);
+    this->bias_initialization_method = InitializationMethod::UPDATE_FROM_GRAD;
     break;
   }
   case InitializationMethod::ONES: {
     this->bias.getPtr()->initData(1.0);
     this->training_bias.getPtr()->initData(1.0);
+    this->bias_initialization_method = InitializationMethod::UPDATE_FROM_GRAD;
+    break;
+  }
+  case InitializationMethod::UPDATE_FROM_GRAD: {
+    this->bias.getPtr()->initData(this->updated_bias.getData());
+    this->updated_bias.getPtr()->initData(this->bias.getData());
     break;
   }
   default:
@@ -236,5 +259,10 @@ void Dense::initializeBias() {
     break;
   }
 }
+
+void Dense::initializeParameters() {
+  this->initializeWeight();
+  this->initializeBias();
+};
 
 // End of Dense

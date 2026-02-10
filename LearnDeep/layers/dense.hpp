@@ -35,6 +35,7 @@
 class Dense : public Layer {
   bool isForwardGraphCreated;
   bool isBackwardGraphCreated;
+  bool isGradRecorded;
 
   LayerType layer_type;
 
@@ -57,6 +58,8 @@ class Dense : public Layer {
   std::vector<tf::tensor *> training_outputs;
   tf::tensor grad_weight;
   tf::tensor grad_bias;
+  tf::tensor updated_weight;
+  tf::tensor updated_bias;
 
   tf::tensor initialization_weight; // should own by dense layer
   tf::tensor initialization_bias;   // should own by dense layer
@@ -83,7 +86,7 @@ public:
   const std::vector<tf::tensor *> &
   forward(std::vector<const tf::tensor *> &input, unsigned batch_size) override;
 
-  void backward() override;
+  void backward(Optimizer *optimizer) override;
 
   std::vector<const Tensor<std::float64_t> *> &getInputTensors() override;
 
@@ -105,5 +108,7 @@ public:
 
   std::vector<tf::tensor *> getLayerParameter(Layer_Parameter layer_parameter,
                                               bool print_flag = false) override;
+
+  void initializeParameters() override;
 };
 #endif // _TENSORFLOW_CORE_DENSE_LAYER

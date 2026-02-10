@@ -29,7 +29,8 @@ enum class InitializationMethod {
   HE_UNIFORM,
   HE_NORMAL,
   LECUN_UNIFORM,
-  LECUN_NORMAL
+  LECUN_NORMAL,
+  UPDATE_FROM_GRAD
 };
 
 enum class TargetTrainableParameter {

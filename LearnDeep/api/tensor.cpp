@@ -644,6 +644,11 @@ tf::optimizer::optimizer(OptimizerType optimizerType) {
   }
 }
 
+Optimizer *tf::optimizer::getPtr() { return optimizer_ptr; }
+
+void tf::optimizer::execute_optimizer() {
+  this->optimizer_ptr->executeOptimizer();
+}
 // --- End Optimizer ---
 
 // --- Losses ---

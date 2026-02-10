@@ -10,6 +10,8 @@
 #include "layer_enum.hpp"
 #include <api/tensor.h>
 
+class Optimizer;
+
 class Layer {
 protected:
 public:
@@ -19,7 +21,7 @@ public:
   virtual const std::vector<tf::tensor *> &
   forward(std::vector<const tf::tensor *> &input, unsigned batch_size) = 0;
 
-  virtual void backward() = 0;
+  virtual void backward(Optimizer *optimizer) = 0;
 
   virtual const std::vector<tf::tensor *> &
   operator()(std::vector<tf::tensor> input_tensors) = 0;
@@ -37,6 +39,8 @@ public:
   virtual std::vector<tf::tensor *>
   getLayerParameter(Layer_Parameter layer_parameter,
                     bool print_flag = false) = 0;
+
+  virtual void initializeParameters() = 0;
 };
 
 #endif // _TENSOR_CORE_LAYER_
