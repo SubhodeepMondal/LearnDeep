@@ -11,7 +11,8 @@
 #include <core/utility/initializers.hpp>
 
 Model::Model(const std::vector<tf::tensor> &inputs,
-             const std::vector<tf::tensor> &outputs) {
+             const std::vector<tf::tensor> &outputs)
+    : auto_grad_created(false) {
   for (tf::tensor input : inputs)
     this->inputs.push_back(input.getPtr());
 
@@ -93,11 +94,6 @@ void Model::fit(const std::vector<tf::tensor> &training_inputs,
       this->doDummyAndTrainingTensorMapping(); // this requireds to be within
       // graph context
 
-      ctx_compute_n_gradient.initialize_gradient();
-
-      for (Layer *layer : this->layers)
-        layer->backward(optimizer.getPtr());
-
       for (int i = 0; i < epochs; i++) {
 
         /* receiving randomized input */
@@ -151,7 +147,19 @@ void Model::fit(const std::vector<tf::tensor> &training_inputs,
 
         callback->callOnEpochBegin();
 
-        ctx_compute_n_gradient.run();              // forward propagation
+        ctx_compute_n_gradient.run(); // forward propagation
+
+        if (!this->auto_grad_created) {
+          ctx_compute_n_gradient.initialize_gradient();
+
+          for (Layer *layer : this->layers)
+            layer->backward(optimizer.getPtr());
+
+          for (tf::loss *loss : this->losses)
+            loss->backward();
+
+          this->auto_grad_created = true;
+        }
         ctx_compute_n_gradient.compute_gradient(); // back propagation
         optimizer.execute_optimizer();
 

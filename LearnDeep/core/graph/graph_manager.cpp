@@ -2,7 +2,7 @@
 
 #include "absl/log/log.h"
 
-thread_local GraphManager *GraphManager::graph_manager_ptr = nullptr;
+GraphManager *GraphManager::graph_manager_ptr = nullptr;
 
 GraphManager &GraphManager::instance() {
   if (!graph_manager_ptr)
@@ -27,8 +27,7 @@ bool GraphManager::isValidGraphAvailable() {
 
 void GraphManager::popGraph() {
   if (this->graphs.size()) {
-    LOG(INFO) << "Graph is cleared\n";
-    graphs.clear();
+    graphs.pop_back();
   } else {
     LOG(INFO) << "No active graph to clear\n";
   }

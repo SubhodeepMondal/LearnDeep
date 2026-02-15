@@ -24,10 +24,20 @@ Callback::~Callback() {
       std::views::keys(this->tensor_loss_print_option).begin(),
       std::views::keys(this->tensor_loss_print_option).end());
 
-  for (Loss *loss_ptr : loss_ptrs)
-    for (std::vector<tf::tensor *> tensor_vector : this->tensor_loss[loss_ptr])
-      for (tf::tensor *tensor_ptr : tensor_vector)
-        delete tensor_ptr;
+  // for (Loss *loss_ptr : loss_ptrs)
+  //   for (auto loss_param : this->tensor_loss[loss_ptr])
+  //     for (std::vector<std::vector<tf::tensor *>> tensor_vector_vector :
+  //          loss_param)
+  //       for (std::vector<tf::tensor *> tensor_vector : tensor_vector_vector)
+  //         for (tf::tensor *tensor_ptr : tensor_vector)
+  //           delete tensor_ptr;
+
+  for (auto loss : this->tensor_loss)
+    for (auto loss_param : loss.second)
+      for (auto tensor_vector_vector : loss_param.second)
+        for (auto tensor_vector : tensor_vector_vector)
+          // for (auto tensor_ptr : tensor_vector)
+          delete tensor_vector;
 }
 
 void Callback::onEpochBeginGetTrainableParameter(
@@ -49,8 +59,10 @@ void Callback::recordScalerLoss(Loss *const loss_ptr, bool printFlag) {
   this->scaler_loss_print_option[loss_ptr] = printFlag;
 }
 
-void Callback::recordTensorLoss(Loss *const loss_ptr, bool printFlag) {
-  this->tensor_loss_print_option[loss_ptr] = printFlag;
+void Callback::recordTensorLoss(Loss *const loss_ptr,
+                                Loss_Parameter loss_parameter, bool printFlag) {
+  this->tensor_loss_print_option[loss_ptr].push_back(
+      {loss_parameter, printFlag});
 }
 
 std::vector<std::vector<tf::tensor *>>
@@ -109,8 +121,9 @@ std::vector<std::float64_t> Callback::getScalerLoss(Loss *loss) {
   return this->scalar_loss[loss];
 }
 
-std::vector<std::vector<tf::tensor *>> Callback::getTensorLoss(Loss *loss) {
-  return this->tensor_loss[loss];
+std::vector<std::vector<tf::tensor *>>
+Callback::getLossParameter(Loss *loss, Loss_Parameter loss_parameter) {
+  return this->tensor_loss[loss][loss_parameter];
 }
 
 void Callback::callOnEpochBegin() {
@@ -192,18 +205,21 @@ void Callback::recordLossOnEpochEnd() {
         std::views::keys(this->tensor_loss_print_option).end());
 
     for (Loss *loss : loss_ptrs) {
-      std::vector<tf::tensor *> temp_tensor;
-      for (tf::tensor *tensor : loss->getLossTensor()) {
 
-        std::vector<unsigned> dims;
-        for (unsigned i = 0; i < tensor->getNoOfDimensions(); i++)
-          dims.push_back(tensor->getDimensions()[i]);
+      for (auto [loss_parameter, flag] : this->tensor_loss_print_option[loss]) {
+        std::vector<tf::tensor *> temp_tensor;
+        for (tf::tensor *tensor : loss->getLossParameter(loss_parameter)) {
 
-        temp_tensor.emplace_back(new tf::tensor());
-        temp_tensor.back()->tf_create(dims, tensor->dt_type);
-        temp_tensor.back()->tensor_of(tensor->getData());
+          std::vector<unsigned> dims;
+          for (unsigned i = 0; i < tensor->getNoOfDimensions(); i++)
+            dims.push_back(tensor->getDimensions()[i]);
+
+          temp_tensor.emplace_back(new tf::tensor());
+          temp_tensor.back()->tf_create(dims, tensor->dt_type);
+          temp_tensor.back()->tensor_of(tensor->getData());
+        }
+        this->tensor_loss[loss][loss_parameter].push_back(temp_tensor);
       }
-      this->tensor_loss[loss].push_back(temp_tensor);
     }
   }
 }

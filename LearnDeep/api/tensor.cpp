@@ -566,8 +566,11 @@ void tf::callback::record_scalar_loss(tf::loss loss, bool print_flag) {
   this->callback_ptr->recordScalerLoss(loss.get_loss_ptr(), print_flag);
 }
 
-void tf::callback::record_tensor_loss(tf::loss loss, bool print_flag) {
-  this->callback_ptr->recordTensorLoss(loss.get_loss_ptr(), print_flag);
+void tf::callback::record_tensor_loss(tf::loss loss,
+                                      Loss_Parameter loss_parameter,
+                                      bool print_flag) {
+  this->callback_ptr->recordTensorLoss(loss.get_loss_ptr(), loss_parameter,
+                                       print_flag);
 }
 
 std::vector<std::vector<tf::tensor>> tf::callback::get_parameter_on_epoch_begin(
@@ -616,11 +619,11 @@ std::vector<std::float64_t> tf::callback::get_scaler_loss(tf::loss loss) {
 }
 
 std::vector<std::vector<tf::tensor>>
-tf::callback::get_tensor_loss(tf::loss loss) {
+tf::callback::get_tensor_loss(tf::loss loss, Loss_Parameter loss_parameter) {
   std::vector<std::vector<tf::tensor>> tensor_losses;
 
   std::vector<std::vector<tf::tensor *>> tensor_loss_ptrs =
-      this->callback_ptr->getTensorLoss(loss.get_loss_ptr());
+      this->callback_ptr->getLossParameter(loss.get_loss_ptr(), loss_parameter);
 
   tensor_losses.resize(tensor_loss_ptrs.size());
   unsigned i = 0;
@@ -666,6 +669,12 @@ void tf::loss::forward(std::vector<tf::tensor *> inputs,
                        const unsigned batch_size) {
   if (this->loss_ptr) {
     loss_ptr->forward(inputs, batch_size);
+  }
+}
+
+void tf::loss::backward() {
+  if (this->loss_ptr) {
+    loss_ptr->backward();
   }
 }
 

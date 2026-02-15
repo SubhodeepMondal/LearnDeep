@@ -14,7 +14,7 @@
 #include <core/graph/graph_context.hpp>
 #include <core/kernel/opskernel.h>
 #include <layers/layer_enum.hpp>
-#include <losses/loss_type.hpp>
+#include <losses/loss_enum.hpp>
 #include <optimizers/optimizer_type.hpp>
 
 class Callback;
@@ -230,9 +230,8 @@ public:
 
   void record_scalar_loss(tf::loss loss, bool printFlag = false);
 
-  void record_tensor_loss(tf::loss loss, bool printFlag = false);
-
-  void record_loss_tensoor(tf::loss loss, bool printFlag = false);
+  void record_tensor_loss(tf::loss loss, Loss_Parameter loss_parameter,
+                          bool printFlag = false);
 
   std::vector<std::vector<tf::tensor>>
   get_parameter_on_epoch_begin(const layer::dense &dense_layer,
@@ -244,7 +243,8 @@ public:
 
   std::vector<std::float64_t> get_scaler_loss(tf::loss loss);
 
-  std::vector<std::vector<tf::tensor>> get_tensor_loss(tf::loss loss);
+  std::vector<std::vector<tf::tensor>>
+  get_tensor_loss(tf::loss loss, Loss_Parameter loss_parameter);
 
   Callback *getCallbackPtr() const;
 
@@ -343,6 +343,8 @@ public:
        std::vector<Tensor<std::float64_t> *> input_preds);
 
   void forward(std::vector<tf::tensor *> inputs, const unsigned batch_size);
+
+  void backward();
 
   const std::float64_t get_loss();
 

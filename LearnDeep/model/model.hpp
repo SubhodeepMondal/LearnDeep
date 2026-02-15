@@ -14,6 +14,7 @@ class Model {
 private:
   unsigned batch_size;
   bool shuffle_input;
+  bool auto_grad_created;
   std::vector<Tensor<std::float64_t> *> inputs;
   std::vector<Tensor<std::float64_t> *> outputs;
 

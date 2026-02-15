@@ -9,6 +9,7 @@
 // Library Headers
 #include <api/tensor.h>
 #include <layers/layer_enum.hpp>
+#include <losses/loss_enum.hpp>
 
 class Layer;
 class Loss;
@@ -21,9 +22,12 @@ class Callback {
   std::vector<tf::tensor *> tensor_parameters_on_epoch_begin_vector;
   std::vector<tf::tensor *> tensor_parameters_on_epoch_end_vector;
   std::unordered_map<Loss *, bool> scaler_loss_print_option;
-  std::unordered_map<Loss *, bool> tensor_loss_print_option;
+  std::unordered_map<Loss *, std::vector<std::pair<Loss_Parameter, bool>>>
+      tensor_loss_print_option;
   std::unordered_map<Loss *, std::vector<std::float64_t>> scalar_loss;
-  std::unordered_map<Loss *, std::vector<std::vector<tf::tensor *>>>
+  std::unordered_map<Loss *,
+                     std::unordered_map<Loss_Parameter,
+                                        std::vector<std::vector<tf::tensor *>>>>
       tensor_loss;
 
   std::unordered_map<Layer *, std::vector<std::pair<Layer_Parameter, bool>>>
@@ -54,7 +58,8 @@ public:
 
   void recordScalerLoss(Loss *loss_ptr, bool printFlag = false);
 
-  void recordTensorLoss(Loss *loss_ptr, bool printFlag = false);
+  void recordTensorLoss(Loss *loss_ptr, Loss_Parameter loss_parameter,
+                        bool printFlag = false);
 
   void recordLossOnEpochEnd();
 
@@ -68,7 +73,8 @@ public:
 
   std::vector<std::float64_t> getScalerLoss(Loss *loss_ptr);
 
-  std::vector<std::vector<tf::tensor *>> getTensorLoss(Loss *loss_ptr);
+  std::vector<std::vector<tf::tensor *>>
+  getLossParameter(Loss *loss_ptr, Loss_Parameter loss_parameter);
 
   void callOnEpochBegin();
 

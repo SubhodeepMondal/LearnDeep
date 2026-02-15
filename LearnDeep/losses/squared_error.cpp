@@ -1,8 +1,13 @@
 // Library Header
-#include "loss.hpp"
 #include <absl/log/log.h>
 #include <stdexcept>
 #include <vector>
+
+// Library Header
+#include "loss.hpp"
+#include "loss_enum.hpp"
+#include <core/graph/graph_framework.hpp>
+#include <core/graph/graph_manager.hpp>
 
 SquaredError::~SquaredError() {}
 
@@ -23,8 +28,13 @@ void SquaredError::forward(std::vector<tf::tensor *> inputs,
   if (inputs.size() == 1) {
     this->training_inputs.push_back(inputs[0]);
     std::vector<unsigned> dims;
-    for (unsigned i = 0; i < this->training_inputs[0]->getNoOfDimensions(); i++)
+    unsigned i;
+    for (i = 0; i < this->training_inputs[0]->getNoOfDimensions() - 1; i++)
       dims.push_back(this->training_inputs[0]->getDimensions()[i]);
+
+    this->loss_tensor_batch = new tf::tensor();
+    this->loss_tensor_batch->tf_create(dims, this->training_inputs[0]->dt_type);
+    dims.push_back(batch_size);
     target_outputs.push_back(new tf::tensor());
     target_outputs[0]->tf_create(dims, this->training_inputs[0]->dt_type);
 
@@ -35,8 +45,21 @@ void SquaredError::forward(std::vector<tf::tensor *> inputs,
     this->loss_tensor->tf_create(dims, this->training_inputs[0]->dt_type);
 
     *(this->differences) =
-        this->training_inputs[0]->sub(*(this->target_outputs[0]), false);
-    *(this->loss_tensor) = this->differences->pow(2, false);
+        (this->training_inputs[0])->sub(*(this->target_outputs[0]));
+    *(this->loss_tensor_batch) = this->differences->pow(2);
+    *(this->loss_tensor) = (this->loss_tensor_batch)->scale(1.0 / batch_size);
+  }
+}
+
+void SquaredError::backward() {
+  if (!this->isGradRecorded) {
+    this->isGradRecorded = true;
+
+    Graph *g = GraphManager::instance().getCurrentGraph();
+    if (g)
+      this->grad_training_inputs =
+          tf::tensor(this->training_inputs[0]->dt_type,
+                     g->getGradientTensor(this->training_inputs[0]->getPtr()));
   }
 }
 
@@ -59,8 +82,22 @@ void SquaredError::setTargetOutput(
 
 std::float64_t const SquaredError::getScalerLoss() { return loss_value; }
 
-std::vector<tf::tensor *> SquaredError::getLossTensor() {
+std::vector<tf::tensor *>
+SquaredError::getLossParameter(Loss_Parameter loss_parameter) {
   std::vector<tf::tensor *> temp_tensor;
-  temp_tensor.push_back(this->loss_tensor);
+  switch (loss_parameter) {
+  case Loss_Parameter::squared_error_predicted_output: {
+    temp_tensor.push_back(this->loss_tensor);
+    break;
+  }
+  case Loss_Parameter::squared_error_grad_predicted_output: {
+    temp_tensor.push_back(&this->grad_training_inputs);
+    break;
+  }
+  default:
+    LOG(ERROR) << "Sever! the selected loss parameter is not available for "
+                  "mean squared error layer.\n";
+    break;
+  }
   return temp_tensor;
 }

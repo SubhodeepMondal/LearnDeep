@@ -5,7 +5,7 @@
 #include <vector>
 
 class GraphManager {
-  thread_local static GraphManager *graph_manager_ptr;
+  static GraphManager *graph_manager_ptr;
   std::vector<Graph *> graphs;
 
 public:
