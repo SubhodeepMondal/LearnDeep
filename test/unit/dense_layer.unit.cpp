@@ -2,120 +2,6 @@
 #include "dense_layer_data.hpp"
 #include <LearnDeep/api/tensor.h>
 #include <gtest/gtest.h>
-// TEST_F(FrameworkTest, DenseLayer_Test_1) {
-
-//   tf::tensor x;
-//   tf::tensor weight, bias;
-//   tf::tensor input, target_output, validation_data;
-
-//   x.tf_create(tf_float64, 43, 128);
-//   input.tf_create(tf_float64, 43, 128);
-//   weight.tf_create(tf_float64, 24, 43);
-//   bias.tf_create(tf_float64, 24, 1);
-//   target_output.tf_create(tf_float64, 24, 128);
-
-//   input.tensor_of(dense_layer_Test_1_input_data);
-//   weight.tensor_of(dense_layer_Test_1_weight_data);
-//   bias.tensor_of(dense_layer_Test_1_bias_data);
-//   target_output.tensor_of(0, 1);
-
-//   tf::callback call_back(false);
-
-//   auto dense_1 = tf::layer::dense(24);
-//   auto dense_output = dense_1({x});
-//   dense_1.set_weight(weight);
-//   dense_1.set_bias(bias);
-
-//   call_back.record_parameter_on_epoch_begin(
-//       dense_1, Layer_Parameter::dense_training_input, false);
-
-//   call_back.record_parameter_on_epoch_end(
-//       dense_1, Layer_Parameter::dense_training_weight, false);
-
-//   call_back.record_parameter_on_epoch_end(
-//       dense_1, Layer_Parameter::dense_training_bias, false);
-
-//   call_back.record_parameter_on_epoch_end(
-//       dense_1, Layer_Parameter::dense_training_output, false);
-
-//   tf::model mymodel({x}, dense_output);
-//   mymodel.shuffle(false);
-//   mymodel.compile(OptimizerType::SGD, LossType::squared_error);
-//   mymodel.fit({input}, {target_output}, call_back, 1, 512);
-
-//   std::vector<std::vector<tf::tensor>> outputs =
-//       call_back.get_parameter_on_epoch_end(
-//           dense_1, Layer_Parameter::dense_training_output);
-
-//   std::vector<std::vector<tf::tensor>> training_weights =
-//       call_back.get_parameter_on_epoch_end(
-//           dense_1, Layer_Parameter::dense_training_weight);
-
-//   for (auto output : outputs) {
-//     for (int j = 0; j < 128; j++)
-//       for (int i = 0; i < 24; i++)
-//         EXPECT_NEAR(output[0].getData()[i + j * 24],
-//                     dense_layer_Test_1_output_data[i + j * 24], 1e-6)
-//             << "at: " << i + j * 24;
-//   }
-// }
-
-// TEST_F(FrameworkTest, DenseLayer_Test_2) {
-
-//   tf::tensor x;
-//   tf::tensor weight, bias;
-//   tf::tensor input, target_output, validation_data;
-
-//   x.tf_create(tf_float64, 5, 255);
-//   input.tf_create(tf_float64, 5, 255);
-//   weight.tf_create(tf_float64, 3, 5);
-//   bias.tf_create(tf_float64, 3, 1);
-//   target_output.tf_create(tf_float64, 3, 255);
-
-//   input.tensor_of(dense_layer_Test_2_input_data);
-//   weight.tensor_of(dense_layer_Test_2_weight_data);
-//   bias.tensor_of(dense_layer_Test_2_bias_data);
-//   target_output.tensor_of(0, 1);
-
-//   tf::callback call_back(false);
-
-//   auto dense_1 = tf::layer::dense(3);
-//   auto dense_output = dense_1({x});
-//   dense_1.set_weight(weight);
-//   dense_1.set_bias(bias);
-
-//   call_back.record_parameter_on_epoch_begin(
-//       dense_1, Layer_Parameter::dense_training_input, false);
-
-//   call_back.record_parameter_on_epoch_end(
-//       dense_1, Layer_Parameter::dense_training_weight, false);
-
-//   call_back.record_parameter_on_epoch_end(
-//       dense_1, Layer_Parameter::dense_training_bias, false);
-
-//   call_back.record_parameter_on_epoch_end(
-//       dense_1, Layer_Parameter::dense_training_output, false);
-
-//   tf::model mymodel({x}, dense_output);
-//   mymodel.shuffle(false);
-//   mymodel.fit({input}, {target_output}, call_back, 1, 255);
-
-//   std::vector<std::vector<tf::tensor>> outputs =
-//       call_back.get_parameter_on_epoch_end(
-//           dense_1, Layer_Parameter::dense_training_output);
-
-//   std::vector<std::vector<tf::tensor>> training_weights =
-//       call_back.get_parameter_on_epoch_end(
-//           dense_1, Layer_Parameter::dense_training_weight);
-
-//   for (auto output : outputs) {
-//     for (int j = 0; j < 255; j++)
-//       for (int i = 0; i < 3; i++)
-//         EXPECT_NEAR(output[0].getData()[i + j * 3],
-//                     dense_layer_Test_2_output_data[i + j * 3], 1e-6)
-//             << "at: " << i + j * 3;
-//   }
-// }
 
 TEST_F(FrameworkTest, DenseLayer_Test_3) {
 
@@ -158,6 +44,12 @@ TEST_F(FrameworkTest, DenseLayer_Test_3) {
 
   call_back.record_parameter_on_epoch_end(
       dense_1, Layer_Parameter::dense_grad_bias, false);
+
+  call_back.record_parameter_on_epoch_end(
+      dense_1, Layer_Parameter::dense_updated_weight, false);
+
+  call_back.record_parameter_on_epoch_end(
+      dense_1, Layer_Parameter::dense_updated_bias, false);
   /* --- call back setting end --- */
 
   /* --- model creation --- */
@@ -195,6 +87,14 @@ TEST_F(FrameworkTest, DenseLayer_Test_3) {
       call_back.get_parameter_on_epoch_end(dense_1,
                                            Layer_Parameter::dense_grad_bias);
 
+  std::vector<std::vector<tf::tensor>> train_dense_1_updated_weights =
+      call_back.get_parameter_on_epoch_end(
+          dense_1, Layer_Parameter::dense_updated_weight);
+
+  std::vector<std::vector<tf::tensor>> train_dense_1_updated_bias =
+      call_back.get_parameter_on_epoch_end(dense_1,
+                                           Layer_Parameter::dense_updated_bias);
+
   std::vector<std::vector<tf::tensor>> training_losses =
       call_back.get_tensor_loss(loss_sgd,
                                 Loss_Parameter::squared_error_predicted_output);
@@ -222,14 +122,14 @@ TEST_F(FrameworkTest, DenseLayer_Test_3) {
     for (int j = 0; j < 43; j++)
       for (int i = 0; i < 32; i++)
         EXPECT_NEAR(train_dense_1_grad_weights[ep][0].getData()[i + j * 32],
-                    dense_layer_Test_e_grad_weight_data[i + j * 32], 1e-5)
+                    dense_layer_Test_3_grad_weight_data[i + j * 32], 1e-5)
             << "at i: " << i << " j: " << j;
 
   for (unsigned ep = 0; ep < epoch; ep++)
     for (int j = 0; j < 1; j++)
       for (int i = 0; i < 32; i++)
         EXPECT_NEAR(train_dense_1_grad_bias[ep][0].getData()[i + j * 32],
-                    dense_layer_Test_e_grad_bias_data[i + j * 32], 1e-5)
+                    dense_layer_Test_3_grad_bias_data[i + j * 32], 1e-5)
             << "at i: " << i << " j: " << j;
 
   for (unsigned ep = 0; ep < epoch; ep++)
@@ -237,5 +137,19 @@ TEST_F(FrameworkTest, DenseLayer_Test_3) {
       for (int i = 0; i < 32; i++)
         EXPECT_NEAR(grad_training_losses[ep][0].getData()[i + j * 32],
                     dense_layer_Test_3_grad_loss_data[i + j * 32], 1e-5)
+            << "at i: " << i << " j: " << j;
+
+  for (unsigned ep = 0; ep < epoch; ep++)
+    for (int j = 0; j < 43; j++)
+      for (int i = 0; i < 32; i++)
+        EXPECT_NEAR(train_dense_1_updated_weights[ep][0].getData()[i + j * 32],
+                    dense_layer_Test_3_updated_weights_data[i + j * 32], 1e-5)
+            << "at i: " << i << " j: " << j;
+
+  for (unsigned ep = 0; ep < epoch; ep++)
+    for (int j = 0; j < 1; j++)
+      for (int i = 0; i < 32; i++)
+        EXPECT_NEAR(train_dense_1_updated_bias[ep][0].getData()[i + j * 32],
+                    dense_layer_Test_3_updated_bias_data[i + j * 32], 1e-5)
             << "at i: " << i << " j: " << j;
 }

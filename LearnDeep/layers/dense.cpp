@@ -197,6 +197,14 @@ Dense::getLayerParameter(Layer_Parameter layer_parameter, bool print_flag) {
     LOG(INFO) << "Layer: Dense, grad bias:\n";
     layer_parameter_tensor.push_back(&this->grad_bias);
     break;
+  case Layer_Parameter::dense_updated_weight:
+    LOG(INFO) << "Layer: Dense, grad weight:\n";
+    layer_parameter_tensor.push_back(&this->updated_weight);
+    break;
+  case Layer_Parameter::dense_updated_bias:
+    LOG(INFO) << "Layer: Dense, grad bias:\n";
+    layer_parameter_tensor.push_back(&this->updated_bias);
+    break;
 
   default:
     LOG(ERROR) << "Sever! the selected layer parameter is not available for "
