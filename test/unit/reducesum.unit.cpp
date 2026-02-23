@@ -63,3 +63,41 @@ TEST_F(MathTest, Graph_MatrixReductionSum_2D) {
     }
   }
 }
+
+TEST_F(MathTest, Graph_MatrixReductionSum_Grad_2D) {
+
+  std::float64_t a[] = {0.42602198, 0.51120308, 0.66381781, 0.79000792,
+                        0.73980886, 0.1366799,  0.3818528,  0.40564105,
+                        0.79132994, 0.1810338,  0.52634304, 0.7717289,
+                        0.18137833, 0.35597476, 0.79365669, 0.16725214};
+
+  std::float64_t c_reducesum[] = {2.39105, 1.66398, 2.27044, 1.49826};
+
+  tf::tensor A, B, C, D;
+  A.tf_create(tf_float64, 4, 4);
+  B.tf_create(tf_float64, 4);
+  C.tf_create(tf_float64, 4);
+  D.tf_create(tf_float64, 4);
+
+  A.tensor_of(a);
+  D.tensor_of(c_reducesum);
+
+  {
+    tf::graph_context ctx;
+
+    B = A.reducesum(0);
+    C = B.mul(D);
+
+    ctx.run();
+
+    for (int i = 0; i < 4; i++) {
+      EXPECT_NEAR(B.getData()[i], c_reducesum[i], 0.0001);
+    }
+
+    ctx.initialize_gradient();
+    ctx.compute_gradient();
+
+    tf::tensor A_grad = ctx.get_gradient(A);
+    A_grad.print_data();
+  }
+}

@@ -16,6 +16,83 @@ Opsreducesum::~Opsreducesum() {
   delete temp_input;
   delete temp_output;
 }
+
+void Opsreducesum::addGradGraph(Graph *gradient_graph) {
+  // .......... reverse mode autodiff graph .........
+  //
+  //             [inputs[n]]
+  //                 |
+  //             [[add]...]
+  //                 |
+  //          [output_gradient]
+  //
+  // ........................ End .....................
+
+  std::vector<Tensor<std::float64_t> *> incoming_gradients =
+      gradient_graph->getGradient(this);
+  Tensor<std::float64_t> *tensor_ptr[2];
+
+  // graph setup for accumulating incoming gradients y' = sum ( z' )
+  if (incoming_gradients.size()) {
+    Tensor<std::float64_t> *intermediate_gradient_sum;
+
+    intermediate_gradient_sum = new Tensor<std::float64_t>(*this->output);
+    intermediate_gradient_sum->initData(0.0);
+    int i = 0;
+    for (Tensor<std::float64_t> *inc_grad_tensor : incoming_gradients) {
+
+      // input initialization
+      tensor_ptr[0] = intermediate_gradient_sum;
+      tensor_ptr[1] = inc_grad_tensor;
+
+      Ops *ops_add = new Opsadd;
+      ops_add->initializeinputs(tensor_ptr);
+
+      gradient_graph->addGradientNode(ops_add);
+      gradient_graph->addGradientNode(tensor_ptr[0]);
+      gradient_graph->addGradientNode(tensor_ptr[1]);
+      gradient_graph->addGradientEdge(tensor_ptr[0], ops_add);
+      gradient_graph->addGradientEdge(tensor_ptr[1], ops_add);
+
+      // output initialization
+      intermediate_gradient_sum = new Tensor<std::float64_t>(*this->output);
+      intermediate_gradient_sum->initData(0.0);
+
+      ops_add->initializeoutput(intermediate_gradient_sum);
+      gradient_graph->addGradientNode(intermediate_gradient_sum);
+      gradient_graph->addGradientEdge(ops_add, intermediate_gradient_sum);
+    }
+    this->incoming_gradient = intermediate_gradient_sum;
+  } else {
+    this->incoming_gradient = new Tensor<std::float64_t>(*this->output);
+    this->incoming_gradient->initData(1.0);
+  }
+
+  // for second input we need to calculate broadcast dimentions and then do a
+  // reduction sum then push the incoming gradient to previous layer.
+  Tensor<std::float64_t> *broadcasting_parent =
+      new Tensor<std::float64_t>(*inputs[0]);
+  broadcasting_parent->initData(0.0);
+
+  Ops *opsadd = new Opsadd();
+  tensor_ptr[0] = broadcasting_parent;
+  tensor_ptr[1] = this->incoming_gradient;
+  opsadd->initializeinputs(tensor_ptr);
+
+  gradient_graph->addGradientNode(opsadd);
+  gradient_graph->addGradientNode(this->incoming_gradient);
+  gradient_graph->addGradientNode(broadcasting_parent);
+  gradient_graph->addGradientEdge(this->incoming_gradient, opsadd);
+  gradient_graph->addGradientEdge(broadcasting_parent, opsadd);
+
+  Tensor<std::float64_t> *broadcasting_result =
+      new Tensor<std::float64_t>(*inputs[0]);
+
+  opsadd->initializeoutput(broadcasting_result);
+  gradient_graph->addGradientEdge(opsadd, broadcasting_result);
+  this->outgoing_gradients.push_back(broadcasting_result);
+}
+
 void Opsreducesum::recursive_sum(unsigned index, unsigned *dimension_arr,
                                  unsigned reduction_dim,
                                  std::float64_t *temp_arr) {
@@ -231,6 +308,17 @@ void Opsreducesum::printoutput() {
   LOG(INFO) << "output:\n";
   output->printData();
   LOG(INFO) << "\n";
+}
+
+Tensor<std::float64_t> *Opsreducesum::getOutgoingGradientTensor(
+    Tensor<std::float64_t> *gradient_input) {
+  auto it = std::find(inputs.begin(), inputs.end(), gradient_input);
+  Tensor<std::float64_t> *ptr = nullptr;
+  if (inputs.end() != it) {
+    int idx = std::distance(inputs.begin(), it);
+    ptr = outgoing_gradients[idx];
+  }
+  return ptr;
 }
 
 void Opsreducesum::kernel_dispatch(std::float64_t **ptr, unsigned *arr) {

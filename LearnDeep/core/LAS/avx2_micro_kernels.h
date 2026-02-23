@@ -22,6 +22,10 @@ void avx2_sub_broadcast_f64(std::float64_t **ptr, const unsigned nDimA,
 
 void avx2_mul_f64(std::float64_t **, unsigned *);
 
+void avx2_mul_broadcast_f64(std::float64_t **ptr, const unsigned nDimA,
+                            const unsigned *dimA, const unsigned nDimB,
+                            const unsigned *dimB, const bool isBroadCast);
+
 void avx2_scale_f64(std::float64_t **, unsigned *);
 
 void avx2_sqrt_f64(std::float64_t **, unsigned *);

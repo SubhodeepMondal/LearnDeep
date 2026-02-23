@@ -72,18 +72,23 @@ public:
 };
 
 class Opsmul : public Ops {
-  unsigned no_of_inputs;
+  bool isPreInitializationDone;
+  bool isBroadCast;
+  std::vector<unsigned> broadCastAxies;
+  std::vector<unsigned> broadCastDimensionSizes;
 
   std::vector<Tensor<std::float64_t> *> inputs;
   Tensor<std::float64_t> *output;
   Tensor<std::float64_t> *incoming_gradient;
   Tensor<std::float64_t> *outgoing_gradients[2];
-  void recursive_iterator(unsigned index, unsigned *dimension_arr,
-                          std::string function_name, unsigned *ui_arr,
-                          std::float64_t *dl_arr,
-                          Tensor<std::float64_t> *misc_arr);
+  // void recursive_iterator(unsigned index, unsigned *dimension_arr,
+  //                         std::string function_name, unsigned *ui_arr,
+  //                         std::float64_t *dl_arr,
+  //                         Tensor<std::float64_t> *misc_arr);
 
-  void kernel_dispatch(std::float64_t **, unsigned *);
+  void kernel_dispatch(std::float64_t **ptr, const unsigned nDimA,
+                       const unsigned *dimA, const unsigned nDimB,
+                       const unsigned *dimB, const bool isBroadCast);
 
 public:
   Opsmul() = default;
@@ -112,8 +117,6 @@ public:
   std::vector<Tensor<std::float64_t> *> getinputs() { return inputs; }
 
   Tensor<std::float64_t> *getoutput() { return output; }
-
-  unsigned getnoofinputs() { return no_of_inputs; }
 
   void printinputs();
 
@@ -275,7 +278,8 @@ class Opsreducesum : public Ops {
   Tensor<std::float64_t> *temp_output;
   Tensor<std::float64_t> *temp_input;
   Tensor<std::float64_t> *output;
-  Tensor<std::float64_t> *outgoing_gradient;
+  Tensor<std::float64_t> *incoming_gradient;
+  std::vector<Tensor<std::float64_t> *> outgoing_gradients;
   void recursive_sum(unsigned index, unsigned *dimension_arr,
                      unsigned reduction_dim, std::float64_t *temp_arr);
 
@@ -284,10 +288,10 @@ public:
   ~Opsreducesum();
   void compute();
 
-  void addGradGraph(Graph *gradient_graph) {}
-  Tensor<std::float64_t> *getOutgoingGradientTensor() {
-    return outgoing_gradient;
-  }
+  void addGradGraph(Graph *gradient_graph);
+
+  Tensor<std::float64_t> *
+  getOutgoingGradientTensor(Tensor<std::float64_t> *gradient_input);
 
   std::vector<Tensor<std::float64_t> *> getAllOutgoingGradientTensors() {
     std::vector<Tensor<std::float64_t> *> grads;

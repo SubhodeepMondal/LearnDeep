@@ -367,6 +367,97 @@ void avx2::avx2_mul_f64(std::float64_t **ptr, unsigned *arr) {
     c[i] = a[i] * b[i];
 }
 
+void avx2::avx2_mul_broadcast_f64(std::float64_t **ptr, const unsigned nDimA,
+                                  const unsigned *dimA, const unsigned nDimB,
+                                  const unsigned *dimB,
+                                  const bool isBroadCast) {
+  unsigned grid_x, grid_y;
+  unsigned n_dim_A = nDimA;
+  unsigned total_lines = 1;
+  unsigned total_lines_b = 1;
+  std::float64_t *a, *b, *c;
+  a = ptr[0];
+  b = ptr[1];
+  c = ptr[2];
+
+  if (nDimA > 1) {
+    grid_x = dimA[0];
+
+    for (unsigned i = 1; i < nDimA; i++)
+      total_lines *= dimA[i];
+    grid_y = total_lines;
+
+    for (unsigned i = 1; i < nDimB; i++)
+      total_lines_b *= dimB[i];
+  } else if (nDimA > 0) {
+    grid_x = dimA[0];
+    grid_y = 1;
+  } else {
+    throw std::runtime_error("Addtion is not possible with tensors without "
+                             "any elements and dimensions zero.\n");
+  }
+
+  if (!isBroadCast) {
+#pragma omp for
+    for (unsigned line_it = 0; line_it < grid_y; ++line_it) {
+      unsigned idx = line_it * grid_x;
+      for (unsigned i = 0; i + 4 <= grid_x; i += 4) {
+        __m256d c_arr = _mm256_mul_pd(
+            _mm256_loadu_pd(reinterpret_cast<const double *>(a + i + idx)),
+            _mm256_loadu_pd(reinterpret_cast<const double *>(b + i + idx)));
+
+        _mm256_storeu_pd(reinterpret_cast<double *>(c + i + idx), c_arr);
+      }
+
+      // tackling remaining elements if any
+      for (unsigned i = grid_x - (grid_x % 4); i < grid_x; i++) {
+        ptr[2][idx + i] = ptr[1][idx + i] * ptr[0][idx + i];
+      }
+    }
+  } else {
+#pragma omp parallel for
+    for (unsigned line_it = 0; line_it < grid_y; ++line_it) {
+      unsigned total_line_a = grid_y / dimA[nDimA - 1];
+      unsigned total_line_b = total_lines_b / dimB[nDimB - 1];
+      unsigned index_a = line_it;
+      unsigned idx_b = 0;
+      for (unsigned i = nDimA - 1; i > 0; i--) {
+        unsigned indices = index_a / total_line_a;
+        index_a -= indices * total_line_a;
+        total_line_a /= dimA[i - 1];
+
+        idx_b += indices * total_line_b * (dimB[i] != 1);
+        total_line_b /= dimB[i - 1];
+      }
+
+      unsigned idx = line_it * grid_x;
+      idx_b *= dimB[0];
+
+      // unrolling the loop from 0 to n*4
+      for (unsigned i = 0; i + 4 <= grid_x; i += 4) {
+        if (dimB[0] != 1) {
+          __m256d c_arr = _mm256_mul_pd(
+              _mm256_loadu_pd(reinterpret_cast<const double *>(a + idx + i)),
+              _mm256_loadu_pd(reinterpret_cast<const double *>(b + idx_b + i)));
+
+          _mm256_storeu_pd(reinterpret_cast<double *>(c + idx + i), c_arr);
+        } else {
+          __m256d c_arr = _mm256_mul_pd(
+              _mm256_loadu_pd(reinterpret_cast<const double *>(a + idx + i)),
+              _mm256_set1_pd(static_cast<const double>(*(b + idx_b))));
+
+          _mm256_storeu_pd(reinterpret_cast<double *>(c + idx + i), c_arr);
+        }
+      }
+
+      // tackling remaining elements if any
+      for (unsigned i = grid_x - (grid_x % 4); i < grid_x; i++) {
+        ptr[2][idx + i] = ptr[0][idx + i] * ptr[1][idx_b + i * (dimB[0] != 1)];
+      }
+    }
+  }
+}
+
 void avx2::avx2_scale_f64(std::float64_t **ptr, unsigned *arr) {
   std::float64_t *a, b, *c;
   unsigned i, m_size, n_size, n_elements;
