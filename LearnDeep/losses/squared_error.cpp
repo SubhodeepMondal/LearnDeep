@@ -47,7 +47,9 @@ void SquaredError::forward(std::vector<tf::tensor *> inputs,
     *(this->differences) =
         (this->training_inputs[0])->sub(*(this->target_outputs[0]));
     *(this->loss_tensor_batch) = this->differences->pow(2);
-    *(this->loss_tensor) = (this->loss_tensor_batch)->scale(1.0 / batch_size);
+    *(this->loss_tensor) =
+        (this->loss_tensor_batch)
+            ->mean(this->training_inputs[0]->getNoOfDimensions() - 1);
   }
 }
 

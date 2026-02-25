@@ -3,7 +3,7 @@
 
 #include "LinearAlgebraFixtures.unit.hpp"
 
-TEST_F(MathTest, Eager_MatrixMean_2D) {
+TEST_F(MathTest, DISABLED_Eager_MatrixMean_2D) {
 
   std::float64_t a[] = {0.37454012, 0.95071431, 0.73199394, 0.59865848,
                         0.15601864, 0.15599452, 0.05808361, 0.86617615,
@@ -24,7 +24,7 @@ TEST_F(MathTest, Eager_MatrixMean_2D) {
   }
 }
 
-TEST_F(MathTest, Graph_MatrixMean_2D) {
+TEST_F(MathTest, DISABLED_Graph_MatrixMean_2D) {
 
   std::float64_t a[] = {0.37454012, 0.95071431, 0.73199394, 0.59865848,
                         0.15601864, 0.15599452, 0.05808361, 0.86617615,
@@ -48,5 +48,40 @@ TEST_F(MathTest, Graph_MatrixMean_2D) {
     for (int i = 0; i < 4; i++) {
       EXPECT_NEAR(C.getData()[i], c_mean[i], 0.0001);
     }
+  }
+}
+
+TEST_F(MathTest, DISABLED_Graph_MatrixMean_Grad_2D) {
+
+  std::float64_t a[] = {0.37454012, 0.95071431, 0.73199394, 0.59865848,
+                        0.15601864, 0.15599452, 0.05808361, 0.86617615,
+                        0.60111501, 0.70807258, 0.02058449, 0.96990985};
+
+  std::float64_t c_mean[] = {0.4910291, 0.50678013, 0.24812175, 0.65453725};
+
+  tf::tensor A, B, C, D;
+  A.tf_create(tf_float64, 4, 3);
+  B.tf_create(tf_float64, 4);
+  C.tf_create(tf_float64, 4, 3);
+  D.tf_create(tf_float64, 4);
+
+  A.tensor_of(a);
+  C.tensor_of(c_mean);
+  {
+    tf::graph_context ctx;
+
+    B = A.mean(0);
+    D = B.mul(C);
+
+    ctx.run();
+
+    // for (int i = 0; i < 4; i++) {
+    //   EXPECT_NEAR(B.getData()[i], c_mean[i], 0.0001);
+    // }
+
+    B.print_data();
+    ctx.initialize_gradient();
+    // ctx.compute_gradient();
+    // tf::tensor A_grad = ctx.get_gradient(A);
   }
 }

@@ -597,9 +597,7 @@ Tensor<T> *Tensor<T>::mean(const unsigned dim, bool graph_flag) {
                                  this->getDimensions(), d_type);
   Tensor<T> *inputs[1];
   inputs[0] = this;
-  unsigned reduction_dim = (this->getNoOfDimensions() - dim - 1) > 0
-                               ? (this->getNoOfDimensions() - dim - 1)
-                               : 0;
+  unsigned reduction_dim = dim;
   unsigned dims[1] = {reduction_dim};
   opsreducesum->initializeinputs(inputs);
   opsreducesum->initializeReductionDims(1, dims);

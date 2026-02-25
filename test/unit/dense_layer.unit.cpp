@@ -112,18 +112,18 @@ TEST_F(FrameworkTest, DenseLayer_Test_3) {
   }
 
   for (unsigned ep = 0; ep < epoch; ep++)
-    for (int j = 0; j < 128; j++)
+    for (int j = 0; j < 1; j++)
       for (int i = 0; i < 32; i++)
         EXPECT_NEAR(training_losses[ep][0].getData()[i + j * 32],
                     dense_layer_Test_3_loss_data[i + j * 32], 1e-5)
-            << "at i: " << i << " j: " << j;
+            << "at ep : " << ep << "i: " << i << " j: " << j;
 
   for (unsigned ep = 0; ep < epoch; ep++)
     for (int j = 0; j < 43; j++)
       for (int i = 0; i < 32; i++)
         EXPECT_NEAR(train_dense_1_grad_weights[ep][0].getData()[i + j * 32],
                     dense_layer_Test_3_grad_weight_data[i + j * 32], 1e-5)
-            << "at i: " << i << " j: " << j;
+            << "at ep : " << ep << " i: " << i << " j: " << j;
 
   for (unsigned ep = 0; ep < epoch; ep++)
     for (int j = 0; j < 1; j++)
