@@ -102,6 +102,7 @@ void Model::fit(const std::vector<tf::tensor> &training_inputs,
               util::random_engine().rand_unsigned(lower_bound, upper_bound);
         } else {
           randIndex++;
+          randIndex %= upper_bound;
         }
         unsigned it = 0;
         for (auto local_training_input : this->local_training_inputs) {
@@ -138,8 +139,8 @@ void Model::fit(const std::vector<tf::tensor> &training_inputs,
               }
               temp_tensor[index].tf_create(dims,
                                            training_target[index].dt_type);
-              temp_tensor[index].tensor_of(training_target[index].getData() +
-                                           stride * randIndex);
+              // temp_tensor[index].tensor_of(training_target[index].getData() +
+              //                              stride * randIndex);
             }
             loss->set_target_output(temp_tensor);
           }

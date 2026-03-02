@@ -96,6 +96,11 @@ SquaredError::getLossParameter(Loss_Parameter loss_parameter) {
     temp_tensor.push_back(&this->grad_training_inputs);
     break;
   }
+  case Loss_Parameter::squared_error_target_output: {
+    // tf::tensor temp_reference = tf::tensor(tf_float64, target_outputs[0]);
+    temp_tensor.push_back(target_outputs[0]);
+    break;
+  }
   default:
     LOG(ERROR) << "Sever! the selected loss parameter is not available for "
                   "mean squared error layer.\n";

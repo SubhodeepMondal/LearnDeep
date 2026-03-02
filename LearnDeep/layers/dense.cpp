@@ -174,7 +174,8 @@ Dense::getLayerParameter(Layer_Parameter layer_parameter, bool print_flag) {
     break;
   case Layer_Parameter::dense_training_input:
     LOG(INFO) << "Layer: Dense, training input:\n";
-    // layer_parameter_tensor.push_back(this->training_input);
+    layer_parameter_tensor.push_back(
+        const_cast<tf::tensor *>(this->training_inputs));
     break;
   case Layer_Parameter::dense_training_weight:
     LOG(INFO) << "Layer: Dense, training weight:\n";
@@ -221,14 +222,21 @@ void Dense::initializeWeight() {
   case InitializationMethod::MANUAL: {
     this->weight.getPtr()->initData(this->initialization_weight.getData());
     this->training_weight.getPtr()->initData(this->weight.getData());
+    this->weight_initialization_method = InitializationMethod::UPDATE_FROM_GRAD;
     break;
   }
   case InitializationMethod::ZEROS: {
     this->training_weight.getPtr()->initData(0.0);
+    this->weight_initialization_method = InitializationMethod::UPDATE_FROM_GRAD;
     break;
   }
   case InitializationMethod::ONES: {
     this->training_weight.getPtr()->initData(1.0);
+    this->weight_initialization_method = InitializationMethod::UPDATE_FROM_GRAD;
+    break;
+  }
+  case InitializationMethod::UPDATE_FROM_GRAD: {
+    this->training_weight.getPtr()->initData(this->updated_weight.getData());
     break;
   }
   default:
@@ -258,8 +266,7 @@ void Dense::initializeBias() {
     break;
   }
   case InitializationMethod::UPDATE_FROM_GRAD: {
-    this->bias.getPtr()->initData(this->updated_bias.getData());
-    this->updated_bias.getPtr()->initData(this->bias.getData());
+    this->training_bias.getPtr()->initData(this->updated_bias.getData());
     break;
   }
   default:
