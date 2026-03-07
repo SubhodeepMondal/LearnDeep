@@ -12,10 +12,7 @@
 #include <core/framework/MathLibrary.h>
 #include <core/kernel/opskernel.h>
 
-Opsreducesum::~Opsreducesum() {
-  delete temp_input;
-  delete temp_output;
-}
+Opsreducesum::~Opsreducesum() { delete temp_output; }
 
 void Opsreducesum::addGradGraph(Graph *gradient_graph) {
   // .......... reverse mode autodiff graph .........
@@ -224,6 +221,7 @@ void Opsreducesum::compute() {
   unsigned i, k, resulting_no_of_dims;
   unsigned *resulting_dims, *arr_dims;
   unsigned nElements = 1;
+  this->temp_input = new Tensor<std::float64_t>(*this->inputs[0]);
   for (i = 0; i < this->inputs[0]->getNoOfDimensions() && i < 3; i++)
     nElements *= this->inputs[0]->getDimensions()[i];
   std::float64_t *intermediate_input = new std::float64_t[nElements];
@@ -259,12 +257,12 @@ void Opsreducesum::compute() {
   delete[] intermediate_input;
   delete[] resulting_dims;
   delete[] arr_dims;
+  delete this->temp_input;
 }
 
 void Opsreducesum::initializeinputs(Tensor<std::float64_t> **inputs) {
 
   this->inputs.push_back(inputs[0]);
-  temp_input = new Tensor<std::float64_t>(*this->inputs[0]);
 }
 
 void Opsreducesum::initializeReductionDims(const unsigned n,

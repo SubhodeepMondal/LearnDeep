@@ -40,8 +40,8 @@ private:
   std::vector<tf::loss *> losses;
   std::unordered_map<tf::loss *,
                      std::vector<Tensor<std::float64_t> *>>
-      loss_input_mappings; // this maps loss and all the input tensor that
-                           // is feed
+      loss_input_mappings; // this maps loss and all the input tensor(aka target
+                           // output) that is feed
   std::unordered_map<tf::loss *, std::vector<tf::tensor *>>
       loss_training_input_mappings;
   //   tf::metric metric;
@@ -50,6 +50,10 @@ private:
       std::queue<const Tensor<std::float64_t> *> &output_queue);
 
   void setTrainingTensorsForInputLayer();
+
+  void setTargetOutputForLoss(const std::vector<tf::tensor> &training_target,
+                              std::vector<tf::tensor> &local_temp_outputs,
+                              unsigned index);
 
   void doDummyAndTrainingTensorMapping();
 

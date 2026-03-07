@@ -117,34 +117,8 @@ void Model::fit(const std::vector<tf::tensor> &training_inputs,
           layer->initializeParameters();
 
         /* making loss graph */
-        for (tf::loss *loss : this->losses) {
-          std::vector<tf::tensor> temp_tensor(
-              this->loss_input_mappings[loss].size());
-          unsigned index = 0;
-          for (Tensor<std::float64_t> *tensor :
-               this->loss_input_mappings[loss]) {
-            auto it =
-                std::find(this->outputs.begin(), this->outputs.end(), tensor);
-            unsigned index = 0;
-            if (it != this->outputs.end()) {
-              index = std::distance(this->outputs.begin(), it);
-
-              std::vector<unsigned> dims;
-              unsigned stride = 1;
-              for (unsigned j = 0;
-                   j < local_temp_outputs[index].getNoOfDimensions(); j++) {
-                dims.push_back(local_temp_outputs[index].getDimensions()[j]);
-                if (j != local_temp_outputs[index].getNoOfDimensions() - 1)
-                  stride *= local_temp_outputs[index].getDimensions()[j];
-              }
-              temp_tensor[index].tf_create(dims,
-                                           training_target[index].dt_type);
-              // temp_tensor[index].tensor_of(training_target[index].getData() +
-              //                              stride * randIndex);
-            }
-            loss->set_target_output(temp_tensor);
-          }
-        }
+        this->setTargetOutputForLoss(training_target, local_temp_outputs,
+                                     randIndex);
 
         callback->callOnEpochBegin();
 
@@ -374,5 +348,34 @@ tf::loss Model::getModelLoss(Tensor<std::float64_t> *output_tensor) {
   else {
     LOG(ERROR) << "Fatal! Can't retrive the loss for the given output.\n";
     throw std::runtime_error("Exiting due to prior violation.\n");
+  }
+}
+
+void Model::setTargetOutputForLoss(
+    const std::vector<tf::tensor> &training_target,
+    std::vector<tf::tensor> &local_temp_outputs, unsigned data_index) {
+
+  for (tf::loss *loss : this->losses) {
+    std::vector<tf::tensor> temp_tensor(this->loss_input_mappings[loss].size());
+    unsigned index = 0;
+    for (Tensor<std::float64_t> *tensor : this->loss_input_mappings[loss]) {
+      auto it = std::find(this->outputs.begin(), this->outputs.end(), tensor);
+      unsigned index = 0;
+      if (it != this->outputs.end()) {
+        index = std::distance(this->outputs.begin(), it);
+
+        std::vector<unsigned> dims;
+        unsigned stride = 1;
+        for (unsigned j = 0; j < local_temp_outputs[index].getNoOfDimensions();
+             j++) {
+          dims.push_back(local_temp_outputs[index].getDimensions()[j]);
+          stride *= local_temp_outputs[index].getDimensions()[j];
+        }
+        temp_tensor[index].tf_create(dims, training_target[index].dt_type);
+        temp_tensor[index].tensor_of(training_target[index].getData() +
+                                     stride * data_index);
+      }
+      loss->set_target_output(temp_tensor);
+    }
   }
 }

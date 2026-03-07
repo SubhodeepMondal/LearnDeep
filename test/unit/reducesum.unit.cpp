@@ -98,6 +98,5 @@ TEST_F(MathTest, Graph_MatrixReductionSum_Grad_2D) {
     ctx.compute_gradient();
 
     tf::tensor A_grad = ctx.get_gradient(A);
-    A_grad.print_data();
   }
 }

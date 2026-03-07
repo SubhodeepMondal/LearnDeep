@@ -112,11 +112,10 @@ TEST_F(FrameworkTest, DenseLayer_Test_3) {
   }
 
   for (unsigned ep = 0; ep < epoch; ep++)
-    for (int j = 0; j < 2; j++)
-      for (int i = 0; i < 32; i++)
-        EXPECT_NEAR(training_losses[ep][0].getData()[i + j * 32],
-                    dense_layer_Test_3_loss_data[i + j * 32], 1e-5)
-            << "at ep : " << ep << "i: " << i << " j: " << j;
+    for (int i = 0; i < 32; i++)
+      EXPECT_NEAR(training_losses[ep][0].getData()[i],
+                  dense_layer_Test_3_loss_data[i], 1e-5)
+          << "at ep : " << ep << "i: " << i;
 
   for (unsigned ep = 0; ep < epoch; ep++)
     for (int j = 0; j < 43; j++)
@@ -126,11 +125,10 @@ TEST_F(FrameworkTest, DenseLayer_Test_3) {
             << "at ep : " << ep << " i: " << i << " j: " << j;
 
   for (unsigned ep = 0; ep < epoch; ep++)
-    for (int j = 0; j < 2; j++)
-      for (int i = 0; i < 32; i++)
-        EXPECT_NEAR(train_dense_1_grad_bias[ep][0].getData()[i + j * 32],
-                    dense_layer_Test_3_grad_bias_data[i + j * 32], 1e-5)
-            << "at i: " << i << " j: " << j;
+    for (int i = 0; i < 32; i++)
+      EXPECT_NEAR(train_dense_1_grad_bias[ep][0].getData()[i],
+                  dense_layer_Test_3_grad_bias_data[i], 1e-5)
+          << "at i: " << i;
 
   for (unsigned ep = 0; ep < epoch; ep++)
     for (int j = 0; j < 128; j++)
@@ -147,11 +145,10 @@ TEST_F(FrameworkTest, DenseLayer_Test_3) {
             << "at i: " << i << " j: " << j;
 
   for (unsigned ep = 0; ep < epoch; ep++)
-    for (int j = 0; j < 2; j++)
-      for (int i = 0; i < 32; i++)
-        EXPECT_NEAR(train_dense_1_updated_bias[ep][0].getData()[i + j * 32],
-                    dense_layer_Test_3_updated_bias_data[i + j * 32], 1e-5)
-            << "at i: " << i << " j: " << j;
+    for (int i = 0; i < 32; i++)
+      EXPECT_NEAR(train_dense_1_updated_bias[ep][0].getData()[i],
+                  dense_layer_Test_3_updated_bias_data[i], 1e-5)
+          << "at i: " << i;
 }
 
 TEST_F(FrameworkTest, DenseLayer_Test_4) {
@@ -169,7 +166,7 @@ TEST_F(FrameworkTest, DenseLayer_Test_4) {
   input.tf_create(tf_float64, no_of_input_feature, sample_size);
   weight.tf_create(tf_float64, no_of_dense_unit, no_of_input_feature);
   bias.tf_create(tf_float64, no_of_dense_unit, 1);
-  target_output.tf_create(tf_float64, no_of_dense_unit, batch_size);
+  target_output.tf_create(tf_float64, no_of_dense_unit, sample_size);
 
   input.tensor_of(dense_layer_Test_4_input_data);
   weight.tensor_of(dense_layer_Test_4_weight_data);
@@ -258,8 +255,6 @@ TEST_F(FrameworkTest, DenseLayer_Test_4) {
   std::vector<std::vector<tf::tensor>> grad_bias =
       call_back.get_parameter_on_epoch_end(dense_1,
                                            Layer_Parameter::dense_grad_bias);
-  for (unsigned ep = 0; ep < epoch; ep++)
-    target_training_output[ep][0].print_data();
 
   for (unsigned ep = 0; ep < epoch; ep++)
     for (unsigned j = 0; j < batch_size; j++)
@@ -270,62 +265,73 @@ TEST_F(FrameworkTest, DenseLayer_Test_4) {
             << "at: epoch " << ep << ", index " << index;
       }
 
-  for (unsigned ep = 0; ep < 2; ep++)
+  for (unsigned ep = 0; ep < epoch; ep++)
+    for (unsigned j = 0; j < batch_size; j++)
+      for (unsigned i = 0; i < no_of_dense_unit; i++) {
+        unsigned index = i + j * no_of_dense_unit;
+        EXPECT_NEAR(target_training_output[ep][0].getData()[index],
+                    dense_layer_Test_4_target_output_batch_data[ep][index],
+                    1e-6)
+            << "at: epoch " << ep << ", index " << index;
+      }
+
+  for (unsigned ep = 0; ep < epoch; ep++)
+    for (unsigned i = 0; i < no_of_dense_unit; i++) {
+      unsigned index = i;
+      EXPECT_NEAR(training_losses[ep][0].getData()[index],
+                  dense_layer_Test_4_loss_data[ep][index], 1e-6)
+          << "at: epoch " << ep << ", index " << index;
+    }
+
+  for (unsigned ep = 0; ep < epoch; ep++)
+    for (unsigned j = 0; j < batch_size; j++)
+      for (unsigned i = 0; i < no_of_dense_unit; i++) {
+        unsigned index = i + j * no_of_dense_unit;
+        EXPECT_NEAR(grad_training_losses[ep][0].getData()[index],
+                    dense_layer_Test_4_grad_loss_data[ep][index], 1e-6)
+            << "at: epoch " << ep << ", index " << index;
+      }
+
+  for (unsigned ep = 0; ep < epoch; ep++)
     for (unsigned j = 0; j < no_of_input_feature; j++)
       for (unsigned i = 0; i < no_of_dense_unit; i++) {
         unsigned index = i + j * no_of_dense_unit;
         EXPECT_NEAR(update_weights[ep][0].getData()[index],
-                    dense_layer_Test_4_updated_weight_data[ep][index], 1e-2)
+                    dense_layer_Test_4_updated_weight_data[ep][index], 1e-6)
             << "at: epoch " << ep << ", index " << index;
       }
 
-  for (unsigned ep = 0; ep < 2; ep++)
+  for (unsigned ep = 0; ep < epoch; ep++)
     for (unsigned i = 0; i < no_of_dense_unit; i++) {
       unsigned index = i;
       EXPECT_NEAR(updated_bias[ep][0].getData()[index],
-                  dense_layer_Test_4_updated_bias_data[ep][index], 1e-2)
+                  dense_layer_Test_4_updated_bias_data[ep][index], 1e-6)
           << "at: epoch " << ep << ", index " << index;
     }
 
-  for (unsigned ep = 0; ep < 2; ep++)
+  for (unsigned ep = 0; ep < epoch; ep++)
     for (unsigned j = 0; j < batch_size; j++)
       for (unsigned i = 0; i < no_of_dense_unit; i++) {
         unsigned index = i + j * no_of_dense_unit;
         EXPECT_NEAR(outputs[ep][0].getData()[index],
-                    dense_layer_Test_4_predicted_output_data[ep][index], 1e-2)
+                    dense_layer_Test_4_predicted_output_data[ep][index], 1e-6)
             << "at: epoch " << ep << ", index " << index;
       }
 
-  for (unsigned ep = 0; ep < 2; ep++)
-    for (unsigned i = 0; i < no_of_dense_unit; i++) {
-      unsigned index = i;
-      EXPECT_NEAR(training_losses[ep][0].getData()[index],
-                  dense_layer_Test_4_loss_data[ep][index], 1e-2)
-          << "at: epoch " << ep << ", index " << index;
-    }
-
-  for (unsigned ep = 0; ep < 2; ep++)
-    for (unsigned i = 0; i < no_of_dense_unit; i++) {
-      unsigned index = i;
-      EXPECT_NEAR(grad_training_losses[ep][0].getData()[index],
-                  dense_layer_Test_4_grad_loss_data[ep][index], 1e-2)
-          << "at: epoch " << ep << ", index " << index;
-    }
-
-  for (unsigned ep = 0; ep < 2; ep++)
+  for (unsigned ep = 0; ep < epoch; ep++)
     for (unsigned j = 0; j < no_of_input_feature; j++)
       for (unsigned i = 0; i < no_of_dense_unit; i++) {
         unsigned index = i + j * no_of_dense_unit;
         EXPECT_NEAR(grad_weights[ep][0].getData()[index],
-                    dense_layer_Test_4_grad_weight_data[ep][index], 1e-2)
+                    dense_layer_Test_4_grad_weight_data[ep][index], 1e-6)
             << "at: epoch " << ep << ", index " << index;
       }
 
-  for (unsigned ep = 0; ep < 2; ep++)
+  for (unsigned ep = 0; ep < epoch; ep++)
     for (unsigned i = 0; i < no_of_dense_unit; i++) {
       unsigned index = i;
       EXPECT_NEAR(grad_bias[ep][0].getData()[index],
-                  dense_layer_Test_4_grad_bias_data[ep][index], 1e-3)
+                  dense_layer_Test_4_grad_bias_data[ep][index], 1e-6)
           << "at: epoch " << ep << ", index " << index;
     }
 }
