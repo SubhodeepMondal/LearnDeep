@@ -1,9 +1,12 @@
+#include <memory>
+
+// library headers
 #include "LinearAlgebraFixtures.unit.hpp"
 #include "dense_layer_data.hpp"
 #include <LearnDeep/api/tensor.h>
 #include <gtest/gtest.h>
 
-TEST_F(FrameworkTest, DenseLayer_Test_3) {
+TEST_F(FrameworkTest, DenseLayer_Test_1) {
 
   tf::tensor x;
   tf::tensor weight, bias;
@@ -26,7 +29,7 @@ TEST_F(FrameworkTest, DenseLayer_Test_3) {
   dense_1.set_bias(bias);
 
   /* --- call back setting --- */
-  tf::callback call_back(false);
+  tf::callback::trace call_back;
   call_back.record_parameter_on_epoch_begin(
       dense_1, Layer_Parameter::dense_training_input, false);
 
@@ -65,10 +68,13 @@ TEST_F(FrameworkTest, DenseLayer_Test_3) {
   call_back.record_tensor_loss(
       loss_sgd, Loss_Parameter::squared_error_grad_predicted_output);
 
+  call_back.record_scalar_loss(loss_sgd, false);
+
   /* --- model training --- */
   unsigned epoch = 1;
   unsigned batch_size = 128;
-  mymodel.fit({input}, {target_output}, call_back, epoch, batch_size);
+  mymodel.fit({input}, {target_output}, {call_back.callback()}, epoch,
+              batch_size);
 
   /* --- Intercepting  training parameters --- */
   std::vector<std::vector<tf::tensor>> outputs =
@@ -149,9 +155,16 @@ TEST_F(FrameworkTest, DenseLayer_Test_3) {
       EXPECT_NEAR(train_dense_1_updated_bias[ep][0].getData()[i],
                   dense_layer_Test_3_updated_bias_data[i], 1e-5)
           << "at i: " << i;
+
+  std::vector<std::float64_t> scalar_losses =
+      call_back.get_scaler_loss(loss_sgd);
+
+  for (std::float64_t scalar_loss : scalar_losses)
+    std::cout << scalar_loss << ", ";
+  std::cout << "\n";
 }
 
-TEST_F(FrameworkTest, DenseLayer_Test_4) {
+TEST_F(FrameworkTest, DenseLayer_Test_2) {
 
   tf::tensor x;
   tf::tensor weight, bias;
@@ -179,7 +192,7 @@ TEST_F(FrameworkTest, DenseLayer_Test_4) {
   dense_1.set_bias(bias);
 
   /* --- call back setting --- */
-  tf::callback call_back(false);
+  tf::callback::trace call_back;
   call_back.record_parameter_on_epoch_begin(
       dense_1, Layer_Parameter::dense_training_input, false);
 
@@ -197,6 +210,7 @@ TEST_F(FrameworkTest, DenseLayer_Test_4) {
 
   call_back.record_parameter_on_epoch_end(
       dense_1, Layer_Parameter::dense_grad_bias, false);
+
   /* --- call back setting end --- */
 
   /* --- model creation --- */
@@ -215,9 +229,15 @@ TEST_F(FrameworkTest, DenseLayer_Test_4) {
   call_back.record_tensor_loss(loss_sgd,
                                Loss_Parameter::squared_error_target_output);
 
+  call_back.record_scalar_loss(loss_sgd, false);
+
+  tf::callback::earlystopping early_stopping(loss_sgd, 5, 0.2, true);
+
   /* --- model training --- */
-  unsigned epoch = 10;
-  mymodel.fit({input}, {target_output}, call_back, epoch, batch_size);
+  unsigned epoch = 50;
+  mymodel.fit({input}, {target_output},
+              {call_back.callback(), early_stopping.callback()}, epoch,
+              batch_size);
 
   /* --- Intercepting  training parameters --- */
   std::vector<std::vector<tf::tensor>> dense_training_inputs =
@@ -256,7 +276,7 @@ TEST_F(FrameworkTest, DenseLayer_Test_4) {
       call_back.get_parameter_on_epoch_end(dense_1,
                                            Layer_Parameter::dense_grad_bias);
 
-  for (unsigned ep = 0; ep < epoch; ep++)
+  for (unsigned ep = 0; ep < 10; ep++)
     for (unsigned j = 0; j < batch_size; j++)
       for (unsigned i = 0; i < no_of_input_feature; i++) {
         unsigned index = i + j * no_of_input_feature;
@@ -265,7 +285,7 @@ TEST_F(FrameworkTest, DenseLayer_Test_4) {
             << "at: epoch " << ep << ", index " << index;
       }
 
-  for (unsigned ep = 0; ep < epoch; ep++)
+  for (unsigned ep = 0; ep < 10; ep++)
     for (unsigned j = 0; j < batch_size; j++)
       for (unsigned i = 0; i < no_of_dense_unit; i++) {
         unsigned index = i + j * no_of_dense_unit;
@@ -275,7 +295,7 @@ TEST_F(FrameworkTest, DenseLayer_Test_4) {
             << "at: epoch " << ep << ", index " << index;
       }
 
-  for (unsigned ep = 0; ep < epoch; ep++)
+  for (unsigned ep = 0; ep < 10; ep++)
     for (unsigned i = 0; i < no_of_dense_unit; i++) {
       unsigned index = i;
       EXPECT_NEAR(training_losses[ep][0].getData()[index],
@@ -283,7 +303,7 @@ TEST_F(FrameworkTest, DenseLayer_Test_4) {
           << "at: epoch " << ep << ", index " << index;
     }
 
-  for (unsigned ep = 0; ep < epoch; ep++)
+  for (unsigned ep = 0; ep < 10; ep++)
     for (unsigned j = 0; j < batch_size; j++)
       for (unsigned i = 0; i < no_of_dense_unit; i++) {
         unsigned index = i + j * no_of_dense_unit;
@@ -292,7 +312,7 @@ TEST_F(FrameworkTest, DenseLayer_Test_4) {
             << "at: epoch " << ep << ", index " << index;
       }
 
-  for (unsigned ep = 0; ep < epoch; ep++)
+  for (unsigned ep = 0; ep < 10; ep++)
     for (unsigned j = 0; j < no_of_input_feature; j++)
       for (unsigned i = 0; i < no_of_dense_unit; i++) {
         unsigned index = i + j * no_of_dense_unit;
@@ -301,7 +321,7 @@ TEST_F(FrameworkTest, DenseLayer_Test_4) {
             << "at: epoch " << ep << ", index " << index;
       }
 
-  for (unsigned ep = 0; ep < epoch; ep++)
+  for (unsigned ep = 0; ep < 10; ep++)
     for (unsigned i = 0; i < no_of_dense_unit; i++) {
       unsigned index = i;
       EXPECT_NEAR(updated_bias[ep][0].getData()[index],
@@ -309,7 +329,7 @@ TEST_F(FrameworkTest, DenseLayer_Test_4) {
           << "at: epoch " << ep << ", index " << index;
     }
 
-  for (unsigned ep = 0; ep < epoch; ep++)
+  for (unsigned ep = 0; ep < 10; ep++)
     for (unsigned j = 0; j < batch_size; j++)
       for (unsigned i = 0; i < no_of_dense_unit; i++) {
         unsigned index = i + j * no_of_dense_unit;
@@ -318,7 +338,7 @@ TEST_F(FrameworkTest, DenseLayer_Test_4) {
             << "at: epoch " << ep << ", index " << index;
       }
 
-  for (unsigned ep = 0; ep < epoch; ep++)
+  for (unsigned ep = 0; ep < 10; ep++)
     for (unsigned j = 0; j < no_of_input_feature; j++)
       for (unsigned i = 0; i < no_of_dense_unit; i++) {
         unsigned index = i + j * no_of_dense_unit;
@@ -327,7 +347,7 @@ TEST_F(FrameworkTest, DenseLayer_Test_4) {
             << "at: epoch " << ep << ", index " << index;
       }
 
-  for (unsigned ep = 0; ep < epoch; ep++)
+  for (unsigned ep = 0; ep < 10; ep++)
     for (unsigned i = 0; i < no_of_dense_unit; i++) {
       unsigned index = i;
       EXPECT_NEAR(grad_bias[ep][0].getData()[index],

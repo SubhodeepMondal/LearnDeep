@@ -593,8 +593,14 @@ Tensor<T> *Tensor<T>::mean(const unsigned dim, bool graph_flag) {
   Ops *opsscale = new Opsscale();
 
   // first perform reducesum operation along the specified dimension
-  temp_reducesum = new Tensor<T>(this->getNoOfDimensions() - 1,
-                                 this->getDimensions(), d_type);
+  if (this->getNoOfDimensions() - 1 <= 0) {
+    unsigned arr[1] = {1};
+    temp_reducesum = new Tensor<T>(1, arr, d_type);
+  } else {
+
+    temp_reducesum = new Tensor<T>(this->getNoOfDimensions() - 1,
+                                   this->getDimensions(), d_type);
+  }
   Tensor<T> *inputs[1];
   inputs[0] = this;
   unsigned reduction_dim = dim;
@@ -612,7 +618,7 @@ Tensor<T> *Tensor<T>::mean(const unsigned dim, bool graph_flag) {
   opsscale->initializeoutput(output);
 
   Graph *g = GraphManager::instance().getCurrentGraph();
-  if (g) {
+  if (g && graph_flag) {
     // Ops reduce
     g->addNode(this);
     g->addNode(opsreducesum);

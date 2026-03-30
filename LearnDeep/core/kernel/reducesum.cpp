@@ -281,14 +281,20 @@ void Opsreducesum::initializeoutput(Tensor<std::float64_t> *output) {
   unsigned i, j;
   this->output = output;
 
-  no_of_resultent_dims = inputs[0]->getNoOfDimensions() - no_of_reduction_dim;
+  no_of_resultent_dims =
+      inputs[0]->getNoOfDimensions() - no_of_reduction_dim <= 0
+          ? 1
+          : inputs[0]->getNoOfDimensions() - no_of_reduction_dim;
   // resultent_dims = new unsigned[no_of_reduction_dim];
 
   j = 0;
-  for (unsigned i = 0; i < inputs[0]->getNoOfDimensions(); i++)
+  for (unsigned i = 0; i < inputs[0]->getNoOfDimensions(); i++) {
     if (i != reduction_dims[j])
       resultent_dims.push_back(inputs[0]->getDimensions()[i]);
-
+    else if (i == reduction_dims[j] && i == 0)
+      resultent_dims.push_back(1);
+    j++;
+  }
   this->output->reshape(no_of_resultent_dims, resultent_dims.data());
 
   temp_output = new Tensor<std::float64_t>(*this->output);

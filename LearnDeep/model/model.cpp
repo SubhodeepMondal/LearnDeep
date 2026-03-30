@@ -40,87 +40,141 @@ Model::~Model() {
     delete local_training_input;
 }
 
+void Model::initializeTrainingMappings() {
+  for (Layer *layer : this->layers)
+    this->layer_training_input_mappings[layer].assign(
+        this->layer_input_mappings[layer].size(), nullptr);
+
+  for (tf::loss *loss : this->losses)
+    this->loss_training_input_mappings[loss].assign(
+        loss_input_mappings[loss].size(), nullptr);
+}
+
+std::vector<tf::tensor>
+Model::createBatchTargetBuffer(const std::vector<tf::tensor> &training_target) {
+  std::vector<tf::tensor> local_temp_outputs(training_target.size());
+  unsigned i = 0;
+  for (tf::tensor tensor : training_target) {
+    std::vector<unsigned> dims;
+    for (unsigned it = 0; it < tensor.getNoOfDimensions() - 1; it++)
+      dims.push_back(tensor.getDimensions()[it]);
+    dims.push_back(this->batch_size);
+    local_temp_outputs[i++].tf_create(dims, tensor.dt_type);
+  }
+  return local_temp_outputs;
+}
+
+unsigned Model::selectBatchIndex(int &randIndex, unsigned batch_count) {
+  if (this->shuffle_input) {
+    randIndex = util::random_engine().rand_unsigned(0, batch_count);
+  } else {
+    randIndex = (randIndex + 1) % batch_count;
+  }
+  return static_cast<unsigned>(randIndex);
+}
+
+void Model::loadTrainingBatch(const std::vector<tf::tensor> &training_inputs,
+                              unsigned batch_index) {
+  unsigned input_index = 0;
+  for (auto local_training_input : this->local_training_inputs) {
+    const unsigned element_size = local_training_input->getPtr()->getNoOfElem();
+    const unsigned data_offset = batch_index * element_size;
+    local_training_input->getPtr()->initPartialData(
+        0, element_size,
+        training_inputs[input_index].getPtr()->getData() + data_offset);
+    input_index++;
+  }
+}
+
+void Model::runOnEpochBeginCallback(
+    std::vector<std::shared_ptr<Callback>> callbacks) {
+  if (callbacks.size())
+    for (auto callback : callbacks)
+      callback.get()->callOnEpochBegin();
+}
+
+void Model::runOnEpochEndCallback(
+    std::vector<std::shared_ptr<Callback>> callbacks) {
+  if (callbacks.size())
+    for (auto callback : callbacks)
+      callback.get()->callOnEpochEnd();
+}
+
+bool Model::checkEarlyStopping(
+    std::vector<std::shared_ptr<Callback>> callbacks) {
+  bool stop_epoch;
+  if (callbacks.size())
+    for (auto callback : callbacks) {
+      stop_epoch = callback.get()->stopEpoch();
+      if (stop_epoch)
+        break;
+    }
+
+  return stop_epoch;
+}
+
 void Model::fit(const std::vector<tf::tensor> &training_inputs,
                 const std::vector<tf::tensor> &training_target,
                 const std::vector<tf::tensor> &valdiation_data, unsigned epochs,
-                unsigned batch_size, Callback *callback, unsigned verbose) {
-  if (this->inputs.size() == training_inputs.size()) {
+                unsigned batch_size,
+                std::vector<std::shared_ptr<Callback>> callback,
+                unsigned verbose) {
+  if (this->inputs.size() != training_inputs.size()) {
+    LOG(ERROR) << "Fatal! # no of input is mismatching with the no of graph "
+                  "created during construction.\n";
+    return;
+  }
 
-    for (Layer *layer : this->layers)
-      this->layer_training_input_mappings[layer].assign(
-          this->layer_input_mappings[layer].size(), nullptr);
+  this->batch_size = batch_size;
+  this->initializeTrainingMappings();
 
-    for (tf::loss *loss : this->losses)
-      this->loss_training_input_mappings[loss].assign(
-          loss_input_mappings[loss].size(), nullptr);
+  std::vector<tf::tensor> local_temp_outputs =
+      this->createBatchTargetBuffer(training_target);
 
-    std::vector<tf::tensor> local_temp_outputs(training_target.size());
-    unsigned i = 0;
-    for (tf::tensor tensor : training_target) {
-      std::vector<unsigned> dims;
-      for (unsigned it = 0; it < tensor.getNoOfDimensions() - 1; it++)
-        dims.push_back(tensor.getDimensions()[it]);
-      dims.push_back(batch_size);
+  this->initilizeInputsForTraining(training_inputs);
+  this->setTrainingTensorsForInputLayer();
 
-      local_temp_outputs[i++].tf_create(dims, tensor.dt_type);
-    }
+  unsigned upper_bound =
+      training_inputs[0]
+          .getPtr()
+          ->getDimensions()[training_inputs[0].getPtr()->getNoOfDimensions() -
+                            1] /
+      this->batch_size; // all training inputs must has same last dimensions
+                        // i.e no of input elements, in this case first input
+                        // is used
+  if (!upper_bound) {
+    LOG(ERROR) << "Fatal! number of training samples is smaller than batch "
+                  "size.\n";
+    return;
+  }
+  int randIndex = -1;
 
-    this->batch_size = batch_size;
-    this->initilizeInputsForTraining(training_inputs);
+  // Training Loop
+  {
+    /* this sequence is very importent
+     * 1. doDummyAndTrainingTensorMapping
+     * 2. initialize_gradient()
+     * 3. layer backward
+     */
+    tf::graph_context ctx_compute_n_gradient;
 
-    this->setTrainingTensorsForInputLayer();
-    int randIndex = -1;
-    unsigned lower_bound = 0;
-    unsigned upper_bound =
-        training_inputs[0]
-            .getPtr()
-            ->getDimensions()[training_inputs[0].getPtr()->getNoOfDimensions() -
-                              1] /
-        this->batch_size; // all training inputs must has same last dimensions
-                          // i.e no of input elements, in this case first input
-                          // is used
-
-    unsigned element_size;
-
-    // Training Loop
-    {
-      /* this sequence is very importent
-       * 1. doDummyAndTrainingTensorMapping
-       * 2. initialize_gradient()
-       * 3. layer backward
-       */
-      tf::graph_context ctx_compute_n_gradient;
-
-      this->doDummyAndTrainingTensorMapping(); // this requireds to be within
-      // graph context
-
-      for (int i = 0; i < epochs; i++) {
-
-        /* receiving randomized input */
-        if (this->shuffle_input) {
-          randIndex =
-              util::random_engine().rand_unsigned(lower_bound, upper_bound);
-        } else {
-          randIndex++;
-          randIndex %= upper_bound;
-        }
-        unsigned it = 0;
-        for (auto local_training_input : this->local_training_inputs) {
-          element_size = local_training_input->getPtr()->getNoOfElem();
-          unsigned index = randIndex * element_size;
-          local_training_input->getPtr()->initPartialData(
-              0, element_size, training_inputs[it].getPtr()->getData() + index);
-          it++;
-        }
+    this->doDummyAndTrainingTensorMapping(); // this requireds to be within
+    // graph context
+    bool stop_epoch = false;
+    for (int i = 0; i < epochs; i++) {
+      if (!stop_epoch) {
+        const unsigned batch_index =
+            this->selectBatchIndex(randIndex, upper_bound);
+        this->loadTrainingBatch(training_inputs, batch_index);
 
         for (Layer *layer : this->layers)
           layer->initializeParameters();
 
         /* making loss graph */
         this->setTargetOutputForLoss(training_target, local_temp_outputs,
-                                     randIndex);
+                                     batch_index);
 
-        callback->callOnEpochBegin();
+        this->runOnEpochBeginCallback(callback);
 
         ctx_compute_n_gradient.run(); // forward propagation
 
@@ -138,13 +192,16 @@ void Model::fit(const std::vector<tf::tensor> &training_inputs,
         ctx_compute_n_gradient.compute_gradient(); // back propagation
         optimizer.execute_optimizer();
 
-        callback->callOnEpochEnd();
-        callback->recordLossOnEpochEnd();
+        this->runOnEpochEndCallback(callback);
+
+        stop_epoch = this->checkEarlyStopping(callback);
+      } else {
+        LOG(ERROR)
+            << "Early stopping has been triggered, Stopping the epoch at " << i
+            << "\n";
+        break;
       }
     }
-  } else {
-    LOG(ERROR) << "Fatal! # no of input is mismatching with the no of graph "
-                  "created during construction.\n";
   }
 }
 

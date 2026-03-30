@@ -6,6 +6,7 @@
 #include <cstddef>
 #include <iostream>
 #include <iterator>
+#include <memory>
 #include <unordered_map>
 #include <vector>
 
@@ -209,16 +210,15 @@ public:
 
 } // namespace layer
 
-typedef struct callback {
+namespace callback {
+typedef struct trace {
 private:
-  Callback *callback_ptr;
+  std::shared_ptr<Callback> callback_ptr;
 
 public:
-  callback(bool print_callback_log);
+  trace();
 
-  callback(unsigned callback_level);
-
-  ~callback();
+  ~trace();
 
   void record_parameter_on_epoch_begin(const layer::dense &dense_layer,
                                        Layer_Parameter trainable_parameter_no,
@@ -246,13 +246,33 @@ public:
   std::vector<std::vector<tf::tensor>>
   get_tensor_loss(tf::loss loss, Loss_Parameter loss_parameter);
 
-  Callback *getCallbackPtr() const;
+  std::shared_ptr<Callback> callback() const;
 
-} callback;
+} trace;
 
+typedef struct earlystopping {
+private:
+  std::shared_ptr<Callback> callback_ptr;
+
+public:
+  earlystopping(tf::loss loss, int patience, float min_delta, bool minimize);
+  ~earlystopping() = default;
+
+  std::shared_ptr<Callback> callback() const;
+} earlystopping;
+
+} // namespace callback
 typedef struct model {
 private:
   Model *model_ptr;
+
+  void
+  model_fit(const std::vector<tf::tensor> &inputs,
+            const std::vector<tf::tensor> &outputs,
+            std::vector<Callback *> callback_ptr, unsigned epochs = 10,
+            unsigned batch_size = 1,
+            const std::vector<tf::tensor> &validation_datas = {tf::tensor()},
+            unsigned verbose = 0);
 
 public:
   model(const std::vector<tf::tensor> &inputs,
@@ -300,8 +320,8 @@ public:
   /** @return void */
   void fit(const std::vector<tf::tensor> &inputs,
            const std::vector<tf::tensor> &outputs,
-           const callback &call_back = callback(false), unsigned epochs = 10,
-           unsigned batch_size = 1,
+           std::vector<std::shared_ptr<Callback>> callbacks = {nullptr},
+           unsigned epochs = 10, unsigned batch_size = 1,
            const std::vector<tf::tensor> &validation_datas = {tf::tensor()},
            unsigned verbose = 0);
 

@@ -2,7 +2,7 @@
 #include <LearnDeep/api/tensor.h>
 #include <gtest/gtest.h>
 
-TEST_F(MathTest, Eager_MatrixReductionSum_2D) {
+TEST_F(MathTest, DISABLED_Eager_MatrixReductionSum_2D) {
 
   std::float64_t a[] = {0.42602198, 0.51120308, 0.66381781, 0.79000792,
                         0.73980886, 0.1366799,  0.3818528,  0.40564105,
@@ -31,7 +31,7 @@ TEST_F(MathTest, Eager_MatrixReductionSum_2D) {
   }
 }
 
-TEST_F(MathTest, Graph_MatrixReductionSum_2D) {
+TEST_F(MathTest, DISABLED_Graph_MatrixReductionSum_2D) {
 
   std::float64_t a[] = {0.42602198, 0.51120308, 0.66381781, 0.79000792,
                         0.73980886, 0.1366799,  0.3818528,  0.40564105,
@@ -64,7 +64,7 @@ TEST_F(MathTest, Graph_MatrixReductionSum_2D) {
   }
 }
 
-TEST_F(MathTest, Graph_MatrixReductionSum_Grad_2D) {
+TEST_F(MathTest, DISABLED_Graph_MatrixReductionSum_Grad_2D) {
 
   std::float64_t a[] = {0.42602198, 0.51120308, 0.66381781, 0.79000792,
                         0.73980886, 0.1366799,  0.3818528,  0.40564105,

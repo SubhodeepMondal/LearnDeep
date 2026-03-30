@@ -82,7 +82,24 @@ void SquaredError::setTargetOutput(
   }
 }
 
-std::float64_t const SquaredError::getScalerLoss() { return loss_value; }
+std::float64_t const SquaredError::getScalerLoss() {
+  tf::tensor temp_tensor;
+  std::vector<unsigned> dims;
+
+  for (unsigned i = 0; i < this->loss_tensor->getNoOfDimensions(); i++)
+    dims.push_back(this->loss_tensor->getDimensions()[i]);
+  temp_tensor.tf_create(dims, this->loss_tensor->dt_type);
+  temp_tensor.tensor_of(this->loss_tensor->getData());
+
+  if (temp_tensor.getNoOfDimensions()) {
+    for (size_t i = 0; i < temp_tensor.getNoOfDimensions(); i++) {
+      tf::tensor tensor = temp_tensor.mean(i, false);
+      temp_tensor = tensor;
+      this->loss_value = temp_tensor.getData()[0];
+    }
+  }
+  return loss_value;
+}
 
 std::vector<tf::tensor *>
 SquaredError::getLossParameter(Loss_Parameter loss_parameter) {

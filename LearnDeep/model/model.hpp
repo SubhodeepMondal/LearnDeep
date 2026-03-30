@@ -49,6 +49,22 @@ private:
   std::vector<const Tensor<std::float64_t> *> getLayersNBackTrackInputs(
       std::queue<const Tensor<std::float64_t> *> &output_queue);
 
+  void initializeTrainingMappings();
+
+  std::vector<tf::tensor>
+  createBatchTargetBuffer(const std::vector<tf::tensor> &training_target);
+
+  unsigned selectBatchIndex(int &randIndex, unsigned batch_count);
+
+  void loadTrainingBatch(const std::vector<tf::tensor> &training_inputs,
+                         unsigned batch_index);
+
+  void runOnEpochBeginCallback(std::vector<std::shared_ptr<Callback>> callback);
+
+  void runOnEpochEndCallback(std::vector<std::shared_ptr<Callback>> callback);
+
+  bool checkEarlyStopping(std::vector<std::shared_ptr<Callback>> callbacks);
+
   void setTrainingTensorsForInputLayer();
 
   void setTargetOutputForLoss(const std::vector<tf::tensor> &training_target,
@@ -113,7 +129,9 @@ public:
            const std::vector<tf::tensor> &output,
            const std::vector<tf::tensor> &valdiation_data = {},
            unsigned epochs = 10, unsigned batch_size = 1,
-           Callback *callback = nullptr, unsigned verbose = 0);
+           std::vector<std::shared_ptr<Callback>> callback =
+               std::vector<std::shared_ptr<Callback>>(),
+           unsigned verbose = 0);
 
   /** @file model.hpp basic model implementation */
   /** @brief Feeds the model with input and does a inference on it to predict

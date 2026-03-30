@@ -15,6 +15,23 @@ class Layer;
 class Loss;
 
 class Callback {
+public:
+  virtual void callOnTrainingBegin() {}
+
+  virtual void callOnEpochBegin() {}
+
+  virtual void callOnBatchBegin() {}
+
+  virtual void callOnBatchEnd() {}
+
+  virtual void callOnEpochEnd() {}
+
+  virtual void callOnTrainingEnd() {}
+
+  virtual bool stopEpoch() { return false; }
+};
+
+class CallbackTrace : public Callback {
 
   unsigned callback_level;
   bool print_callback_log;
@@ -45,9 +62,10 @@ class Callback {
       layer_parameter_on_epoch_end;
 
 public:
-  Callback(bool print_callback_log) : print_callback_log(print_callback_log){};
-  Callback(unsigned callback_level);
-  ~Callback();
+  CallbackTrace(bool print_callback_log)
+      : print_callback_log(print_callback_log){};
+  CallbackTrace(unsigned callback_level);
+  ~CallbackTrace();
   void onEpochBeginGetTrainableParameter(Layer *layer,
                                          Layer_Parameter traiable_parameter_no,
                                          bool print = false);
@@ -60,8 +78,6 @@ public:
 
   void recordTensorLoss(Loss *loss_ptr, Loss_Parameter loss_parameter,
                         bool printFlag = false);
-
-  void recordLossOnEpochEnd();
 
   std::vector<std::vector<tf::tensor *>>
   getTrainableParameterEpochOnBegin(Layer *layer,
@@ -79,6 +95,26 @@ public:
   void callOnEpochBegin();
 
   void callOnEpochEnd();
+};
+
+class CallbackHistory : public Callback {};
+
+class CallbackEarlyStopping : public Callback {
+  bool early_stopping;
+  Loss *loss_ptr;
+  int patience;
+  bool minimize;
+  float min_delta;
+  unsigned num_epochs_holding_min_delta;
+  std::vector<std::float64_t> scalar_loss;
+
+public:
+  CallbackEarlyStopping(Loss *loss, int patience, float min_delta,
+                        bool minimize);
+
+  void callOnEpochEnd() override;
+
+  bool stopEpoch() override;
 };
 
 #endif // _TENSORFLOW_CALLBACK_
