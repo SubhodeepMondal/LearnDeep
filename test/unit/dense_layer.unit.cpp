@@ -355,3 +355,63 @@ TEST_F(FrameworkTest, DenseLayer_Test_2) {
           << "at: epoch " << ep << ", index " << index;
     }
 }
+
+TEST_F(FrameworkTest, DenseLayer_Test_3) {
+
+  tf::tensor x;
+  tf::tensor weight_1, weight_2, bias_1, bias_2;
+  tf::tensor input, target_output, validation_data;
+
+  unsigned sample_size = 512;
+  unsigned batch_size = 256;
+  unsigned no_of_input_feature = 27;
+  unsigned no_of_dense_unit_1 = 31;
+  unsigned no_of_dense_unit_2 = 7;
+
+  x.tf_create(tf_float64, no_of_input_feature, batch_size);
+  input.tf_create(tf_float64, no_of_input_feature, sample_size);
+
+  weight_1.tf_create(tf_float64, no_of_dense_unit_1, no_of_input_feature);
+  bias_1.tf_create(tf_float64, no_of_dense_unit_1, 1);
+
+  weight_2.tf_create(tf_float64, no_of_dense_unit_2, no_of_dense_unit_1);
+  bias_2.tf_create(tf_float64, no_of_dense_unit_2, 1);
+
+  target_output.tf_create(tf_float64, no_of_dense_unit_2, sample_size);
+
+  input.tensor_of(dense_layer_Test_4_input_data);
+  weight_1.tensor_of(dense_layer_Test_4_weight_data);
+  bias_2.tensor_of(dense_layer_Test_4_bias_data);
+  target_output.tensor_of(dense_layer_Test_4_target_output_data);
+
+  auto dense_1 = tf::layer::dense(no_of_dense_unit_1);
+  auto dense_2 = tf::layer::dense(no_of_dense_unit_2);
+  auto dense_1_output = dense_1({x});
+  auto dense_output = dense_2({dense_1_output});
+
+  dense_1.set_weight(weight_1);
+  dense_1.set_bias(bias_1);
+
+  dense_2.set_weight(weight_2);
+  dense_2.set_bias(bias_2);
+
+  /* --- model creation --- */
+  tf::model mymodel({x}, dense_output);
+  mymodel.shuffle(false);
+  mymodel.compile(OptimizerType::SGD, LossType::squared_error);
+  /* --- end model creation --- */
+
+  tf::loss loss_sgd = mymodel.get_model_loss(dense_output[0]);
+  tf::callback::earlystopping early_stopping(loss_sgd, 5, 0.2, true);
+
+  /* --- training the model ----*/
+  unsigned epoch = 200;
+  mymodel.fit({input}, {target_output}, {early_stopping.callback()}, epoch,
+              batch_size);
+
+  // std::vector<std::float64_t> losses =
+  // early_stopping.get_scaler_loss(loss_sgd);
+
+  // for (std::float64_t loss : losses)
+  //   std::cout << loss << ",\n";
+}
