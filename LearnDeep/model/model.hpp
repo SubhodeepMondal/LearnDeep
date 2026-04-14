@@ -59,9 +59,15 @@ private:
   void loadTrainingBatch(const std::vector<tf::tensor> &training_inputs,
                          unsigned batch_index);
 
-  void runOnEpochBeginCallback(std::vector<std::shared_ptr<Callback>> callback);
+  void runCallbackOnEpochBegin(std::vector<std::shared_ptr<Callback>> callback);
 
-  void runOnEpochEndCallback(std::vector<std::shared_ptr<Callback>> callback);
+  void runCallbackOnEpochEnd(std::vector<std::shared_ptr<Callback>> callback);
+
+  void runCallbackOnBatchBegin(std::vector<std::shared_ptr<Callback>> callback,
+                               unsigned const epoch_no);
+
+  void runCallbackOnBatchEnd(std::vector<std::shared_ptr<Callback>> callback,
+                             unsigned const epoch_no);
 
   bool checkEarlyStopping(std::vector<std::shared_ptr<Callback>> callbacks);
 
@@ -125,13 +131,14 @@ public:
    * level 4: + validation loss
    * level 5: + va;odation metric */
   /** @return void */
-  void fit(const std::vector<tf::tensor> &inputs,
-           const std::vector<tf::tensor> &output,
-           const std::vector<tf::tensor> &valdiation_data = {},
-           unsigned epochs = 10, unsigned batch_size = 1,
-           std::vector<std::shared_ptr<Callback>> callback =
-               std::vector<std::shared_ptr<Callback>>(),
-           unsigned verbose = 0);
+  std::unordered_map<std::string, std::vector<std::float64_t>>
+  fit(const std::vector<tf::tensor> &inputs,
+      const std::vector<tf::tensor> &output,
+      const std::vector<tf::tensor> &valdiation_data = {}, unsigned epochs = 10,
+      unsigned batch_size = 1,
+      std::vector<std::shared_ptr<Callback>> callback =
+          std::vector<std::shared_ptr<Callback>>(),
+      unsigned verbose = 0);
 
   /** @file model.hpp basic model implementation */
   /** @brief Feeds the model with input and does a inference on it to predict

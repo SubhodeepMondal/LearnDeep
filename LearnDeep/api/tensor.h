@@ -7,7 +7,9 @@
 #include <iostream>
 #include <iterator>
 #include <memory>
+#include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 // Library Headers
@@ -228,10 +230,25 @@ public:
                                      Layer_Parameter trainable_parameter_no,
                                      bool print_flag = false);
 
-  void record_scalar_loss(tf::loss loss, bool printFlag = false);
+  void record_parameter_on_batch_begin(const layer::dense &dense_layer,
+                                       Layer_Parameter trainable_parameter_no,
+                                       bool print_flag = false);
 
-  void record_tensor_loss(tf::loss loss, Loss_Parameter loss_parameter,
-                          bool printFlag = false);
+  void record_parameter_on_batch_end(const layer::dense &dense_layer,
+                                     Layer_Parameter trainable_parameter_no,
+                                     bool print_flag = false);
+
+  void record_scalar_loss_on_epoch_end(tf::loss loss, bool printFlag = false);
+
+  void record_tensor_loss_on_epoch_end(tf::loss loss,
+                                       Loss_Parameter loss_parameter,
+                                       bool printFlag = false);
+
+  void record_scalar_loss_on_batch_end(tf::loss loss, bool printFlag = false);
+
+  void record_tensor_loss_on_batch_end(tf::loss loss,
+                                       Loss_Parameter loss_parameter,
+                                       bool printFlag = false);
 
   std::vector<std::vector<tf::tensor>>
   get_parameter_on_epoch_begin(const layer::dense &dense_layer,
@@ -241,10 +258,24 @@ public:
   get_parameter_on_epoch_end(const layer::dense &dense_layer,
                              Layer_Parameter trainable_parameter_no);
 
-  std::vector<std::float64_t> get_scaler_loss(tf::loss loss);
+  std::vector<std::vector<std::vector<tf::tensor>>>
+  get_parameter_on_batch_begin(const layer::dense &dense_layer,
+                               Layer_Parameter trainable_parameter_no);
+
+  std::vector<std::vector<std::vector<tf::tensor>>>
+  get_parameter_on_batch_end(const layer::dense &dense_layer,
+                             Layer_Parameter trainable_parameter_no);
+
+  std::vector<std::float64_t> get_scaler_loss_on_epoch_end(tf::loss loss);
 
   std::vector<std::vector<tf::tensor>>
-  get_tensor_loss(tf::loss loss, Loss_Parameter loss_parameter);
+  get_tensor_loss_on_epoch_end(tf::loss loss, Loss_Parameter loss_parameter);
+
+  std::vector<std::vector<std::float64_t>>
+  get_scaler_loss_on_batch_end(tf::loss loss);
+
+  std::vector<std::vector<std::vector<tf::tensor>>>
+  get_tensor_loss_on_batch_end(tf::loss loss, Loss_Parameter loss_parameter);
 
   std::shared_ptr<Callback> callback() const;
 
@@ -262,6 +293,19 @@ public:
 } earlystopping;
 
 } // namespace callback
+typedef struct history_container {
+  std::unordered_map<std::string, std::vector<std::vector<std::float64_t>>>
+      batch_history;
+  std::unordered_map<std::string, std::vector<std::float64_t>> history;
+
+  void record_history_on_batch_end(unsigned const epoch_no,
+                                   std::vector<tf::loss *> losses);
+
+  void record_history_on_epoch_end(unsigned const no_of_batches);
+
+  std::vector<std::float64_t> get_loss();
+
+} history_container;
 typedef struct model {
 private:
   Model *model_ptr;
@@ -318,12 +362,13 @@ public:
    * level 4: + validation loss
    * level 5: + va;odation metric */
   /** @return void */
-  void fit(const std::vector<tf::tensor> &inputs,
-           const std::vector<tf::tensor> &outputs,
-           std::vector<std::shared_ptr<Callback>> callbacks = {nullptr},
-           unsigned epochs = 10, unsigned batch_size = 1,
-           const std::vector<tf::tensor> &validation_datas = {tf::tensor()},
-           unsigned verbose = 0);
+  std::unordered_map<std::string, std::vector<std::float64_t>>
+  fit(const std::vector<tf::tensor> &inputs,
+      const std::vector<tf::tensor> &outputs,
+      std::vector<std::shared_ptr<Callback>> callbacks = {nullptr},
+      unsigned epochs = 10, unsigned batch_size = 1,
+      const std::vector<tf::tensor> &validation_datas = {tf::tensor()},
+      unsigned verbose = 0);
 
   void shuffle(bool shuffle);
 

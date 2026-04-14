@@ -9,6 +9,7 @@
 #include <absl/log/log.h>
 #include <callback/callback.hpp>
 #include <core/utility/initializers.hpp>
+#include <unordered_map>
 
 Model::Model(const std::vector<tf::tensor> &inputs,
              const std::vector<tf::tensor> &outputs)
@@ -86,18 +87,34 @@ void Model::loadTrainingBatch(const std::vector<tf::tensor> &training_inputs,
   }
 }
 
-void Model::runOnEpochBeginCallback(
+void Model::runCallbackOnEpochBegin(
     std::vector<std::shared_ptr<Callback>> callbacks) {
   if (callbacks.size())
     for (auto callback : callbacks)
-      callback.get()->callOnEpochBegin();
+      callback->callOnEpochBegin();
 }
 
-void Model::runOnEpochEndCallback(
+void Model::runCallbackOnEpochEnd(
     std::vector<std::shared_ptr<Callback>> callbacks) {
   if (callbacks.size())
     for (auto callback : callbacks)
       callback.get()->callOnEpochEnd();
+}
+
+void Model::runCallbackOnBatchBegin(
+    std::vector<std::shared_ptr<Callback>> callbacks, unsigned const epoch_no) {
+  if (callbacks.size()) {
+    for (auto callback : callbacks)
+      callback->callOnBatchBegin(epoch_no);
+  }
+}
+
+void Model::runCallbackOnBatchEnd(
+    std::vector<std::shared_ptr<Callback>> callbacks, unsigned const epoch_no) {
+  if (callbacks.size()) {
+    for (auto callback : callbacks)
+      callback->callOnBatchEnd(epoch_no);
+  }
 }
 
 bool Model::checkEarlyStopping(
@@ -113,16 +130,19 @@ bool Model::checkEarlyStopping(
   return stop_epoch;
 }
 
-void Model::fit(const std::vector<tf::tensor> &training_inputs,
-                const std::vector<tf::tensor> &training_target,
-                const std::vector<tf::tensor> &valdiation_data, unsigned epochs,
-                unsigned batch_size,
-                std::vector<std::shared_ptr<Callback>> callback,
-                unsigned verbose) {
+std::unordered_map<std::string, std::vector<std::float64_t>>
+Model::fit(const std::vector<tf::tensor> &training_inputs,
+           const std::vector<tf::tensor> &training_target,
+           const std::vector<tf::tensor> &valdiation_data, unsigned epochs,
+           unsigned batch_size,
+           std::vector<std::shared_ptr<Callback>> callback_ptr,
+           unsigned verbose) {
+
+  tf::history_container hist;
   if (this->inputs.size() != training_inputs.size()) {
     LOG(ERROR) << "Fatal! # no of input is mismatching with the no of graph "
                   "created during construction.\n";
-    return;
+    return hist.history;
   }
 
   this->batch_size = batch_size;
@@ -145,9 +165,11 @@ void Model::fit(const std::vector<tf::tensor> &training_inputs,
   if (!upper_bound) {
     LOG(ERROR) << "Fatal! number of training samples is smaller than batch "
                   "size.\n";
-    return;
+    return hist.history;
   }
   int randIndex = -1;
+
+  std::vector<std::shared_ptr<Callback>> callback(callback_ptr);
 
   // Training Loop
   {
@@ -163,36 +185,43 @@ void Model::fit(const std::vector<tf::tensor> &training_inputs,
     bool stop_epoch = false;
     for (int i = 0; i < epochs; i++) {
       if (!stop_epoch) {
-        const unsigned batch_index =
-            this->selectBatchIndex(randIndex, upper_bound);
-        this->loadTrainingBatch(training_inputs, batch_index);
+        this->runCallbackOnEpochBegin(callback);
 
-        for (Layer *layer : this->layers)
-          layer->initializeParameters();
-
-        /* making loss graph */
-        this->setTargetOutputForLoss(training_target, local_temp_outputs,
-                                     batch_index);
-
-        this->runOnEpochBeginCallback(callback);
-
-        ctx_compute_n_gradient.run(); // forward propagation
-
-        if (!this->auto_grad_created) {
-          ctx_compute_n_gradient.initialize_gradient();
+        for (unsigned batch = 0; batch < upper_bound; batch++) {
+          unsigned batch_index = this->selectBatchIndex(randIndex, upper_bound);
+          this->loadTrainingBatch(training_inputs, batch_index);
 
           for (Layer *layer : this->layers)
-            layer->backward(optimizer.getPtr());
+            layer->initializeParameters();
 
-          for (tf::loss *loss : this->losses)
-            loss->backward();
+          /* making loss graph */
+          this->setTargetOutputForLoss(training_target, local_temp_outputs,
+                                       batch_index);
 
-          this->auto_grad_created = true;
+          this->runCallbackOnBatchBegin(callback, i);
+
+          ctx_compute_n_gradient.run(); // forward propagation
+
+          if (!this->auto_grad_created) {
+            ctx_compute_n_gradient.initialize_gradient();
+
+            for (Layer *layer : this->layers)
+              layer->backward(optimizer.getPtr());
+
+            for (tf::loss *loss : this->losses)
+              loss->backward();
+
+            this->auto_grad_created = true;
+          }
+          ctx_compute_n_gradient.compute_gradient(); // back propagation
+          optimizer.execute_optimizer();
+
+          this->runCallbackOnBatchEnd(callback, i);
+          hist.record_history_on_batch_end(i, losses);
         }
-        ctx_compute_n_gradient.compute_gradient(); // back propagation
-        optimizer.execute_optimizer();
 
-        this->runOnEpochEndCallback(callback);
+        this->runCallbackOnEpochEnd(callback);
+        hist.record_history_on_epoch_end(upper_bound);
 
         stop_epoch = this->checkEarlyStopping(callback);
       } else {
@@ -203,6 +232,7 @@ void Model::fit(const std::vector<tf::tensor> &training_inputs,
       }
     }
   }
+  return hist.history;
 }
 
 /** this subroutine inspects each input and creates a local training-input which

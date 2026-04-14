@@ -9,6 +9,7 @@
 #include <layers/dense.hpp>
 #include <losses/loss.hpp>
 #include <model/model.hpp>
+#include <numeric>
 #include <optimizers/optimizers.hpp>
 
 class CallbackTrace;
@@ -516,15 +517,16 @@ tf::model::model(const std::vector<tf::tensor> &inputs,
 
 tf::model::~model() { delete model_ptr; }
 
-void tf::model::fit(const std::vector<tf::tensor> &inputs,
-                    const std::vector<tf::tensor> &outputs,
-                    std::vector<std::shared_ptr<Callback>> callback_ptr,
-                    unsigned epochs, unsigned batch_size,
-                    const std::vector<tf::tensor> &validation_datas,
-                    unsigned verbose) {
+std::unordered_map<std::string, std::vector<std::float64_t>>
+tf::model::fit(const std::vector<tf::tensor> &inputs,
+               const std::vector<tf::tensor> &outputs,
+               std::vector<std::shared_ptr<Callback>> callback_ptr,
+               unsigned epochs, unsigned batch_size,
+               const std::vector<tf::tensor> &validation_datas,
+               unsigned verbose) {
 
-  this->model_ptr->fit(inputs, outputs, validation_datas, epochs, batch_size,
-                       callback_ptr, verbose);
+  return this->model_ptr->fit(inputs, outputs, validation_datas, epochs,
+                              batch_size, callback_ptr, verbose);
 }
 
 void tf::model::shuffle(bool shuffle) { model_ptr->shuffle(shuffle); }
@@ -562,16 +564,46 @@ void tf::callback::trace::record_parameter_on_epoch_end(
                                         trainable_parameter_no, print_flag);
 }
 
-void tf::callback::trace::record_scalar_loss(tf::loss loss, bool print_flag) {
+void tf::callback::trace::record_parameter_on_batch_begin(
+    const tf::layer::dense &dense_layer, Layer_Parameter trainable_parameter_no,
+    bool print_flag) {
   static_cast<CallbackTrace *>(this->callback_ptr.get())
-      ->recordScalerLoss(loss.get_loss_ptr(), print_flag);
+      ->recordTrainableParameterOnBatchBegin(
+          dense_layer.getLayerPtr(), trainable_parameter_no, print_flag);
 }
 
-void tf::callback::trace::record_tensor_loss(tf::loss loss,
-                                             Loss_Parameter loss_parameter,
-                                             bool print_flag) {
+void tf::callback::trace::record_parameter_on_batch_end(
+    const tf::layer::dense &dense_layer, Layer_Parameter trainable_parameter_no,
+    bool print_flag) {
   static_cast<CallbackTrace *>(this->callback_ptr.get())
-      ->recordTensorLoss(loss.get_loss_ptr(), loss_parameter, print_flag);
+      ->recordTrainableParameterOnBatchEnd(dense_layer.getLayerPtr(),
+                                           trainable_parameter_no, print_flag);
+}
+
+void tf::callback::trace::record_scalar_loss_on_epoch_end(tf::loss loss,
+                                                          bool print_flag) {
+  static_cast<CallbackTrace *>(this->callback_ptr.get())
+      ->recordScalerLossEpochEnd(loss.get_loss_ptr(), print_flag);
+}
+
+void tf::callback::trace::record_tensor_loss_on_epoch_end(
+    tf::loss loss, Loss_Parameter loss_parameter, bool print_flag) {
+  static_cast<CallbackTrace *>(this->callback_ptr.get())
+      ->recordTensorLossEpochEnd(loss.get_loss_ptr(), loss_parameter,
+                                 print_flag);
+}
+
+void tf::callback::trace::record_scalar_loss_on_batch_end(tf::loss loss,
+                                                          bool print_flag) {
+  static_cast<CallbackTrace *>(this->callback_ptr.get())
+      ->recordScalerLossBatchEnd(loss.get_loss_ptr(), print_flag);
+}
+
+void tf::callback::trace::record_tensor_loss_on_batch_end(
+    tf::loss loss, Loss_Parameter loss_parameter, bool print_flag) {
+  static_cast<CallbackTrace *>(this->callback_ptr.get())
+      ->recordTensorLossBatchEnd(loss.get_loss_ptr(), loss_parameter,
+                                 print_flag);
 }
 
 std::vector<std::vector<tf::tensor>>
@@ -619,26 +651,102 @@ tf::callback::trace::get_parameter_on_epoch_end(
   return trainable_parametes_on_epoch_end;
 }
 
+std::vector<std::vector<std::vector<tf::tensor>>>
+tf::callback::trace::get_parameter_on_batch_begin(
+    const tf::layer::dense &dense_layer,
+    Layer_Parameter trainable_parameter_no) {
+  std::vector<std::vector<std::vector<tf::tensor>>>
+      trainable_parametes_on_batch_begin;
+
+  std::vector<std::vector<std::vector<tf::tensor *>>> vector_vector_tensors =
+      static_cast<CallbackTrace *>(this->callback_ptr.get())
+          ->getTrainableParameterBatchOnBegin(dense_layer.getLayerPtr(),
+                                              trainable_parameter_no);
+
+  trainable_parametes_on_batch_begin.resize(vector_vector_tensors.size());
+
+  for (unsigned j = 0; j < vector_vector_tensors.size(); j++) {
+    trainable_parametes_on_batch_begin[j].resize(
+        vector_vector_tensors[j].size());
+    for (unsigned i = 0; i < vector_vector_tensors[j].size(); i++) {
+      for (tf::tensor *tensor : vector_vector_tensors[j][i])
+        trainable_parametes_on_batch_begin[j][i].push_back(*tensor);
+    }
+  }
+
+  return trainable_parametes_on_batch_begin;
+}
+
+std::vector<std::vector<std::vector<tf::tensor>>>
+tf::callback::trace::get_parameter_on_batch_end(
+    const tf::layer::dense &dense_layer,
+    Layer_Parameter trainable_parameter_no) {
+  std::vector<std::vector<std::vector<tf::tensor>>>
+      trainable_parametes_on_batch_end;
+
+  std::vector<std::vector<std::vector<tf::tensor *>>> vector_vector_tensors =
+      static_cast<CallbackTrace *>(this->callback_ptr.get())
+          ->getTrainableParameterBatchOnEnd(dense_layer.getLayerPtr(),
+                                            trainable_parameter_no);
+
+  trainable_parametes_on_batch_end.resize(vector_vector_tensors.size());
+
+  for (unsigned j = 0; j < vector_vector_tensors.size(); j++) {
+    trainable_parametes_on_batch_end[j].resize(vector_vector_tensors[j].size());
+    for (unsigned i = 0; i < vector_vector_tensors[j].size(); i++) {
+      for (tf::tensor *tensor : vector_vector_tensors[j][i])
+        trainable_parametes_on_batch_end[j][i].push_back(*tensor);
+    }
+  }
+
+  return trainable_parametes_on_batch_end;
+}
+
 std::vector<std::float64_t>
-tf::callback::trace::get_scaler_loss(tf::loss loss) {
+tf::callback::trace::get_scaler_loss_on_epoch_end(tf::loss loss) {
   return static_cast<CallbackTrace *>(this->callback_ptr.get())
-      ->getScalerLoss(loss.get_loss_ptr());
+      ->getScalerLossEpochEnd(loss.get_loss_ptr());
 }
 
 std::vector<std::vector<tf::tensor>>
-tf::callback::trace::get_tensor_loss(tf::loss loss,
-                                     Loss_Parameter loss_parameter) {
+tf::callback::trace::get_tensor_loss_on_epoch_end(
+    tf::loss loss, Loss_Parameter loss_parameter) {
   std::vector<std::vector<tf::tensor>> tensor_losses;
 
   std::vector<std::vector<tf::tensor *>> tensor_loss_ptrs =
       static_cast<CallbackTrace *>(this->callback_ptr.get())
-          ->getLossParameter(loss.get_loss_ptr(), loss_parameter);
+          ->getLossParameterEpochEnd(loss.get_loss_ptr(), loss_parameter);
 
   tensor_losses.resize(tensor_loss_ptrs.size());
   unsigned i = 0;
   for (std::vector<tf::tensor *> epochs : tensor_loss_ptrs) {
     for (tf::tensor *tensor_ptr : epochs)
       tensor_losses[i++].push_back(*tensor_ptr);
+  }
+  return tensor_losses;
+}
+
+std::vector<std::vector<std::float64_t>>
+tf::callback::trace::get_scaler_loss_on_batch_end(tf::loss loss) {
+  return static_cast<CallbackTrace *>(this->callback_ptr.get())
+      ->getScalerLossBatchEnd(loss.get_loss_ptr());
+}
+
+std::vector<std::vector<std::vector<tf::tensor>>>
+tf::callback::trace::get_tensor_loss_on_batch_end(
+    tf::loss loss, Loss_Parameter loss_parameter) {
+  std::vector<std::vector<std::vector<tf::tensor>>> tensor_losses;
+
+  std::vector<std::vector<std::vector<tf::tensor *>>> tensor_loss_ptrs =
+      static_cast<CallbackTrace *>(this->callback_ptr.get())
+          ->getLossParameterBatchEnd(loss.get_loss_ptr(), loss_parameter);
+
+  tensor_losses.resize(tensor_loss_ptrs.size());
+  for (unsigned i = 0; i < tensor_loss_ptrs.size(); i++) {
+    tensor_losses[i].resize(tensor_loss_ptrs[i].size());
+    for (unsigned j = 0; j < tensor_loss_ptrs[i].size(); j++)
+      for (tf::tensor *tensor_ptr : tensor_loss_ptrs[i][j])
+        tensor_losses[i][j].push_back(*tensor_ptr);
   }
   return tensor_losses;
 }
@@ -656,8 +764,35 @@ tf::callback::earlystopping::earlystopping(tf::loss loss, int patience,
 std::shared_ptr<Callback> tf::callback::earlystopping::callback() const {
   return callback_ptr;
 }
+// --- End Callback ...
 
-// --- End Callback ---Args &&args...
+// --- History ---
+
+void tf::history_container::record_history_on_batch_end(
+    unsigned const epoch_no, const std::vector<tf::loss *> losses) {
+  std::float64_t batch_total_loss(0.0);
+
+  if (this->batch_history["loss"].size() == epoch_no)
+    this->batch_history["loss"].resize(epoch_no + 1);
+
+  for (auto loss_ptr : losses)
+    batch_total_loss += loss_ptr->get_loss();
+
+  this->batch_history["loss"][epoch_no].push_back(batch_total_loss);
+}
+
+void tf::history_container::record_history_on_epoch_end(
+    unsigned const no_of_batches) {
+  unsigned index = batch_history["loss"].size() - 1;
+
+  std::float64_t sum =
+      std::accumulate(this->batch_history["loss"][index].begin(),
+                      this->batch_history["loss"][index].end(), 0.0);
+
+  history["loss"].push_back(sum / no_of_batches);
+}
+
+// --- End History ---
 
 // --- Optimizer ---
 tf::optimizer::optimizer(OptimizerType optimizerType) {
