@@ -91,7 +91,7 @@ class Opsmul : public Ops {
                        const unsigned *dimB, const bool isBroadCast);
 
 public:
-  Opsmul() = default;
+  Opsmul() : isPreInitializationDone(false), isBroadCast(false) {}
   ~Opsmul() {}
   void compute();
 
