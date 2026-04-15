@@ -12,6 +12,9 @@
 #include <core/framework/MathLibrary.h>
 #include <core/kernel/opskernel.h>
 
+// standard Libery
+#include <algorithm>
+
 Opsreducesum::~Opsreducesum() { delete temp_output; }
 
 void Opsreducesum::addGradGraph(Graph *gradient_graph) {
@@ -272,28 +275,32 @@ void Opsreducesum::initializeReductionDims(const unsigned n,
 
   // reduction_dims = new unsigned[n];
   for (i = 0; i < n; i++)
-    reduction_dims.push_back(arr[i]);
+    this->reduction_dims.push_back(arr[i]);
+
+  std::sort(this->reduction_dims.begin(), this->reduction_dims.end());
 }
 
 void Opsreducesum::initializeoutput(Tensor<std::float64_t> *output) {
   unsigned no_of_resultent_dims;
   std::vector<unsigned> resultent_dims;
-  unsigned i, j;
   this->output = output;
 
   no_of_resultent_dims =
-      inputs[0]->getNoOfDimensions() - no_of_reduction_dim <= 0
-          ? 1
+      inputs[0]->getNoOfDimensions() - no_of_reduction_dim < 0
+          ? 0
           : inputs[0]->getNoOfDimensions() - no_of_reduction_dim;
-  // resultent_dims = new unsigned[no_of_reduction_dim];
 
-  j = 0;
+  unsigned j = 0;
   for (unsigned i = 0; i < inputs[0]->getNoOfDimensions(); i++) {
-    if (i != reduction_dims[j])
+    if (i != this->reduction_dims[j]) {
       resultent_dims.push_back(inputs[0]->getDimensions()[i]);
-    else if (i == reduction_dims[j] && i == 0)
+    } else if (i == reduction_dims[j] && i == 0 && no_of_resultent_dims == 0) {
       resultent_dims.push_back(1);
-    j++;
+      no_of_resultent_dims++;
+      j++;
+    } else {
+      j++;
+    }
   }
   this->output->reshape(no_of_resultent_dims, resultent_dims.data());
 
