@@ -67,5 +67,7 @@ gtest_discover_tests(unit_test WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 
 add_test(NAME benchmark_test COMMAND benchmark_test)
 file(COPY ${CMAKE_SOURCE_DIR}/test/data DESTINATION ${CMAKE_BINARY_DIR}/test)
+add_definitions(-DPROJECT_SOURCE_DIR="${CMAKE_SOURCE_DIR}")
+
 # set_tests_properties(benchmark_test PROPERTIES TIMEOUT 300) # Set a timeout of 300 seconds (5 minutes)
 

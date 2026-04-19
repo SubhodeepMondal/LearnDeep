@@ -8,7 +8,8 @@ void MathTest::TearDown() {}
 
 std::vector<std::float64_t> load_bin(const std::string &path,
                                      size_t expected_size) {
-  std::ifstream file(path, std::ios::binary);
+  std::ifstream file(std::string(PROJECT_SOURCE_DIR) + "/" + path,
+                     std::ios::binary);
 
   if (!file) {
     throw std::runtime_error("Failed to open file: " + path);
