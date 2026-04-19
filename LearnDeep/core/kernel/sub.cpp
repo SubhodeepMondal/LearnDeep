@@ -3,6 +3,7 @@
 #endif
 
 // Library Headers
+#include "kernelmanager.h"
 #include "opskernel.h"
 #include <core/LAS/CPULibrary.h>
 #include <core/LAS/avx2_micro_kernels.h>
@@ -189,22 +190,61 @@ Opssub::getIncomingGradientTensor(Tensor<std::float64_t> *tensor) {
 void Opssub::kernel_dispatch(std::float64_t **ptr, const unsigned nDimA,
                              const unsigned *dimA, const unsigned nDimB,
                              const unsigned *dimB, const bool isBroadCast) {
-
+  KernelType kernel = get_global_kernel();
 #ifdef CUDA_ENABLED
-
-  double *d_arr[3];
-  d_arr[0] = reinterpret_cast<double *>(ptr[0]);
-  d_arr[1] = reinterpret_cast<double *>(ptr[1]);
-  d_arr[2] = reinterpret_cast<double *>(ptr[2]);
-  gpu::gpu_mat_sub_broadcast_f64(d_arr, nDimA, dimA, nDimB, dimB, isBroadCast);
-
-#else
-
-  if (__builtin_cpu_supports("avx2")) {
-    avx2::avx2_sub_broadcast_f64(ptr, nDimA, dimA, nDimB, dimB, isBroadCast);
-  } else {
-    cpu::__msub_broadcast(ptr, nDimA, dimA, nDimB, dimB, isBroadCast);
+  switch (kernel) {
+  case KernelType::GPU: {
+    double *d_arr[3];
+    d_arr[0] = reinterpret_cast<double *>(ptr[0]);
+    d_arr[1] = reinterpret_cast<double *>(ptr[1]);
+    d_arr[2] = reinterpret_cast<double *>(ptr[2]);
+    gpu::gpu_mat_sub_broadcast_f64(d_arr, nDimA, dimA, nDimB, dimB,
+                                   isBroadCast);
+    break;
   }
-
+  case KernelType::AVX2:
+    if (__builtin_cpu_supports("avx2")) {
+      avx2::avx2_sub_broadcast_f64(ptr, nDimA, dimA, nDimB, dimB, isBroadCast);
+    } else {
+      throw std::runtime_error("AVX2 not supported on this CPU");
+    }
+    break;
+  case KernelType::CPU_SCALAR:
+    cpu::__msub_broadcast(ptr, nDimA, dimA, nDimB, dimB, isBroadCast);
+    break;
+  case KernelType::AUTO:
+  default: {
+    double *d_arr[3];
+    d_arr[0] = reinterpret_cast<double *>(ptr[0]);
+    d_arr[1] = reinterpret_cast<double *>(ptr[1]);
+    d_arr[2] = reinterpret_cast<double *>(ptr[2]);
+    gpu::gpu_mat_sub_broadcast_f64(d_arr, nDimA, dimA, nDimB, dimB,
+                                   isBroadCast);
+    break;
+  }
+  }
+#else
+  switch (kernel) {
+  case KernelType::GPU:
+    throw std::runtime_error("GPU kernel requested but CUDA not enabled");
+  case KernelType::AVX2:
+    if (__builtin_cpu_supports("avx2")) {
+      avx2::avx2_sub_broadcast_f64(ptr, nDimA, dimA, nDimB, dimB, isBroadCast);
+    } else {
+      throw std::runtime_error("AVX2 not supported on this CPU");
+    }
+    break;
+  case KernelType::CPU_SCALAR:
+    cpu::__msub_broadcast(ptr, nDimA, dimA, nDimB, dimB, isBroadCast);
+    break;
+  case KernelType::AUTO:
+  default:
+    if (__builtin_cpu_supports("avx2")) {
+      avx2::avx2_sub_broadcast_f64(ptr, nDimA, dimA, nDimB, dimB, isBroadCast);
+    } else {
+      cpu::__msub_broadcast(ptr, nDimA, dimA, nDimB, dimB, isBroadCast);
+    }
+    break;
+  }
 #endif
 }

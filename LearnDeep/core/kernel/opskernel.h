@@ -231,7 +231,8 @@ class Opspower : public Ops {
                           std::float64_t *dl_arr,
                           Tensor<std::float64_t> *misc_arr);
 
-  void kernel_dispatch(std::float64_t **, unsigned *);
+  void kernel_dispatch(std::float64_t **ptr, const unsigned *nDimA,
+                       const unsigned dimA);
 
 public:
   Opspower() = default;

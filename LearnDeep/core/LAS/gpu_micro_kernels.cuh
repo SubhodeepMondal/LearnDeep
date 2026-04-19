@@ -38,8 +38,18 @@ matrixSumBroadCast(double *const input_1, double *const input_2,
                    const unsigned *const dimInput_2, const unsigned total_plane,
                    const unsigned total_plane_b);
 
-__global__ void matrixHadamardMul(double *a, double *b, double *c, unsigned x,
-                                  unsigned y);
+__global__ void
+matrixMulBroadCast(double *const input_1, double *const input_2,
+                   double *const output, const unsigned nDimInput_1,
+                   const unsigned *const dimInput_1, const unsigned nDimInput_2,
+                   const unsigned *const dimInput_2, const unsigned total_plane,
+                   const unsigned total_plane_b);
+
+__global__ void matrixHadamardMul(double *const input_1, double *const input_2,
+                                  double *const output,
+                                  const unsigned x_axis_dim,
+                                  const unsigned y_axis_dim,
+                                  const unsigned plane_count);
 __global__ void matrixResuffledMul(double *a, double *b, double *c, unsigned x,
                                    unsigned y, unsigned z);
 

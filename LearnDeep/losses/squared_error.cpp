@@ -93,8 +93,8 @@ std::float64_t const SquaredError::getScalerLoss() {
 
   if (temp_tensor.getNoOfDimensions()) {
     for (size_t i = 0; i < temp_tensor.getNoOfDimensions(); i++) {
-      tf::tensor tensor = temp_tensor.mean(i, false);
-      temp_tensor = tensor;
+      tf::tensor reduced_tensor = temp_tensor.mean(i, false);
+      temp_tensor = std::move(reduced_tensor);
       this->loss_value = temp_tensor.getData()[0];
     }
   }

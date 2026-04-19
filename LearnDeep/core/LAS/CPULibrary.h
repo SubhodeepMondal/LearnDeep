@@ -9,7 +9,7 @@ namespace cpu {
 
 void __matmul(std::float64_t **, unsigned *);
 
-void __melementwisemul(std::float64_t **, unsigned *);
+void __melementwisemul(std::float64_t **, const unsigned *);
 
 void __mmul_broadcast(std::float64_t *const *const ptr, const unsigned nDimA,
                       const unsigned *dimA, const unsigned nDimB,

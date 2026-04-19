@@ -4,8 +4,11 @@
 
 // Thirdparty header
 #include <absl/log/log.h>
+#include <cmath>
 
 // Tensor headers
+
+#include "kernelmanager.h"
 #include <core/LAS/CPULibrary.h>
 #include <core/LAS/avx2_micro_kernels.h>
 #include <core/framework/MathLibrary.h>
@@ -55,7 +58,6 @@ void Opspower::recursive_iterator(unsigned index, unsigned *dimension_arr,
         c_plane_size *= output->getDimensions()[i];
       }
 
-    int j;
     unsigned a[2];
     std::float64_t *ptr[3];
 
@@ -66,7 +68,7 @@ void Opspower::recursive_iterator(unsigned index, unsigned *dimension_arr,
     ptr[1] = output->getData() + c_index;
     ptr[2] = output->getData() + c_index;
 
-    kernel_dispatch(ptr, a);
+    // kernel_dispatch(ptr, a);
 
   } else {
     for (unsigned i = 0; i < inputs[0]->getDimensions()[index]; i++) {
@@ -78,17 +80,21 @@ void Opspower::recursive_iterator(unsigned index, unsigned *dimension_arr,
 };
 
 void Opspower::compute() {
-  unsigned i, *arr;
-
   if (this->exponent == 0)
     output->initData(1);
   else if (this->exponent > 0) {
-    output->initData(inputs[0]->getData());
-    arr = new unsigned[inputs[0]->getNoOfDimensions()];
-    for (i = 1; i < this->exponent; i++)
-      recursive_iterator(inputs[0]->getNoOfDimensions() - 1, arr,
-                         "matrix_power", NULL, NULL, NULL);
-    delete[] arr;
+    unsigned n_elements = 1;
+    for (unsigned i = 0; i < inputs[0]->getNoOfDimensions(); i++) {
+      n_elements *= inputs[0]->getDimensions()[i];
+    }
+
+    const std::float64_t *input_data = inputs[0]->getData();
+    std::float64_t *output_data = output->getData();
+
+#pragma omp parallel for
+    for (unsigned i = 0; i < n_elements; i++) {
+      output_data[i] = std::pow(input_data[i], this->exponent);
+    }
   }
 }
 
@@ -248,19 +254,63 @@ Opspower::getAllOutgoingGradientTensors() {
   return gradient_tensors;
 }
 
-void Opspower::kernel_dispatch(std::float64_t **ptr, unsigned *arr) {
-#ifdef CUDA_ENABLED
-  double *d_arr[3];
-  d_arr[0] = reinterpret_cast<double *>(ptr[0]);
-  d_arr[1] = reinterpret_cast<double *>(ptr[1]);
-  d_arr[2] = reinterpret_cast<double *>(ptr[2]);
+void Opspower::kernel_dispatch(std::float64_t **ptr, const unsigned *DimA,
+                               const unsigned ndimA) {
 
-  gpu::gpu_mat_hadamard_mul_f64(d_arr, arr);
+  KernelType kernel = get_global_kernel();
+#ifdef CUDA_ENABLED
+  bool gpu_available = true;
 #else
-  if (__builtin_cpu_supports("avx2")) {
-    avx2::avx2_mul_f64(ptr, arr);
-  } else {
-    cpu::__melementwisemul(ptr, arr);
-  }
+  bool gpu_available = false;
 #endif
+
+  switch (kernel) {
+
+  case KernelType::GPU:
+#ifdef CUDA_ENABLED
+  {
+
+    double *d_arr[3];
+    d_arr[0] = reinterpret_cast<double *>(ptr[0]);
+    d_arr[1] = reinterpret_cast<double *>(ptr[1]);
+    d_arr[2] = reinterpret_cast<double *>(ptr[2]);
+
+    gpu::gpu_mat_hadamard_mul_f64(d_arr, DimA, ndimA);
+  }
+#else
+    throw std::runtime_error("GPU kernel requested but CUDA not enabled");
+#endif
+  break;
+
+  case KernelType::AVX2:
+    if (__builtin_cpu_supports("avx2")) {
+      avx2::avx2_mul_f64(ptr, DimA);
+    } else {
+      throw std::runtime_error("AVX2 not supported on this CPU");
+    }
+    break;
+
+  case KernelType::CPU_SCALAR:
+    cpu::__melementwisemul(ptr, DimA);
+    break;
+  case KernelType::AUTO:
+  default:
+#ifdef CUDA_ENABLED
+    {
+      double *d_arr[3];
+      d_arr[0] = reinterpret_cast<double *>(ptr[0]);
+      d_arr[1] = reinterpret_cast<double *>(ptr[1]);
+      d_arr[2] = reinterpret_cast<double *>(ptr[2]);
+
+      gpu::gpu_mat_hadamard_mul_f64(d_arr, DimA, ndimA);
+    }
+#else
+    if (__builtin_cpu_supports("avx2")) {
+      avx2::avx2_mul_f64(ptr, DimA);
+    } else {
+      cpu::__melementwisemul(ptr, DimA);
+    }
+#endif
+    break;
+  }
 }

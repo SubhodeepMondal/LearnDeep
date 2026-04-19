@@ -7,6 +7,7 @@
 #include <absl/log/log.h>
 
 // Library Headers
+#include "kernelmanager.h"
 #include <core/LAS/CPULibrary.h>
 #include <core/LAS/avx2_micro_kernels.h>
 #include <core/framework/MathLibrary.h>
@@ -333,7 +334,61 @@ Tensor<std::float64_t> *Opsreducesum::getOutgoingGradientTensor(
 }
 
 void Opsreducesum::kernel_dispatch(std::float64_t **ptr, unsigned *arr) {
+  KernelType kernel = get_global_kernel();
+#ifdef CUDA_ENABLED
+  bool gpu_available = true;
+#else
+  bool gpu_available = false;
+#endif
 
+  switch (kernel) {
+
+  case KernelType::GPU:
+#ifdef CUDA_ENABLED
+  {
+    double *d_arr[3];
+    d_arr[0] = reinterpret_cast<double *>(ptr[0]);
+    d_arr[1] = reinterpret_cast<double *>(ptr[1]);
+    d_arr[2] = reinterpret_cast<double *>(ptr[2]);
+    gpu::gpu_mat_add_f64(d_arr, arr);
+  }
+#else
+    throw std::runtime_error("GPU kernel requested but CUDA not enabled");
+#endif
+  break;
+
+  case KernelType::AVX2:
+    if (__builtin_cpu_supports("avx2")) {
+      avx2::avx2_add_f64(ptr, arr);
+    } else {
+      throw std::runtime_error("AVX2 not supported on this CPU");
+    }
+    break;
+
+  case KernelType::CPU_SCALAR:
+    cpu::__madd(ptr, arr);
+    break;
+
+  case KernelType::AUTO:
+  default:
+#ifdef CUDA_ENABLED
+  {
+    double *d_arr[3];
+    d_arr[0] = reinterpret_cast<double *>(ptr[0]);
+    d_arr[1] = reinterpret_cast<double *>(ptr[1]);
+    d_arr[2] = reinterpret_cast<double *>(ptr[2]);
+    gpu::gpu_mat_add_f64(d_arr, arr);
+  }
+#else
+    if (__builtin_cpu_supports("avx2")) {
+      avx2::avx2_add_f64(ptr, arr);
+    } else {
+      cpu::__madd(ptr, arr);
+    }
+#endif
+  break;
+  }
+  /*
 #ifdef CUDA_ENABLED
   double *d_arr[3];
   d_arr[0] = reinterpret_cast<double *>(ptr[0]);
@@ -348,4 +403,5 @@ void Opsreducesum::kernel_dispatch(std::float64_t **ptr, unsigned *arr) {
     cpu::__madd(ptr, arr);
   }
 #endif
+*/
 }

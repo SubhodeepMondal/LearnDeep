@@ -338,7 +338,7 @@ void avx2::avx2_sub_broadcast_f64(std::float64_t **ptr, const unsigned nDimA,
   }
 }
 
-void avx2::avx2_mul_f64(std::float64_t **ptr, unsigned *arr) {
+void avx2::avx2_mul_f64(std::float64_t **ptr, const unsigned *arr) {
   std::float64_t *a, *b, *c;
   unsigned i, m_size, n_size, n_elements;
   a = ptr[0];

@@ -70,7 +70,7 @@ void cpu::__matmul_conventional(std::float64_t **ptr, unsigned *arr) {
     }
 }
 
-void cpu::__melementwisemul(std::float64_t **ptr, unsigned *arr) {
+void cpu::__melementwisemul(std::float64_t **ptr, const unsigned *arr) {
   std::float64_t *A, *B, *C;
   unsigned i, j, x, y, idx;
 
@@ -277,7 +277,7 @@ void cpu::__mscalermul_broadcast(std::float64_t *const *const ptr,
 
         // tackling remaining elements if any
         for (unsigned i = grid_x - (grid_x % 8); i < grid_x; i++) {
-          ptr[2][idx + i] = ptr[1][idx + i] + ptr[0][idx + i];
+          ptr[2][idx + i] = ptr[0][idx + i] - ptr[1][idx + i];
         }
         // }
       }
@@ -410,7 +410,7 @@ void cpu::__madd_broadcast(std::float64_t *const *const ptr,
 
         // tackling remaining elements if any
         for (unsigned i = grid_x - (grid_x % 8); i < grid_x; i++) {
-          ptr[2][idx + i] = ptr[1][idx + i] + ptr[0][idx + i];
+          ptr[2][idx + i] = ptr[0][idx + i] + ptr[1][idx + i];
         }
       // }
     }
@@ -543,7 +543,7 @@ void cpu::__msub_broadcast(std::float64_t *const *const ptr,
 
         // tackling remaining elements if any
         for (unsigned i = grid_x - (grid_x % 8); i < grid_x; i++) {
-          ptr[2][idx + i] = ptr[1][idx + i] + ptr[0][idx + i];
+          ptr[2][idx + i] = ptr[0][idx + i] - ptr[1][idx + i];
         }
         // }
       }

@@ -17,6 +17,8 @@ set(COMBINED_RESORCES
     kernel/sub.cpp
     kernel/sqrt.cpp
     kernel/transpose.cpp
+    kernel/kernelmanager.cpp
+    kernel/kernelmanager.h
 
     graph/graph_context.hpp
     graph/graph_framework.hpp

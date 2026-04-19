@@ -3,6 +3,7 @@
 #endif
 
 // Library Headers
+#include "kernelmanager.h"
 #include "opskernel.h"
 #include <core/LAS/CPULibrary.h>
 #include <core/LAS/avx2_micro_kernels.h>
@@ -128,18 +129,33 @@ Tensor<std::float64_t> *Opstranspose::getOutgoingGradientTensor(
 // }
 
 void Opstranspose::kernel_dispatch(std::float64_t **ptr, unsigned *arr) {
-
+  KernelType kernel = get_global_kernel();
 #ifdef CUDA_ENABLED
-  double *d_arr[2];
-  d_arr[0] = reinterpret_cast<double *>(ptr[0]);
-  d_arr[1] = reinterpret_cast<double *>(ptr[1]);
-
-  gpu::gpu_mat_transpose_f64(d_arr, arr);
+  switch (kernel) {
+  case KernelType::GPU: {
+    double *d_arr[2];
+    d_arr[0] = reinterpret_cast<double *>(ptr[0]);
+    d_arr[1] = reinterpret_cast<double *>(ptr[1]);
+    gpu::gpu_mat_transpose_f64(d_arr, arr);
+    break;
+  }
+  case KernelType::AVX2:
+  case KernelType::CPU_SCALAR:
+    cpu::__mtiled_transpose(ptr, arr);
+    break;
+  case KernelType::AUTO:
+  default: {
+    double *d_arr[2];
+    d_arr[0] = reinterpret_cast<double *>(ptr[0]);
+    d_arr[1] = reinterpret_cast<double *>(ptr[1]);
+    gpu::gpu_mat_transpose_f64(d_arr, arr);
+    break;
+  }
+  }
 #else
-  //   if (__builtin_cpu_supports("avx2")) {
-  //     avx2::avx2_add_f64(ptr, arr);
-  //   } else {
+  if (kernel == KernelType::GPU) {
+    throw std::runtime_error("GPU kernel requested but CUDA not enabled");
+  }
   cpu::__mtiled_transpose(ptr, arr);
-//   }
 #endif
 }
