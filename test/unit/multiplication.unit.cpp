@@ -1,5 +1,5 @@
+#include <LearnDeep/api/tensor.h>
 #include <gtest/gtest.h>
-#include <tensor.h>
 
 #include "LinearAlgebraFixtures.unit.hpp"
 
@@ -29,14 +29,12 @@ TEST_F(MathTest, Eager_MatrixHarmandMultiplication_2D) {
   B.tensor_of(b);
 
   C = A * B;
-
-  auto *tensorC_matmul = static_cast<Tensor<std::float64_t> *>(C.ptr);
   for (int i = 0; i < 16; i++) {
-    EXPECT_NEAR(tensorC_matmul->getData()[i], c_add[i], 0.0001);
+    EXPECT_NEAR(C.getData()[i], c_add[i], 0.0001);
   }
 }
 
-TEST_F(MathTest, Graph_MatrixElementWiseMultiplication_2D) {
+TEST_F(MathTest, Graph_MatrixHarmandMultiplication_2D) {
 
   std::float64_t a[] = {0.42602198, 0.51120308, 0.66381781, 0.79000792,
                         0.73980886, 0.1366799,  0.3818528,  0.40564105,
@@ -67,14 +65,13 @@ TEST_F(MathTest, Graph_MatrixElementWiseMultiplication_2D) {
 
     ctx.run();
 
-    auto *tensorC_mul = static_cast<Tensor<std::float64_t> *>(C.ptr);
     for (int i = 0; i < 16; i++) {
-      EXPECT_NEAR(tensorC_mul->getData()[i], c_mul[i], 0.0001);
+      EXPECT_NEAR(C.getData()[i], c_mul[i], 0.0001);
     }
   }
 }
 
-TEST_F(MathTest, Graph_MatrixElementWiseMultiplication_Grad_2D) {
+TEST_F(MathTest, Graph_MatrixHarmandMultiplication_Grad_2D) {
 
   std::float64_t a[] = {0.42602198, 0.51120308, 0.66381781, 0.79000792,
                         0.73980886, 0.1366799,  0.3818528,  0.40564105,
@@ -137,24 +134,20 @@ TEST_F(MathTest, Graph_MatrixElementWiseMultiplication_Grad_2D) {
     C_grad = ctx.get_gradient(C);
     E_grad = ctx.get_gradient(E);
 
-    auto *tensorA_grad = static_cast<Tensor<std::float64_t> *>(A_grad.ptr);
     for (int i = 0; i < 16; i++) {
-      EXPECT_NEAR(tensorA_grad->getData()[i], d_a[i], 0.0001);
+      EXPECT_NEAR(A_grad.getData()[i], d_a[i], 0.0001);
     }
 
-    auto *tensorB_grad = static_cast<Tensor<std::float64_t> *>(B_grad.ptr);
     for (int i = 0; i < 16; i++) {
-      EXPECT_NEAR(tensorB_grad->getData()[i], d_b[i], 0.0001);
+      EXPECT_NEAR(B_grad.getData()[i], d_b[i], 0.0001);
     }
 
-    auto *tensorC_grad = static_cast<Tensor<std::float64_t> *>(C_grad.ptr);
     for (int i = 0; i < 16; i++) {
-      EXPECT_NEAR(tensorC_grad->getData()[i], d_c[i], 0.0001);
+      EXPECT_NEAR(C_grad.getData()[i], d_c[i], 0.0001);
     }
 
-    auto *tensorE_grad = static_cast<Tensor<std::float64_t> *>(E_grad.ptr);
     for (int i = 0; i < 16; i++) {
-      EXPECT_NEAR(tensorE_grad->getData()[i], d_e[i], 0.0001);
+      EXPECT_NEAR(E_grad.getData()[i], d_e[i], 0.0001);
     }
   }
 }

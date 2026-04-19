@@ -1,5 +1,5 @@
+#include <LearnDeep/api/tensor.h>
 #include <gtest/gtest.h>
-#include <tensor.h>
 
 #include "LinearAlgebraFixtures.unit.hpp"
 
@@ -1634,12 +1634,10 @@ TEST_F(MathTest, Eager_MatrixMultiplication_2D) {
 
   C_16_16 = A_16_32.matmul(B_32_16);
 
-  auto *tensorC_matmul_16_16 =
-      static_cast<Tensor<std::float64_t> *>(C_16_16.ptr);
   for (unsigned j = 0; j < 16; j++) {
     for (int i = 0; i < 16; i++) {
-      EXPECT_NEAR(tensorC_matmul_16_16->getData()[i + j * 16],
-                  matmul_out_16_16[i + j * 16], 1e-6)
+      EXPECT_NEAR(C_16_16.getData()[i + j * 16], matmul_out_16_16[i + j * 16],
+                  1e-6)
           << "mismatch at " << i << ", " << j;
     }
   }
@@ -1653,12 +1651,10 @@ TEST_F(MathTest, Eager_MatrixMultiplication_2D) {
 
   C_46_37 = A_75_37.matmul(B_46_75);
 
-  auto *tensorC_matmul_46_37 =
-      static_cast<Tensor<std::float64_t> *>(C_46_37.ptr);
   for (unsigned j = 0; j < 37; j++) {
     for (int i = 0; i < 46; i++) {
-      EXPECT_NEAR(tensorC_matmul_46_37->getData()[i + j * 46],
-                  matmul_out_46_37[i + j * 46], 1e-6)
+      EXPECT_NEAR(C_46_37.getData()[i + j * 46], matmul_out_46_37[i + j * 46],
+                  1e-6)
           << "mismatch at " << i << ", " << j;
     }
   }
@@ -1914,12 +1910,10 @@ TEST_F(MathTest, Graph_MatrixMultiplication_2D) {
     C_16_16 = A_16_32.matmul(B_32_16);
     ctx.run();
 
-    auto *tensorC_matmul_16_16 =
-        static_cast<Tensor<std::float64_t> *>(C_16_16.ptr);
     for (unsigned j = 0; j < 16; j++) {
       for (int i = 0; i < 16; i++) {
-        EXPECT_NEAR(tensorC_matmul_16_16->getData()[i + j * 16],
-                    matmul_out_16_16[i + j * 16], 1e-6)
+        EXPECT_NEAR(C_16_16.getData()[i + j * 16], matmul_out_16_16[i + j * 16],
+                    1e-6)
             << "mismatch at " << i << ", " << j;
       }
     }
@@ -3324,12 +3318,10 @@ TEST_F(MathTest, Graph_MatrixMultiplication_2D) {
 
     ctx.run();
 
-    auto *tensorC_matmul_46_37 =
-        static_cast<Tensor<std::float64_t> *>(C_46_37.ptr);
     for (unsigned j = 0; j < 37; j++) {
       for (int i = 0; i < 46; i++) {
-        EXPECT_NEAR(tensorC_matmul_46_37->getData()[i + j * 46],
-                    matmul_out_46_37[i + j * 46], 1e-6)
+        EXPECT_NEAR(C_46_37.getData()[i + j * 46], matmul_out_46_37[i + j * 46],
+                    1e-6)
             << "mismatch at " << i << ", " << j;
       }
     }
@@ -3719,26 +3711,24 @@ TEST_F(MathTest, Graph_MatrixMultiplication_Grad_2D) {
     tf::graph_context ctx;
 
     C_16_16 = A_16_32.matmul(B_32_16);
-    ctx.run();
-
     ctx.initialize_gradient();
+
+    ctx.run();
     ctx.compute_gradient();
 
     tf::tensor A_grad = ctx.get_gradient(A_16_32);
     tf::tensor B_grad = ctx.get_gradient(B_32_16);
 
-    auto *tensorA_grad = static_cast<Tensor<std::float64_t> *>(A_grad.ptr);
     for (int j = 0; j < 16; j++) {
       for (int i = 0; i < 32; i++) {
-        EXPECT_NEAR(tensorA_grad->getData()[i + j * 32],
+        EXPECT_NEAR(A_grad.getData()[i + j * 32],
                     a_double_inp_16_32_grad[i + j * 32], 1e-6);
       }
     }
 
-    auto *tensorB_grad = static_cast<Tensor<std::float64_t> *>(B_grad.ptr);
     for (int j = 0; j < 32; j++) {
       for (int i = 0; i < 16; i++) {
-        EXPECT_NEAR(tensorB_grad->getData()[i + j * 16],
+        EXPECT_NEAR(B_grad.getData()[i + j * 16],
                     b_double_inp_32_16_grad[i + j * 16], 1e-6);
       }
     }
@@ -4206,19 +4196,15 @@ TEST_F(MathTest, Graph_MatrixMultiplication_Gradient_Pipeline_2D) {
     tf::tensor A_grad = ctx.get_gradient(A_16_32);
     tf::tensor B_grad = ctx.get_gradient(B_32_16);
 
-    auto *tensorA_grad = static_cast<Tensor<std::float64_t> *>(A_grad.ptr);
     for (int j = 0; j < 16; j++) {
       for (int i = 0; i < 32; i++) {
-        EXPECT_NEAR(tensorA_grad->getData()[i + j * 32], delta_A[i + j * 32],
-                    1e-6);
+        EXPECT_NEAR(A_grad.getData()[i + j * 32], delta_A[i + j * 32], 1e-6);
       }
     }
 
-    auto *tensorB_grad = static_cast<Tensor<std::float64_t> *>(B_grad.ptr);
     for (int j = 0; j < 32; j++) {
       for (int i = 0; i < 16; i++) {
-        EXPECT_NEAR(tensorB_grad->getData()[i + j * 16], delta_B[i + j * 16],
-                    1e-6);
+        EXPECT_NEAR(B_grad.getData()[i + j * 16], delta_B[i + j * 16], 1e-6);
       }
     }
   }

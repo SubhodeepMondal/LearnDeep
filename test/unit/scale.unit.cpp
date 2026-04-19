@@ -1,5 +1,5 @@
+#include <LearnDeep/api/tensor.h>
 #include <gtest/gtest.h>
-#include <tensor.h>
 
 #include "LinearAlgebraFixtures.unit.hpp"
 
@@ -22,9 +22,8 @@ TEST_F(MathTest, Eager_MatrixScale_2D) {
 
   C = A.scale(0.625);
 
-  auto *tensorC_scale = static_cast<Tensor<std::float64_t> *>(C.ptr);
   for (int i = 0; i < 16; i++) {
-    EXPECT_NEAR(tensorC_scale->getData()[i], c_scale[i], 0.0001);
+    EXPECT_NEAR(C.getData()[i], c_scale[i], 0.0001);
   }
 }
 
@@ -52,9 +51,8 @@ TEST_F(MathTest, Graph_MatrixScale_2D) {
 
     ctx.run();
 
-    auto *tensorC_scale = static_cast<Tensor<std::float64_t> *>(C.ptr);
     for (int i = 0; i < 16; i++) {
-      EXPECT_NEAR(tensorC_scale->getData()[i], c_scale[i], 0.0001);
+      EXPECT_NEAR(C.getData()[i], c_scale[i], 0.0001);
     }
   }
 }

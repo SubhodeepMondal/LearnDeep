@@ -1,0 +1,407 @@
+#include "opskernel.h"
+#ifdef CUDA_ENABLED
+#include <core/LAS/gpu_interface.cuh>
+#endif
+
+// Thirdparty Library
+#include <absl/log/log.h>
+
+// Library Headers
+#include "kernelmanager.h"
+#include <core/LAS/CPULibrary.h>
+#include <core/LAS/avx2_micro_kernels.h>
+#include <core/framework/MathLibrary.h>
+#include <core/kernel/opskernel.h>
+
+// standard Libery
+#include <algorithm>
+
+Opsreducesum::~Opsreducesum() { delete temp_output; }
+
+void Opsreducesum::addGradGraph(Graph *gradient_graph) {
+  // .......... reverse mode autodiff graph .........
+  //
+  //             [inputs[n]]
+  //                 |
+  //             [[add]...]
+  //                 |
+  //          [output_gradient]
+  //
+  // ........................ End .....................
+
+  std::vector<Tensor<std::float64_t> *> incoming_gradients =
+      gradient_graph->getGradient(this);
+  Tensor<std::float64_t> *tensor_ptr[2];
+
+  // graph setup for accumulating incoming gradients y' = sum ( z' )
+  if (incoming_gradients.size()) {
+    Tensor<std::float64_t> *intermediate_gradient_sum;
+
+    intermediate_gradient_sum = new Tensor<std::float64_t>(*this->output);
+    intermediate_gradient_sum->initData(0.0);
+    int i = 0;
+    for (Tensor<std::float64_t> *inc_grad_tensor : incoming_gradients) {
+
+      // input initialization
+      tensor_ptr[0] = intermediate_gradient_sum;
+      tensor_ptr[1] = inc_grad_tensor;
+
+      Ops *ops_add = new Opsadd;
+      ops_add->initializeinputs(tensor_ptr);
+
+      gradient_graph->addGradientNode(ops_add);
+      gradient_graph->addGradientNode(tensor_ptr[0]);
+      gradient_graph->addGradientNode(tensor_ptr[1]);
+      gradient_graph->addGradientEdge(tensor_ptr[0], ops_add);
+      gradient_graph->addGradientEdge(tensor_ptr[1], ops_add);
+
+      // output initialization
+      intermediate_gradient_sum = new Tensor<std::float64_t>(*this->output);
+      intermediate_gradient_sum->initData(0.0);
+
+      ops_add->initializeoutput(intermediate_gradient_sum);
+      gradient_graph->addGradientNode(intermediate_gradient_sum);
+      gradient_graph->addGradientEdge(ops_add, intermediate_gradient_sum);
+    }
+    this->incoming_gradient = intermediate_gradient_sum;
+  } else {
+    this->incoming_gradient = new Tensor<std::float64_t>(*this->output);
+    this->incoming_gradient->initData(1.0);
+  }
+
+  // for second input we need to calculate broadcast dimentions and then do a
+  // reduction sum then push the incoming gradient to previous layer.
+  Tensor<std::float64_t> *broadcasting_parent =
+      new Tensor<std::float64_t>(*inputs[0]);
+  broadcasting_parent->initData(0.0);
+
+  Ops *opsadd = new Opsadd();
+  tensor_ptr[0] = broadcasting_parent;
+  tensor_ptr[1] = this->incoming_gradient;
+  opsadd->initializeinputs(tensor_ptr);
+
+  gradient_graph->addGradientNode(opsadd);
+  gradient_graph->addGradientNode(this->incoming_gradient);
+  gradient_graph->addGradientNode(broadcasting_parent);
+  gradient_graph->addGradientEdge(this->incoming_gradient, opsadd);
+  gradient_graph->addGradientEdge(broadcasting_parent, opsadd);
+
+  Tensor<std::float64_t> *broadcasting_result =
+      new Tensor<std::float64_t>(*inputs[0]);
+
+  opsadd->initializeoutput(broadcasting_result);
+  gradient_graph->addGradientEdge(opsadd, broadcasting_result);
+  this->outgoing_gradients.push_back(broadcasting_result);
+}
+
+void Opsreducesum::recursive_sum(unsigned index, unsigned *dimension_arr,
+                                 unsigned reduction_dim,
+                                 std::float64_t *temp_arr) {
+
+  if (index < 3) {
+    unsigned i, j, k;
+    unsigned x_axis, y_axis, z_axis, stride, n_dim_size;
+    unsigned input_index, output_index;
+
+    std::float64_t *input_ptr, *output_ptr, *temp_inp;
+    std::float64_t *ptr[3];
+
+    unsigned a[2];
+
+    x_axis = temp_input->getDimensions()[0];
+    y_axis = (temp_input->getNoOfDimensions() > 1)
+                 ? temp_input->getDimensions()[1]
+                 : 1;
+    z_axis = (temp_input->getNoOfDimensions() > 2)
+                 ? temp_input->getDimensions()[2]
+                 : 1;
+
+    input_ptr = temp_input->getData();
+    output_ptr = temp_output->getData();
+
+    input_index = output_index = 0;
+
+    if (temp_input->getNoOfDimensions() > 3) {
+      n_dim_size = x_axis * y_axis * z_axis;
+      // Calculate the input index based on the dimensions
+      for (i = 3; i < temp_input->getNoOfDimensions(); i++) {
+        input_index += n_dim_size * dimension_arr[i];
+        n_dim_size *= temp_input->getDimensions()[i];
+      }
+
+      n_dim_size = 1;
+      // Calculate the output index based on the dimensions
+      for (i = 0; i < temp_input->getNoOfDimensions(); i++) {
+        if (i != reduction_dim) {
+          if (i < 3)
+            output_index *= n_dim_size;
+          else
+            output_index += n_dim_size * dimension_arr[i];
+
+          n_dim_size *= temp_input->getDimensions()[i];
+        }
+      }
+    }
+
+    switch (reduction_dim) {
+    case 0: {
+
+      ptr[0] = ptr[2] = output_ptr + output_index;
+      a[0] = y_axis;
+      a[1] = z_axis;
+
+      for (k = 0; k < x_axis; k++) {
+        stride = 1;
+        for (j = 0; j < z_axis; j++)
+          for (i = 0; i < y_axis; i++)
+            temp_arr[i + j * y_axis] =
+                input_ptr[i * x_axis + j * x_axis * y_axis + stride * k +
+                          input_index];
+
+        ptr[1] = temp_arr;
+
+        kernel_dispatch(ptr, a);
+      }
+      break;
+    }
+    case 1: {
+
+      ptr[0] = ptr[2] = output_ptr + output_index;
+      a[0] = x_axis;
+      a[1] = z_axis;
+      for (k = 0; k < y_axis; k++) {
+        stride = x_axis;
+        for (j = 0; j < z_axis; j++)
+          for (i = 0; i < x_axis; i++)
+            temp_arr[i + j * x_axis] =
+                input_ptr[i + j * x_axis * y_axis + stride * k + input_index];
+
+        ptr[1] = temp_arr;
+
+        kernel_dispatch(ptr, a);
+      }
+
+      break;
+    }
+    case 2: {
+
+      ptr[0] = ptr[2] = output_ptr + output_index;
+      a[0] = x_axis;
+      a[1] = y_axis;
+
+      for (k = 0; k < z_axis; k++) {
+        stride = x_axis * y_axis;
+        temp_arr = input_ptr + (stride * k + input_index);
+        ptr[1] = temp_arr;
+
+        kernel_dispatch(ptr, a);
+      }
+      break;
+    }
+    default: {
+      a[0] = x_axis;
+      a[1] = y_axis;
+      for (k = 0; k < z_axis; k++) {
+        stride = x_axis * y_axis;
+
+        ptr[0] = ptr[2] = output_ptr + (output_index + stride * k);
+
+        temp_inp = input_ptr + (stride * k + input_index);
+        ptr[1] = temp_inp;
+        kernel_dispatch(ptr, a);
+      }
+      break;
+    }
+    }
+  } else {
+    for (unsigned i = 0; i < temp_input->getDimensions()[index]; i++) {
+      dimension_arr[index] = i;
+      recursive_sum(index - 1, dimension_arr, reduction_dim, temp_arr);
+    }
+  }
+}
+
+void Opsreducesum::compute() {
+  unsigned i, k, resulting_no_of_dims;
+  unsigned *resulting_dims, *arr_dims;
+  unsigned nElements = 1;
+  this->temp_input = new Tensor<std::float64_t>(*this->inputs[0]);
+  for (i = 0; i < this->inputs[0]->getNoOfDimensions() && i < 3; i++)
+    nElements *= this->inputs[0]->getDimensions()[i];
+  std::float64_t *intermediate_input = new std::float64_t[nElements];
+  resulting_dims = new unsigned[inputs[0]->getNoOfDimensions()];
+  arr_dims = new unsigned[inputs[0]->getNoOfDimensions()];
+
+  temp_input->initData(this->inputs[0]->getData());
+
+  for (i = 0; i < no_of_reduction_dim; i++) {
+    LOG(INFO) << "Reducing on dimension: " << reduction_dims[i] - i << "\n";
+    resulting_no_of_dims = temp_input->getNoOfDimensions() - 1;
+
+    if (temp_input->getNoOfDimensions() > 1) {
+      k = 0;
+      for (unsigned j = 0; j < temp_input->getNoOfDimensions(); j++)
+        if (j != reduction_dims[i] - i)
+          resulting_dims[k++] = temp_input->getDimensions()[j];
+    } else {
+      resulting_no_of_dims = 1;
+      resulting_dims[0] = 1;
+    }
+
+    temp_output->reshape(resulting_no_of_dims, resulting_dims);
+    temp_output->initData(0.0);
+
+    recursive_sum(temp_input->getNoOfDimensions() - 1, arr_dims,
+                  reduction_dims[i] - i, intermediate_input);
+
+    temp_input->reshape(resulting_no_of_dims, resulting_dims);
+    temp_input->initData(temp_output->getData());
+  }
+  this->output->initData(temp_output->getData());
+  delete[] intermediate_input;
+  delete[] resulting_dims;
+  delete[] arr_dims;
+  delete this->temp_input;
+}
+
+void Opsreducesum::initializeinputs(Tensor<std::float64_t> **inputs) {
+
+  this->inputs.push_back(inputs[0]);
+}
+
+void Opsreducesum::initializeReductionDims(const unsigned n,
+                                           const unsigned *arr) {
+  unsigned i;
+  this->no_of_reduction_dim = n;
+
+  // reduction_dims = new unsigned[n];
+  for (i = 0; i < n; i++)
+    this->reduction_dims.push_back(arr[i]);
+
+  std::sort(this->reduction_dims.begin(), this->reduction_dims.end());
+}
+
+void Opsreducesum::initializeoutput(Tensor<std::float64_t> *output) {
+  unsigned no_of_resultent_dims;
+  std::vector<unsigned> resultent_dims;
+  this->output = output;
+
+  no_of_resultent_dims =
+      inputs[0]->getNoOfDimensions() - no_of_reduction_dim < 0
+          ? 0
+          : inputs[0]->getNoOfDimensions() - no_of_reduction_dim;
+
+  unsigned j = 0;
+  for (unsigned i = 0; i < inputs[0]->getNoOfDimensions(); i++) {
+    if (i != this->reduction_dims[j]) {
+      resultent_dims.push_back(inputs[0]->getDimensions()[i]);
+    } else if (i == reduction_dims[j] && i == 0 && no_of_resultent_dims == 0) {
+      resultent_dims.push_back(1);
+      no_of_resultent_dims++;
+      j++;
+    } else {
+      j++;
+    }
+  }
+  this->output->reshape(no_of_resultent_dims, resultent_dims.data());
+
+  temp_output = new Tensor<std::float64_t>(*this->output);
+}
+
+void Opsreducesum::printinputs() {
+  unsigned i;
+  for (i = 0; i < 1; i++) {
+    LOG(INFO) << "Input: " << i << "\n";
+    inputs[i]->printData();
+  }
+}
+
+void Opsreducesum::printoutput() {
+  LOG(INFO) << "output:\n";
+  output->printData();
+  LOG(INFO) << "\n";
+}
+
+Tensor<std::float64_t> *Opsreducesum::getOutgoingGradientTensor(
+    Tensor<std::float64_t> *gradient_input) {
+  auto it = std::find(inputs.begin(), inputs.end(), gradient_input);
+  Tensor<std::float64_t> *ptr = nullptr;
+  if (inputs.end() != it) {
+    int idx = std::distance(inputs.begin(), it);
+    ptr = outgoing_gradients[idx];
+  }
+  return ptr;
+}
+
+void Opsreducesum::kernel_dispatch(std::float64_t **ptr, unsigned *arr) {
+  KernelType kernel = get_global_kernel();
+#ifdef CUDA_ENABLED
+  bool gpu_available = true;
+#else
+  bool gpu_available = false;
+#endif
+
+  switch (kernel) {
+
+  case KernelType::GPU:
+#ifdef CUDA_ENABLED
+  {
+    double *d_arr[3];
+    d_arr[0] = reinterpret_cast<double *>(ptr[0]);
+    d_arr[1] = reinterpret_cast<double *>(ptr[1]);
+    d_arr[2] = reinterpret_cast<double *>(ptr[2]);
+    gpu::gpu_mat_add_f64(d_arr, arr);
+  }
+#else
+    throw std::runtime_error("GPU kernel requested but CUDA not enabled");
+#endif
+  break;
+
+  case KernelType::AVX2:
+    if (__builtin_cpu_supports("avx2")) {
+      avx2::avx2_add_f64(ptr, arr);
+    } else {
+      throw std::runtime_error("AVX2 not supported on this CPU");
+    }
+    break;
+
+  case KernelType::CPU_SCALAR:
+    cpu::__madd(ptr, arr);
+    break;
+
+  case KernelType::AUTO:
+  default:
+#ifdef CUDA_ENABLED
+  {
+    double *d_arr[3];
+    d_arr[0] = reinterpret_cast<double *>(ptr[0]);
+    d_arr[1] = reinterpret_cast<double *>(ptr[1]);
+    d_arr[2] = reinterpret_cast<double *>(ptr[2]);
+    gpu::gpu_mat_add_f64(d_arr, arr);
+  }
+#else
+    if (__builtin_cpu_supports("avx2")) {
+      avx2::avx2_add_f64(ptr, arr);
+    } else {
+      cpu::__madd(ptr, arr);
+    }
+#endif
+  break;
+  }
+  /*
+#ifdef CUDA_ENABLED
+  double *d_arr[3];
+  d_arr[0] = reinterpret_cast<double *>(ptr[0]);
+  d_arr[1] = reinterpret_cast<double *>(ptr[1]);
+  d_arr[2] = reinterpret_cast<double *>(ptr[2]);
+
+  gpu::gpu_mat_add_f64(d_arr, arr);
+#else
+  if (__builtin_cpu_supports("avx2")) {
+    avx2::avx2_add_f64(ptr, arr);
+  } else {
+    cpu::__madd(ptr, arr);
+  }
+#endif
+*/
+}

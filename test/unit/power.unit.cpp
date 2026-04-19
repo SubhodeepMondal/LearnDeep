@@ -1,5 +1,5 @@
+#include <LearnDeep/api/tensor.h>
 #include <gtest/gtest.h>
-#include <tensor.h>
 
 #include "LinearAlgebraFixtures.unit.hpp"
 
@@ -21,9 +21,8 @@ TEST_F(MathTest, Eager_MatrixPower_2D) {
 
   C = A.pow(2);
 
-  auto *tensorC_power = static_cast<Tensor<std::float64_t> *>(C.ptr);
   for (int i = 0; i < 16; i++) {
-    EXPECT_NEAR(tensorC_power->getData()[i], c_power[i], 0.0001);
+    EXPECT_NEAR(C.getData()[i], c_power[i], 0.0001);
   }
 }
 
@@ -51,9 +50,8 @@ TEST_F(MathTest, Graph_MatrixPower_2D) {
 
     ctx.run();
 
-    auto *tensorC_power = static_cast<Tensor<std::float64_t> *>(C.ptr);
     for (int i = 0; i < 16; i++) {
-      EXPECT_NEAR(tensorC_power->getData()[i], c_power[i], 0.0001);
+      EXPECT_NEAR(C.getData()[i], c_power[i], 0.0001);
     }
   }
 }
@@ -103,14 +101,12 @@ TEST_F(MathTest, Eager_MatrixPower_Grad_2D) {
 
     ctx.run();
 
-    auto *tensorB_power = static_cast<Tensor<std::float64_t> *>(B.ptr);
     for (int i = 0; i < 16; i++) {
-      EXPECT_NEAR(tensorB_power->getData()[i], b_power[i], 0.0001);
+      EXPECT_NEAR(B.getData()[i], b_power[i], 0.0001);
     }
 
-    auto *tensorC_power = static_cast<Tensor<std::float64_t> *>(C.ptr);
     for (int i = 0; i < 16; i++) {
-      EXPECT_NEAR(tensorC_power->getData()[i], c_power[i], 0.0001);
+      EXPECT_NEAR(C.getData()[i], c_power[i], 0.0001);
     }
     ctx.initialize_gradient();
     ctx.compute_gradient();
@@ -118,13 +114,11 @@ TEST_F(MathTest, Eager_MatrixPower_Grad_2D) {
     A_grad = ctx.get_gradient(A);
     B_grad = ctx.get_gradient(B);
 
-    auto *tensorA_grad = static_cast<Tensor<std::float64_t> *>(A_grad.ptr);
     for (int i = 0; i < 16; i++) {
-      EXPECT_NEAR(tensorA_grad->getData()[i], a_grad[i], 0.0001);
+      EXPECT_NEAR(A_grad.getData()[i], a_grad[i], 0.0001);
     }
-    auto *tensorB_grad = static_cast<Tensor<std::float64_t> *>(B_grad.ptr);
     for (int i = 0; i < 16; i++) {
-      EXPECT_NEAR(tensorB_grad->getData()[i], b_grad[i], 0.0001);
+      EXPECT_NEAR(B_grad.getData()[i], b_grad[i], 0.0001);
     }
   }
 }

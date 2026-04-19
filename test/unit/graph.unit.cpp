@@ -1,6 +1,6 @@
 #include "LinearAlgebraFixtures.unit.hpp"
+#include <LearnDeep/api/tensor.h>
 #include <gtest/gtest.h>
-#include <tensor.h>
 
 TEST_F(MathTest, GraphCreation_test) {
   std::float64_t a[] = {

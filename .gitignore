@@ -4,6 +4,7 @@
 *.o
 *.so
 .vscode
+*.log
 
 **/build/*
 !**/build/.gitkeep
@@ -15,3 +16,4 @@ thirdparty/*
 !thirdparty/.gitkeep
 
 Testing/
+.*/

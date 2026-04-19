@@ -1,5 +1,5 @@
+#include <LearnDeep/api/tensor.h>
 #include <benchmark/benchmark.h>
-#include <tensor.h>
 
 // -------- Benchmark Eager Matmul --------
 static void mat_matmul_eager_tensor(benchmark::State &state) {

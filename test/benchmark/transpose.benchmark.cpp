@@ -1,5 +1,5 @@
+#include <LearnDeep/api/tensor.h>
 #include <benchmark/benchmark.h>
-#include <tensor.h>
 
 // ------------------  BenchMark Eager Transpose ---------------
 static void mat_transpose_eager_tensor(benchmark::State &state) {

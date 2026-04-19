@@ -1,7 +1,6 @@
 #include "LinearAlgebraFixtures.unit.hpp"
+#include <LearnDeep/api/tensor.h>
 #include <gtest/gtest.h>
-#include <tensor.h>
-
 TEST_F(MathTest, MatrixInitialization_test) {
   std::float64_t a[] = {0.00805433, 0.71604533, 0.53269858, 0.34661127,
                         0.56137041, 0.14270995, 0.62471964, 0.31898735,
@@ -34,12 +33,9 @@ TEST_F(MathTest, MatrixInitialization_test) {
   C = B;
 
   // Check if the data in A and B matches the expected values
-  auto *a_ptr = static_cast<Tensor<std::float64_t> *>(A.ptr);
-  auto *b_ptr = static_cast<Tensor<std::float64_t> *>(B.ptr);
-  auto *c_ptr = static_cast<Tensor<std::float64_t> *>(C.ptr);
   for (int i = 0; i < 16; i++) {
-    EXPECT_EQ(a_ptr->getData()[i], a[i]);
-    EXPECT_EQ(b_ptr->getData()[i], b[i]);
-    EXPECT_EQ(c_ptr->getData()[i], b[i]);
+    EXPECT_EQ(A.getData()[i], a[i]);
+    EXPECT_EQ(B.getData()[i], b[i]);
+    EXPECT_EQ(C.getData()[i], b[i]);
   }
 }
