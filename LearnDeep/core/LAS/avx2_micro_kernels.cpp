@@ -511,16 +511,22 @@ void avx2::avx2_sqrt_f64(std::float64_t **ptr, unsigned *arr) {
     c[i] = std::sqrt(a[i]);
 }
 
-void avx2::avx2_relu_f64(std::float64_t **ptr, unsigned *arr) {
+void avx2::avx2_relu_f64(std::float64_t **ptr, unsigned const nDim,
+                         unsigned const *arr) {
   std::float64_t *a, *c;
-  unsigned i, m_size, n_size, n_elements;
+  unsigned i, m_size, n_size, total_plane, n_elements;
   a = ptr[0];
   c = ptr[1];
 
   m_size = arr[0];
   n_size = arr[1];
 
-  n_elements = m_size * n_size;
+  total_plane = 1;
+  if (nDim > 2)
+    for (unsigned i = 2; i < nDim; i++)
+      total_plane *= arr[i];
+
+  n_elements = m_size * n_size * total_plane;
   unsigned vec_end = (n_elements / 4) * 4;
   omp_set_num_threads(std::thread::hardware_concurrency());
 

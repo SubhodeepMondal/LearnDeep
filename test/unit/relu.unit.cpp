@@ -3,48 +3,33 @@
 
 #include "LinearAlgebraFixtures.unit.hpp"
 
-TEST_F(MathTest, Eager_Matrixrelu_2D) {
-
-  std::float64_t a[] = {-0.12545988, 0.45071431,  0.23199394,  0.09865848,
-                        -0.34398136, -0.34400548, -0.44191639, 0.36617615,
-                        0.10111501,  0.20807258,  -0.47941551, 0.46990985,
-                        0.33244264,  -0.28766089, -0.31817503, -0.31659549};
-
-  std::float64_t c_relu[] = {0.0,        0.45071431, 0.23199394, 0.09865848,
-                             0.0,        0.0,        0.0,        0.36617615,
-                             0.10111501, 0.20807258, 0.0,        0.46990985,
-                             0.33244264, 0.0,        0.0,        0.0};
+TEST_F(MathTest, Relu_Test_1) {
 
   tf::tensor A, C;
-  A.tf_create(tf_float64, 4, 4);
-  // C.tf_create(tf_float64, 4, 4);
+  A.tf_create(tf_float64, 63, 32);
 
-  A.tensor_of(a);
+  A.tensor_of(
+      load_bin("test/data/Relu_Test_1_input_sample.bin", 63 * 32).data());
 
   C = A.relu();
 
-  for (int i = 0; i < 16; i++) {
-    EXPECT_NEAR(C.getData()[i], c_relu[i], 0.0001);
+  auto output = load_bin("test/data/Relu_Test_1_output_sample.bin", 63 * 32);
+  for (int i = 0; i < 63 * 32; i++) {
+    EXPECT_NEAR(C.getData()[i], output[i], 1e-6) << "at: " << i;
   }
 }
 
-TEST_F(MathTest, Graph_Matrixrelu_2D) {
-
-  std::float64_t a[] = {-0.12545988, 0.45071431,  0.23199394,  0.09865848,
-                        -0.34398136, -0.34400548, -0.44191639, 0.36617615,
-                        0.10111501,  0.20807258,  -0.47941551, 0.46990985,
-                        0.33244264,  -0.28766089, -0.31817503, -0.31659549};
-
-  std::float64_t c_relu[] = {0.0,        0.45071431, 0.23199394, 0.09865848,
-                             0.0,        0.0,        0.0,        0.36617615,
-                             0.10111501, 0.20807258, 0.0,        0.46990985,
-                             0.33244264, 0.0,        0.0,        0.0};
+TEST_F(MathTest, Relu_Test_2) {
 
   tf::tensor A, C;
-  A.tf_create(tf_float64, 4, 4);
-  C.tf_create(tf_float64, 4, 4);
+  A.tf_create(tf_float64, 51, 48, 36, 72);
 
-  A.tensor_of(a);
+  A.tensor_of(
+      load_bin("test/data/Relu_Test_2_input_sample.bin", 51 * 48 * 36 * 72)
+          .data());
+
+  auto output =
+      load_bin("test/data/Relu_Test_2_output_sample.bin", 51 * 48 * 36 * 72);
   {
     tf::graph_context ctx;
 
@@ -52,8 +37,10 @@ TEST_F(MathTest, Graph_Matrixrelu_2D) {
 
     ctx.run();
 
-    for (int i = 0; i < 16; i++) {
-      EXPECT_NEAR(C.getData()[i], c_relu[i], 0.0001);
+    auto output =
+        load_bin("test/data/Relu_Test_2_output_sample.bin", 51 * 48 * 36 * 72);
+    for (int i = 0; i < 51 * 48 * 36; i++) {
+      EXPECT_NEAR(C.getData()[i], output[i], 1e-6);
     }
   }
 }

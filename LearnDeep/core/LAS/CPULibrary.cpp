@@ -712,7 +712,7 @@ void cpu::__msqrt(std::float64_t **ptr, unsigned *arr) {
       C[i + j * x] = std::sqrt(A[i + j * x]);
 }
 
-void cpu::__mrelu(std::float64_t **ptr, unsigned *arr) {
+void cpu::__mrelu(std::float64_t **ptr, unsigned const *arr) {
   std::float64_t *A, *C;
   unsigned x, y;
 

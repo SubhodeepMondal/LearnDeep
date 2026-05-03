@@ -44,7 +44,7 @@ void __mtiled_transpose(std::float64_t **, unsigned *);
 
 void __msqrt(std::float64_t **, unsigned *);
 
-void __mrelu(std::float64_t **, unsigned *);
+void __mrelu(std::float64_t **, unsigned const *);
 
 void __msigmoid(std::float64_t **, unsigned *);
 

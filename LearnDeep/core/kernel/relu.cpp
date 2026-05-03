@@ -9,64 +9,13 @@
 #include <core/LAS/avx2_micro_kernels.h>
 #include <core/framework/MathLibrary.h>
 
-void Opsrelu::recursive_iterator(unsigned index, unsigned *dimension_arr,
-                                 std::string function_name, unsigned *ui_arr,
-                                 std::float64_t *dl_arr,
-                                 Tensor<std::float64_t> *misc_arr) {
-  if (index < 2) {
-    unsigned i, inpA_x, inpA_y, inpB_x, inpB_y, out_x, out_y;
-    unsigned a_plane_size, b_plane_size, c_plane_size, a_index, b_index,
-        c_index;
-
-    inpA_x = (inputs[0]->getNoOfDimensions() > 0)
-                 ? inputs[0]->getDimensions()[0]
-                 : 1;
-    inpA_y = (inputs[0]->getNoOfDimensions() > 1)
-                 ? inputs[0]->getDimensions()[1]
-                 : 1;
-
-    out_x = (output->getNoOfDimensions() > 0) ? output->getDimensions()[0] : 1;
-    out_y = (output->getNoOfDimensions() > 1) ? output->getDimensions()[1] : 1;
-
-    a_plane_size = inpA_x * inpA_y;
-    c_plane_size = out_x * out_y;
-
-    a_index = b_index = c_index = 0;
-    if (inputs[0]->getNoOfDimensions() > 2)
-      for (i = 2; i < inputs[0]->getNoOfDimensions(); i++) {
-        a_index += a_plane_size * dimension_arr[i];
-        c_index += c_plane_size * dimension_arr[i];
-
-        a_plane_size *= inputs[0]->getDimensions()[i];
-        c_plane_size *= output->getDimensions()[i];
-      }
-    unsigned a[2];
-    std::float64_t *ptr[3];
-
-    a[0] = inpA_x;
-    a[1] = inpA_y;
-
-    ptr[0] = inputs[0]->getData() + a_index;
-    ptr[1] = output->getData() + c_index;
-
-    kernel_dispatch(ptr, a);
-  } else {
-    for (unsigned i = 0; i < inputs[0]->getDimensions()[index]; i++) {
-      dimension_arr[index] = i;
-      recursive_iterator(index - 1, dimension_arr, function_name, ui_arr,
-                         dl_arr, misc_arr);
-    }
-  }
-};
-
 void Opsrelu::compute() {
-  unsigned *arr;
+  std::float64_t *ptr[2];
+  ptr[0] = this->inputs[0]->getData();
+  ptr[1] = this->output->getData();
 
-  arr = new unsigned[inputs[0]->getNoOfDimensions()];
-
-  recursive_iterator(inputs[0]->getNoOfDimensions() - 1, arr,
-                     "matrix_scaler_multiplication", NULL, NULL, NULL);
-  delete[] arr;
+  this->kernel_dispatch(ptr, this->inputs[0]->getNoOfDimensions(),
+                        this->inputs[0]->getDimensions());
 }
 
 void Opsrelu::initializeinputs(Tensor<std::float64_t> **inputs) {
@@ -92,7 +41,8 @@ void Opsrelu::printoutput() {
   std::cout << "\n";
 }
 
-void Opsrelu::kernel_dispatch(std::float64_t **ptr, unsigned *arr) {
+void Opsrelu::kernel_dispatch(std::float64_t **ptr, const unsigned nDim,
+                              unsigned const *arr) {
 
   KernelType kernel = get_global_kernel();
 #ifdef CUDA_ENABLED
@@ -109,7 +59,7 @@ void Opsrelu::kernel_dispatch(std::float64_t **ptr, unsigned *arr) {
     double *d_arr[2];
     d_arr[0] = reinterpret_cast<double *>(ptr[0]);
     d_arr[1] = reinterpret_cast<double *>(ptr[1]);
-    gpu::gpu_mat_relu_f64(d_arr, arr);
+    gpu::gpu_mat_relu_f64(d_arr, nDim, arr);
   }
 #else
     throw std::runtime_error("GPU kernel requested but CUDA not enabled");
@@ -118,7 +68,7 @@ void Opsrelu::kernel_dispatch(std::float64_t **ptr, unsigned *arr) {
 
   case KernelType::AVX2:
     if (__builtin_cpu_supports("avx2")) {
-      avx2::avx2_relu_f64(ptr, arr);
+      avx2::avx2_relu_f64(ptr, nDim, arr);
     } else {
       throw std::runtime_error("AVX2 not supported on this CPU");
     }
@@ -135,30 +85,15 @@ void Opsrelu::kernel_dispatch(std::float64_t **ptr, unsigned *arr) {
     double *d_arr[2];
     d_arr[0] = reinterpret_cast<double *>(ptr[0]);
     d_arr[1] = reinterpret_cast<double *>(ptr[1]);
-    gpu::gpu_mat_relu_f64(d_arr, arr);
+    gpu::gpu_mat_relu_f64(d_arr, nDim, arr);
   }
 #else
     if (__builtin_cpu_supports("avx2")) {
-      avx2::avx2_relu_f64(ptr, arr);
+      avx2::avx2_relu_f64(ptr, nDim, arr);
     } else {
       cpu::__mrelu(ptr, arr);
     }
 #endif
   break;
   }
-  /*
- #ifdef CUDA_ENABLED
-   double *d_arr[2];
-   d_arr[0] = reinterpret_cast<double *>(ptr[0]);
-   d_arr[1] = reinterpret_cast<double *>(ptr[1]);
-
-   gpu::gpu_mat_relu_f64(d_arr, arr);
- #else
-   if (__builtin_cpu_supports("avx2")) {
-     avx2::avx2_relu_f64(ptr, arr);
-   } else {
-     cpu::__mrelu(ptr, arr);
-   }
- #endif
- */
 }
