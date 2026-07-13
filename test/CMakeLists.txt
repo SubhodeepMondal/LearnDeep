@@ -6,6 +6,7 @@ add_executable(unit_test
     unit/addition.unit.cpp
     unit/gemm.unit.cpp
     unit/graph.unit.cpp
+    unit/greaterthanzero.unit.cpp
     unit/LinearAlgebraFixtures.unit.hpp
     unit/LinearAlgebraFixtures.unit.cpp
     unit/matmul.unit.cpp

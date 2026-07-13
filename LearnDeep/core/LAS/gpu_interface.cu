@@ -478,13 +478,18 @@ void gpu::gpu_mat_sqrt_f64(double **ptr, unsigned *arr) {
   }
 }
 
-void gpu::gpu_mat_relu_f64(double **ptr, unsigned int *arr) {
+void gpu::gpu_mat_relu_f64(double **ptr, const unsigned nDim,
+                           unsigned int const *arr) {
 
   double *a = ptr[0];
   double *c = ptr[1];
   unsigned x = arr[0];
   unsigned y = arr[1];
 
+  size_t total_plane = 1;
+  if (nDim > 2)
+    for (unsigned i = 2; i < nDim; i++)
+      total_plane *= arr[i];
   LOG(INFO) << "GPU kernel for matrix ReLU is running...";
 
   dim3 block;
@@ -493,16 +498,19 @@ void gpu::gpu_mat_relu_f64(double **ptr, unsigned int *arr) {
   block.y = (32 > y) ? y : 32;
   grid.x = (x + block.x - 1) / block.x;
   grid.y = (y + block.y - 1) / block.y;
+  grid.z = total_plane;
 
   double *d_a, *d_c;
 
-  cudaMalloc((void **)&d_a, x * y * sizeof(double));
-  cudaMalloc((void **)&d_c, x * y * sizeof(double));
+  cudaMalloc((void **)&d_a, x * y * total_plane * sizeof(double));
+  cudaMalloc((void **)&d_c, x * y * total_plane * sizeof(double));
 
-  cudaMemcpy(d_a, a, x * y * sizeof(double), cudaMemcpyHostToDevice);
+  cudaMemcpy(d_a, a, x * y * total_plane * sizeof(double),
+             cudaMemcpyHostToDevice);
   cudaError_t err;
   gpu_kernel::matrixRelu<<<grid, block>>>(d_a, d_c, x, y);
-  cudaMemcpy(c, d_c, x * y * sizeof(double), cudaMemcpyDeviceToHost);
+  cudaMemcpy(c, d_c, x * y * total_plane * sizeof(double),
+             cudaMemcpyDeviceToHost);
   cudaFree(d_a);
   cudaFree(d_c);
   err = cudaGetLastError();

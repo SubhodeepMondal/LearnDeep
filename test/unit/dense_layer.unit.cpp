@@ -7,27 +7,6 @@
 #include <gtest/gtest.h>
 
 #include <stdfloat>
-/*
-std::vector<std::float64_t> load_bin(const std::string &path,
-                                     size_t expected_size) {
-  std::ifstream file(path, std::ios::binary);
-
-  if (!file) {
-    throw std::runtime_error("Failed to open file: " + path);
-  }
-
-  std::vector<std::float64_t> data(expected_size);
-
-  file.read(reinterpret_cast<char *>(data.data()),
-            expected_size * sizeof(std::float64_t));
-
-  if (!file) {
-    throw std::runtime_error("Error reading file: " + path);
-  }
-
-  return data;
-}
-*/
 
 TEST_F(FrameworkTest, DenseLayer_Test_1) {
 

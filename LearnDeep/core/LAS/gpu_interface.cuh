@@ -134,7 +134,7 @@ void gpu_mat_sub_broadcast_f64(double *const *const ptr, const unsigned nDimA,
 
 void gpu_mat_sqrt_f64(double **ptr, unsigned *arr);
 
-void gpu_mat_relu_f64(double **ptr, unsigned *arr);
+void gpu_mat_relu_f64(double **ptr, const unsigned nDim, unsigned const *arr);
 
 void gpu_mat_sigmoid_f64(double **ptr, unsigned *arr);
 

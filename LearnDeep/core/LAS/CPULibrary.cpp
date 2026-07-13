@@ -712,7 +712,7 @@ void cpu::__msqrt(std::float64_t **ptr, unsigned *arr) {
       C[i + j * x] = std::sqrt(A[i + j * x]);
 }
 
-void cpu::__mrelu(std::float64_t **ptr, unsigned *arr) {
+void cpu::__mrelu(std::float64_t **ptr, unsigned const *arr) {
   std::float64_t *A, *C;
   unsigned x, y;
 
@@ -760,5 +760,48 @@ void cpu::__msoftmax(std::float64_t **ptr, unsigned *arr) {
     }
     for (unsigned i = 0; i < x; i++)
       C[i + j * x] = C[i + j * x] / sum;
+  }
+}
+
+void cpu::__mgreaterthanzero(std::float64_t *const *const ptr,
+                             unsigned const *dims, unsigned const nDims) {
+  unsigned grid_x, grid_y;
+  unsigned total_lines = 1;
+
+  if (nDims > 1) {
+    grid_x = dims[0];
+    for (unsigned i = 1; i < nDims; i++)
+      total_lines *= dims[i];
+    grid_y = total_lines;
+
+  } else if (nDims > 0) {
+    grid_x = dims[0];
+    grid_y = 1;
+  } else {
+    throw std::runtime_error(
+        "operation: greater_than_zero is not possible with tensors without "
+        "any elements and dimensions zero.\n");
+  }
+
+#pragma omp parallel for
+  for (unsigned line_it = 0; line_it < grid_y; ++line_it) {
+    unsigned idx = line_it * grid_x;
+    std::float64_t *in = ptr[0] + idx;
+    std::float64_t *out = ptr[1] + idx;
+
+    for (unsigned i = 0; i + 8 <= grid_x; i += 8) {
+      out[i] = (in[i] > 0);
+      out[i + 1] = (in[i + 1] > 0);
+      out[i + 2] = (in[i + 2] > 0);
+      out[i + 3] = (in[i + 3] > 0);
+      out[i + 4] = (in[i + 4] > 0);
+      out[i + 5] = (in[i + 5] > 0);
+      out[i + 6] = (in[i + 6] > 0);
+      out[i + 7] = (in[i + 7] > 0);
+    }
+
+    for (unsigned i = grid_x - (grid_x % 8); i < grid_x; i++) {
+      out[i] = (in[i] > 0);
+    }
   }
 }

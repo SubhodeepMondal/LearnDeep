@@ -503,12 +503,13 @@ __global__ void gpu_kernel::matrixRollingSum(double *input, double *output,
 __global__ void gpu_kernel::matrixRelu(double *input_A, double *output, int x,
                                        int y) {
   // x: neuron, y: feature. m: max_neuron.
-  unsigned id_x, id_y, lin_idx;
+  unsigned id_x, id_y, id_z, lin_idx;
   id_x = threadIdx.x + (blockDim.x * blockIdx.x);
   id_y = threadIdx.y + (blockDim.y * blockIdx.y);
+  id_z = blockIdx.z;
 
   if (id_x < x && id_y < y) {
-    lin_idx = id_x + id_y * x;
+    lin_idx = id_x + id_y * x + id_z * x * y;
     output[lin_idx] = input_A[lin_idx] * (input_A[lin_idx] > 0);
   }
 }

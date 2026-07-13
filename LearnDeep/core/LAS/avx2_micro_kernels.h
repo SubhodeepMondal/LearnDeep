@@ -30,11 +30,14 @@ void avx2_scale_f64(std::float64_t **, unsigned *);
 
 void avx2_sqrt_f64(std::float64_t **, unsigned *);
 
-void avx2_relu_f64(std::float64_t **, unsigned *);
+void avx2_relu_f64(std::float64_t **, const unsigned nDim, unsigned const *);
 
 void avx2_sigmoid_f64(std::float64_t **, unsigned *);
 
 void avx2_softmax_f64(std::float64_t **, unsigned *);
+
+void avx2_greater_than_zero_f64(std::float64_t *const *const ptr,
+                                unsigned *const dims, unsigned const nDims);
 
 } // namespace avx2
 

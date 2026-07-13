@@ -226,10 +226,6 @@ class Opspower : public Ops {
       *incoming_gradient; // z' incoming gradient from next ops
   Tensor<std::float64_t>
       *outgoing_gradients[1]; // d/dx * z' outgoing gradient for previous ops
-  void recursive_iterator(unsigned index, unsigned *dimension_arr,
-                          std::string function_name, unsigned *ui_arr,
-                          std::float64_t *dl_arr,
-                          Tensor<std::float64_t> *misc_arr);
 
   void kernel_dispatch(std::float64_t **ptr, const unsigned *nDimA,
                        const unsigned dimA);
@@ -436,27 +432,26 @@ public:
 class Opsrelu : public Ops {
   std::vector<Tensor<std::float64_t> *> inputs;
   Tensor<std::float64_t> *output;
-  Tensor<std::float64_t> *outgoing_gradient;
-  void recursive_iterator(unsigned index, unsigned *dimension_arr,
-                          std::string function_name, unsigned *ui_arr,
-                          std::float64_t *dl_arr,
-                          Tensor<std::float64_t> *misc_arr);
+  Tensor<std::float64_t> *incoming_gradient;
+  Tensor<std::float64_t> *outgoing_gradients[1];
 
-  void kernel_dispatch(std::float64_t **, unsigned *);
+  void kernel_dispatch(std::float64_t **, unsigned const, unsigned const *);
 
 public:
   Opsrelu() = default;
   ~Opsrelu() {}
   void compute();
-  void addGradGraph(Graph *gradient_graph) {}
-  Tensor<std::float64_t> *getOutgoingGradientTensor() {
-    return outgoing_gradient;
+  void addGradGraph(Graph *gradient_graph);
+
+  Tensor<std::float64_t> *
+  getOutgoingGradientTensor(Tensor<std::float64_t> *gradient_input);
+
+  Tensor<std::float64_t> *
+  getIncomingGradientTensor(Tensor<std::float64_t> *gradient_input) override {
+    return incoming_gradient;
   }
 
-  std::vector<Tensor<std::float64_t> *> getAllOutgoingGradientTensors() {
-    std::vector<Tensor<std::float64_t> *> grads;
-    return grads;
-  }
+  std::vector<Tensor<std::float64_t> *> getAllOutgoingGradientTensors();
   void initializeinputs(Tensor<std::float64_t> **inputs);
   void initializeoutput(Tensor<std::float64_t> *output);
   std::vector<Tensor<std::float64_t> *> getinputs() { return inputs; }
@@ -549,6 +544,36 @@ class Opstranspose : public Ops {
 public:
   Opstranspose() = default;
   ~Opstranspose() {}
+  void compute();
+  void addGradGraph(Graph *gradient_graph) {}
+  Tensor<std::float64_t> *
+  getOutgoingGradientTensor(Tensor<std::float64_t> *gradient_input);
+
+  std::vector<Tensor<std::float64_t> *> getAllOutgoingGradientTensors() {
+    std::vector<Tensor<std::float64_t> *> grads;
+    return grads;
+  }
+  void initializeinputs(Tensor<std::float64_t> **inputs);
+  void initializeoutput(Tensor<std::float64_t> *output);
+  std::vector<Tensor<std::float64_t> *> getinputs() { return inputs; }
+  Tensor<std::float64_t> *getoutput() { return output; }
+  unsigned getnoofinputs() { return 1; }
+  void printinputs();
+  void printoutput();
+};
+
+class Opsgreaterthanzero : public Ops {
+  std::vector<Tensor<std::float64_t> *> inputs;
+  unsigned no_of_inputs;
+  Tensor<std::float64_t> *output;
+  Tensor<std::float64_t> *outgoing_gradient;
+
+  void kernel_dispatch(std::float64_t **, const unsigned nDim,
+                       unsigned const *);
+
+public:
+  Opsgreaterthanzero() = default;
+  ~Opsgreaterthanzero() {}
   void compute();
   void addGradGraph(Graph *gradient_graph) {}
   Tensor<std::float64_t> *

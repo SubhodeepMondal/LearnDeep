@@ -511,16 +511,22 @@ void avx2::avx2_sqrt_f64(std::float64_t **ptr, unsigned *arr) {
     c[i] = std::sqrt(a[i]);
 }
 
-void avx2::avx2_relu_f64(std::float64_t **ptr, unsigned *arr) {
+void avx2::avx2_relu_f64(std::float64_t **ptr, unsigned const nDim,
+                         unsigned const *arr) {
   std::float64_t *a, *c;
-  unsigned i, m_size, n_size, n_elements;
+  unsigned i, m_size, n_size, total_plane, n_elements;
   a = ptr[0];
   c = ptr[1];
 
   m_size = arr[0];
   n_size = arr[1];
 
-  n_elements = m_size * n_size;
+  total_plane = 1;
+  if (nDim > 2)
+    for (unsigned i = 2; i < nDim; i++)
+      total_plane *= arr[i];
+
+  n_elements = m_size * n_size * total_plane;
   unsigned vec_end = (n_elements / 4) * 4;
   omp_set_num_threads(std::thread::hardware_concurrency());
 
@@ -661,4 +667,56 @@ void avx2::avx2_softmax_f64(std::float64_t **ptr, unsigned *arr) {
   for (i = n_elements - (n_elements % 4); i < n_elements; i++)
     c[i] = std::exp(a[i]) / (std::exp(a[i]) + std::exp(a[i - 1]) +
                              std::exp(a[i - 2]) + std::exp(a[i - 3]));
+}
+
+void avx2::avx2_greater_than_zero_f64(std::float64_t *const *const ptr,
+                                      unsigned int *const dims,
+                                      const unsigned int nDims) {
+  unsigned grid_x, grid_y;
+  unsigned total_lines = 1;
+
+  if (nDims > 1) {
+    grid_x = dims[0];
+    for (unsigned i = 1; i < nDims; i++)
+      total_lines *= dims[i];
+    grid_y = total_lines;
+  } else if (nDims > 0) {
+    grid_x = dims[0];
+    grid_y = 1;
+  } else {
+    throw std::runtime_error(
+        "operation: greater_than_zero is not possible with tensors without "
+        "any elements and dimensions zero.\n");
+  }
+
+#pragma omp parallel for
+  for (unsigned line_it = 0; line_it < grid_y; ++line_it) {
+    unsigned idx = line_it * grid_x;
+
+    std::float64_t *in = ptr[0] + idx;
+    std::float64_t *out = ptr[1] + idx;
+
+    __m256d zero = _mm256_setzero_pd();
+    __m256d one = _mm256_set1_pd(1.0);
+
+    unsigned i = 0;
+
+    // Process 4 doubles at a time
+    for (; i + 4 <= grid_x; i += 4) {
+      __m256d x = _mm256_loadu_pd(reinterpret_cast<const double *>(in + i));
+
+      // mask = (x > 0)
+      __m256d mask = _mm256_cmp_pd(x, zero, _CMP_GT_OQ);
+
+      // Convert mask → 0.0 or 1.0
+      __m256d result = _mm256_and_pd(mask, one);
+
+      _mm256_storeu_pd(reinterpret_cast<double *>(out + i), result);
+    }
+
+    // Tail loop
+    for (; i < grid_x; ++i) {
+      out[i] = (in[i] > 0) ? 1.0 : 0.0;
+    }
+  }
 }

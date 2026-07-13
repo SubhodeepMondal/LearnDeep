@@ -8,6 +8,7 @@ set(COMBINED_RESORCES
     kernel/mul.cpp
     kernel/opskernel.cpp
     kernel/opskernel.h
+    kernel/greaterthanzero.cpp
     kernel/power.cpp
     kernel/reducesum.cpp
     kernel/relu.cpp
@@ -105,4 +106,3 @@ if(ENABLE_CUDA AND CMAKE_CUDA_COMPILER)
 else()
     message(STATUS "CUDA not found: building CPU-only fallback")
 endif()
-
