@@ -36,6 +36,9 @@ void avx2_sigmoid_f64(std::float64_t **, unsigned *);
 
 void avx2_softmax_f64(std::float64_t **, unsigned *);
 
+void avx2_greater_than_zero_f64(std::float64_t *const *const ptr,
+                                unsigned *const dims, unsigned const nDims);
+
 } // namespace avx2
 
 #endif //

@@ -2,6 +2,9 @@
 #include <core/LAS/gpu_interface.cuh>
 #endif
 
+// Thirdparty header
+#include <absl/log/log.h>
+
 // Library Headers
 #include "kernelmanager.h"
 #include "opskernel.h"
@@ -16,6 +19,50 @@ void Opsrelu::compute() {
 
   this->kernel_dispatch(ptr, this->inputs[0]->getNoOfDimensions(),
                         this->inputs[0]->getDimensions());
+}
+
+void Opsrelu::addGradGraph(Graph *gradient_graph) {
+  Tensor<std::float64_t> *tensor_ptr[2];
+  Tensor<std::float64_t> **intermediate_gradients;
+  std::vector<Tensor<std::float64_t> *> incoming_gradients =
+      gradient_graph->getGradient(this);
+
+  // graph setup for accumulating incoming gradients y' = sum ( z' )
+  if (incoming_gradients.size()) {
+
+    // graph setup for  x' = sum ( z' * d/dx )
+    Tensor<std::float64_t> *intermediate_gradient_sum;
+    intermediate_gradient_sum = new Tensor<std::float64_t>(*this->output);
+    intermediate_gradient_sum->initData(0.0);
+
+    for (Tensor<std::float64_t> *inc_grad_tensor : incoming_gradients) {
+
+      // input initialization
+      tensor_ptr[0] = intermediate_gradient_sum;
+      tensor_ptr[1] = inc_grad_tensor;
+
+      Ops *ops_add = new Opsadd;
+      ops_add->initializeinputs(tensor_ptr);
+
+      gradient_graph->addGradientNode(ops_add);
+      gradient_graph->addGradientNode(tensor_ptr[0]);
+      gradient_graph->addGradientNode(tensor_ptr[1]);
+      gradient_graph->addGradientEdge(tensor_ptr[0], ops_add);
+      gradient_graph->addGradientEdge(tensor_ptr[1], ops_add);
+
+      // output initialization
+      intermediate_gradient_sum = new Tensor<std::float64_t>(*this->output);
+      intermediate_gradient_sum->initData(0.0);
+
+      ops_add->initializeoutput(intermediate_gradient_sum);
+      gradient_graph->addGradientNode(intermediate_gradient_sum);
+      gradient_graph->addGradientEdge(ops_add, intermediate_gradient_sum);
+    }
+    this->incoming_gradient = intermediate_gradient_sum;
+  } else {
+    this->incoming_gradient = new Tensor<std::float64_t>(*this->output);
+    this->incoming_gradient->initData(1.0);
+  }
 }
 
 void Opsrelu::initializeinputs(Tensor<std::float64_t> **inputs) {
@@ -39,6 +86,22 @@ void Opsrelu::printoutput() {
   std::cout << "output:\n";
   output->printData();
   std::cout << "\n";
+}
+
+Tensor<std::float64_t> *
+Opsrelu::getOutgoingGradientTensor(Tensor<std::float64_t> *gradient_input) {
+  if (inputs[0] == gradient_input)
+    return outgoing_gradients[0];
+  else {
+    LOG(FATAL) << "Requested gradint for the tensor doesn't exist.\n";
+    return NULL;
+  }
+}
+
+std::vector<Tensor<std::float64_t> *> Opsrelu::getAllOutgoingGradientTensors() {
+  std::vector<Tensor<std ::float64_t> *> gradient_tensors;
+  gradient_tensors.push_back(outgoing_gradients[0]);
+  return gradient_tensors;
 }
 
 void Opsrelu::kernel_dispatch(std::float64_t **ptr, const unsigned nDim,

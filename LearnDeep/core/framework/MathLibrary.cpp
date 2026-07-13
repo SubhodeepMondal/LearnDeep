@@ -165,6 +165,34 @@ Tensor<T> *Tensor<T>::add(Tensor<T> &input, bool graph_flag) {
   return output;
 }
 
+template <typename T> Tensor<T> *Tensor<T>::greaterThanZero(bool graph_flag) {
+  Tensor<T> *output;
+  DataType d_type = tf_float64;
+  Ops *opsgreaterthanzero = new Opsgreaterthanzero();
+
+  output =
+      new Tensor<T>(this->getNoOfDimensions(), this->getDimensions(), d_type);
+  Tensor<T> *inputs[1];
+  inputs[0] = this;
+  opsgreaterthanzero->initializeinputs(inputs);
+  opsgreaterthanzero->initializeoutput(output);
+
+  Graph *g = GraphManager::instance().getCurrentGraph();
+  if (g) {
+    g->addNode(this);
+    g->addNode(opsgreaterthanzero);
+
+    g->addEdge(this, opsgreaterthanzero);
+
+    g->addNode(output);
+    g->addEdge(opsgreaterthanzero, output);
+  } else {
+    opsgreaterthanzero->compute();
+    delete opsgreaterthanzero;
+  }
+  return output;
+}
+
 template <typename T>
 Tensor<T> *Tensor<T>::matmul(Tensor<T> &input, bool graph_flag) {
   Tensor<T> *output;

@@ -49,5 +49,8 @@ void __mrelu(std::float64_t **, unsigned const *);
 void __msigmoid(std::float64_t **, unsigned *);
 
 void __msoftmax(std::float64_t **, unsigned *);
+
+void __mgreaterthanzero(std::float64_t *const *const ptr, unsigned const *dims,
+                        unsigned const nDims);
 } // namespace cpu
 #endif // CPULIBRARY_H

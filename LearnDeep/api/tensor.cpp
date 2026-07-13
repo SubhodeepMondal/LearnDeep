@@ -227,6 +227,20 @@ tf::tensor tf::tensor::add(tensor &input_b, bool graph_flag) {
   return output;
 }
 
+tf::tensor tf::tensor::greater_than_zero(bool graph_flag) {
+  tensor output;
+
+  switch (dt_type) {
+  case tf_float64:
+    output.dt_type = this->dt_type;
+    output = tensor(this->dt_type, this->ptr->greaterThanZero(graph_flag));
+    break;
+  default:
+    LOG(ERROR) << "Invalid data type!";
+  }
+  return output;
+}
+
 tf::tensor tf::tensor::operator+(tensor &input_b) {
   tensor output;
   if (this->dt_type == input_b.dt_type) {

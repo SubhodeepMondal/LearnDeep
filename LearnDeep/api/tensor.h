@@ -111,6 +111,8 @@ public:
 
   tensor add(tensor &input_b, bool graph_flag = true);
 
+  tensor greater_than_zero(bool graph_flag = true);
+
   tensor mean(const unsigned dim, bool graph_flag = true);
 
   tensor matmul(const tensor &input_b, bool graph_flag = true) const;
