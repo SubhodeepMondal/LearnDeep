@@ -61,8 +61,38 @@ void Opssub::addGradGraph(Graph *gradient_graph) {
   }
 
   if (!this->isBroadCast) {
-    for (unsigned i = 0; i < 2; i++)
-      this->outgoing_gradients.push_back(this->incoming_gradient);
+
+    // for first input we can directly push the incoming gradient to previous
+    // layer
+    this->outgoing_gradients.push_back(this->incoming_gradient);
+
+    // for second input we need to calculate broadcast dimentions and then do a
+    // reduction sum then push the incoming gradient to previous layer.
+
+    Tensor<std::float64_t> *tensor_negative_ones =
+        new Tensor<std::float64_t>(*this->inputs[1]);
+    tensor_negative_ones->initData(-1.0);
+
+    Tensor<std::float64_t> *negative_tensor_output =
+        new Tensor<std::float64_t>(*this->inputs[1]);
+
+    tensor_ptr[0] = this->incoming_gradient;
+    tensor_ptr[1] = tensor_negative_ones;
+
+    Ops *ops_mul = new Opsmul();
+    ops_mul->initializeinputs(tensor_ptr);
+    ops_mul->initializeoutput(negative_tensor_output);
+
+    gradient_graph->addGradientNode(ops_mul);
+    gradient_graph->addGradientNode(this->incoming_gradient);
+    gradient_graph->addGradientNode(tensor_negative_ones);
+    gradient_graph->addGradientNode(negative_tensor_output);
+    gradient_graph->addGradientEdge(this->incoming_gradient, ops_mul);
+    gradient_graph->addGradientEdge(tensor_negative_ones, ops_mul);
+    gradient_graph->addGradientEdge(ops_mul, negative_tensor_output);
+
+    this->outgoing_gradients.push_back(negative_tensor_output);
+
   } else {
     // for first input we can directly push the incoming gradient to previous
     // layer

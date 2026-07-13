@@ -63,6 +63,43 @@ void Opsrelu::addGradGraph(Graph *gradient_graph) {
     this->incoming_gradient = new Tensor<std::float64_t>(*this->output);
     this->incoming_gradient->initData(1.0);
   }
+
+  Tensor<std::float64_t> *temp_grad_tensors[1];
+  // Finding d/dx[i] for relu operation
+  //  f(x[i]) = greater_then_zero(x[i]) * incoming_grad
+  temp_grad_tensors[0] = new Tensor<std::float64_t>(*this->inputs[0]);
+  // end of Finding d/dx[i]
+
+  Ops *ops_greater_than_zero = new Opsgreaterthanzero();
+  ops_greater_than_zero->initializeinputs(this->inputs.data());
+  ops_greater_than_zero->initializeoutput(temp_grad_tensors[0]);
+
+  gradient_graph->addGradientNode(this->inputs[0]);
+  gradient_graph->addGradientNode(temp_grad_tensors[0]);
+  gradient_graph->addGradientNode(ops_greater_than_zero);
+
+  gradient_graph->addGradientEdge(this->inputs[0], ops_greater_than_zero);
+  gradient_graph->addGradientEdge(ops_greater_than_zero, temp_grad_tensors[0]);
+
+  // graph setup for d/dx[i] * z'
+  Ops *ops_mul = new Opsmul;
+  tensor_ptr[0] = temp_grad_tensors[0];
+  tensor_ptr[1] = this->incoming_gradient;
+
+  // input initialization
+  ops_mul->initializeinputs(tensor_ptr);
+  gradient_graph->addGradientNode(ops_mul);
+  gradient_graph->addGradientNode(tensor_ptr[0]);
+  gradient_graph->addGradientNode(tensor_ptr[1]);
+  gradient_graph->addGradientEdge(tensor_ptr[0], ops_mul);
+  gradient_graph->addGradientEdge(tensor_ptr[1], ops_mul);
+
+  // output initialization
+  this->outgoing_gradients[0] = new Tensor<std::float64_t>(*this->inputs[0]);
+  ops_mul->initializeoutput(this->outgoing_gradients[0]);
+  gradient_graph->addGradientNode(this->outgoing_gradients[0]);
+  gradient_graph->addGradientEdge(ops_mul, this->outgoing_gradients[0]);
+  // End of d/dx[i] * z'
 }
 
 void Opsrelu::initializeinputs(Tensor<std::float64_t> **inputs) {

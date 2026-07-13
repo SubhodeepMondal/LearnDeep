@@ -446,6 +446,11 @@ public:
   Tensor<std::float64_t> *
   getOutgoingGradientTensor(Tensor<std::float64_t> *gradient_input);
 
+  Tensor<std::float64_t> *
+  getIncomingGradientTensor(Tensor<std::float64_t> *gradient_input) override {
+    return incoming_gradient;
+  }
+
   std::vector<Tensor<std::float64_t> *> getAllOutgoingGradientTensors();
   void initializeinputs(Tensor<std::float64_t> **inputs);
   void initializeoutput(Tensor<std::float64_t> *output);
