@@ -122,3 +122,90 @@ TEST_F(MathTest, Relu_Test_3) {
           << "E_grad at: " << i;
   }
 }
+
+TEST_F(FrameworkTest, ReluLayer_Test_1) {
+
+  tf::tensor x;
+  tf::tensor weight, bias;
+  tf::tensor input, target_output, validation_data;
+
+  unsigned input_features = 43;
+  unsigned batch_size = 512;
+  unsigned no_of_dense_neuron = 32;
+
+  x.tf_create(tf_float64, 43, 512);
+  input.tf_create(tf_float64, 43, 512);
+  weight.tf_create(tf_float64, 32, 43);
+  bias.tf_create(tf_float64, 32, 1);
+  target_output.tf_create(tf_float64, 32, 512);
+
+  input.tensor_of(load_bin("test/data/ReluDense_Test_5_input_data.bin",
+                           input_features * batch_size)
+                      .data());
+  weight.tensor_of(load_bin("test/data/ReluDense_Test_5_weight_data.bin",
+                            input_features * no_of_dense_neuron)
+                       .data());
+  bias.tensor_of(
+      load_bin("test/data/ReluDense_Test_5_bias_data.bin", no_of_dense_neuron)
+          .data());
+  target_output.tensor_of(
+      load_bin("test/data/ReluDense_Test_5_target_output_data.bin",
+               no_of_dense_neuron * batch_size)
+          .data());
+
+  auto dense_1 = tf::layer::dense(32);
+  auto relu_layer = tf::layer::relu();
+
+  auto dense_output = dense_1({x});
+  auto relu_output = relu_layer(dense_output);
+
+  dense_1.set_weight(weight);
+  dense_1.set_bias(bias);
+
+  /* --- call back setting --- */
+  tf::callback::trace call_back;
+  call_back.record_parameter_on_epoch_begin(
+      dense_1, Layer_Parameter::dense_training_input, false);
+
+  // call_back.record_parameter_on_epoch_end(
+  //     dense_1, Layer_Parameter::dense_training_weight, false);
+
+  // call_back.record_parameter_on_epoch_end(
+  //     dense_1, Layer_Parameter::dense_training_bias, false);
+
+  // call_back.record_parameter_on_epoch_end(
+  //     dense_1, Layer_Parameter::dense_training_output, false);
+
+  // call_back.record_parameter_on_epoch_end(
+  //     dense_1, Layer_Parameter::dense_grad_weight, false);
+
+  // call_back.record_parameter_on_epoch_end(
+  //     dense_1, Layer_Parameter::dense_grad_bias, false);
+
+  // call_back.record_parameter_on_epoch_end(
+  //     dense_1, Layer_Parameter::dense_updated_weight, false);
+
+  // call_back.record_parameter_on_epoch_end(
+  //     dense_1, Layer_Parameter::dense_updated_bias, false);
+  /* --- call back setting end --- */
+
+  /* --- model creation --- */
+  tf::model mymodel({x}, relu_output);
+  mymodel.shuffle(false);
+  mymodel.compile(OptimizerType::SGD, LossType::squared_error);
+  /* --- end model creation --- */
+  /*
+    tf::loss loss_sgd = mymodel.get_model_loss(dense_output[0]);
+    call_back.record_tensor_loss_on_epoch_end(
+        loss_sgd, Loss_Parameter::squared_error_predicted_output, false);
+
+    call_back.record_tensor_loss_on_epoch_end(
+        loss_sgd, Loss_Parameter::squared_error_grad_predicted_output);
+
+    call_back.record_scalar_loss_on_epoch_end(loss_sgd, false);
+  */
+  /* --- model training --- */
+  unsigned epoch = 1;
+  mymodel.fit({input}, {target_output}, {call_back.callback()}, epoch,
+              batch_size);
+}

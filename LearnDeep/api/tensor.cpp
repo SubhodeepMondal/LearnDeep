@@ -7,6 +7,7 @@
 // Library Headers
 #include <callback/callback.hpp>
 #include <layers/dense.hpp>
+#include <layers/relu.hpp>
 #include <losses/loss.hpp>
 #include <model/model.hpp>
 #include <numeric>
@@ -360,7 +361,7 @@ tf::tensor tf::tensor::pow(const unsigned exponent, bool graph_flag) {
   return output;
 }
 
-tf::tensor tf::tensor::relu(bool graph_flag) {
+tf::tensor tf::tensor::relu(bool graph_flag) const {
   tensor output;
 
   switch (dt_type) {
@@ -519,6 +520,45 @@ void tf::layer::dense::set_bias(const tf::tensor &bias_tensor) {
 Layer *tf::layer::dense::getLayerPtr() const { return this->dense_layer; }
 
 // --- End of Dense ---
+
+// --- Relu ---
+
+tf::layer::relu::relu() {
+  this->relu_layer = new Relu();
+  global_layer_graph.addNode(this->relu_layer);
+}
+
+tf::layer::relu::~relu() { delete dynamic_cast<Relu *>(this->relu_layer); }
+
+std::vector<tf::tensor>
+tf::layer::relu::operator()(const std::vector<tf::tensor> &inputs) {
+
+  std::vector<tf::tensor> layer_outputs;
+
+  const std::vector<tf::tensor *> &outputs = (*this->relu_layer)(inputs);
+
+  for (const tf::tensor *output : outputs)
+    layer_outputs.push_back(*output);
+
+  return layer_outputs;
+}
+
+std::vector<const tf::tensor *> tf::layer::relu::get_input_tensors() {
+  return {nullptr};
+}
+
+std::vector<tf::tensor> tf::layer::relu::get_output_tensors() {
+  std::vector<tf::tensor> output_tensors;
+
+  std::vector<tf::tensor *> temp_output_tensors =
+      relu_layer->getOutputTensors();
+
+  for (tf::tensor *tensor : temp_output_tensors)
+    output_tensors.push_back(*tensor);
+
+  return output_tensors;
+}
+// --- End of Relu ---
 
 // --- End of Layers ---
 

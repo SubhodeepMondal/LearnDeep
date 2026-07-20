@@ -121,7 +121,7 @@ public:
 
   tensor pow(const unsigned exponent, bool graph_flag = true);
 
-  tensor relu(bool graph_flag = true);
+  tensor relu(bool graph_flag = true) const;
 
   tensor sigmoid(bool graph_flag = true);
 
@@ -211,6 +211,24 @@ public:
 
   Layer *getLayerPtr() const;
 } dense;
+
+typedef struct relu {
+private:
+  Layer *relu_layer;
+
+public:
+  relu();
+
+  ~relu();
+
+  std::vector<tf::tensor> operator()(const std::vector<tf::tensor> &inputs);
+
+  std::vector<const tf::tensor *> get_input_tensors();
+
+  std::vector<tf::tensor> get_output_tensors();
+
+  Layer *getLayerPtr() const;
+} relu;
 
 } // namespace layer
 
