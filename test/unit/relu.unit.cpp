@@ -167,26 +167,29 @@ TEST_F(FrameworkTest, ReluLayer_Test_1) {
   call_back.record_parameter_on_epoch_begin(
       dense_1, Layer_Parameter::dense_training_input, false);
 
-  // call_back.record_parameter_on_epoch_end(
-  //     dense_1, Layer_Parameter::dense_training_weight, false);
+  call_back.record_parameter_on_epoch_end(
+      dense_1, Layer_Parameter::dense_training_weight, false);
 
-  // call_back.record_parameter_on_epoch_end(
-  //     dense_1, Layer_Parameter::dense_training_bias, false);
+  call_back.record_parameter_on_epoch_end(
+      dense_1, Layer_Parameter::dense_training_bias, false);
 
-  // call_back.record_parameter_on_epoch_end(
-  //     dense_1, Layer_Parameter::dense_training_output, false);
+  call_back.record_parameter_on_epoch_end(
+      dense_1, Layer_Parameter::dense_training_output, false);
 
-  // call_back.record_parameter_on_epoch_end(
-  //     dense_1, Layer_Parameter::dense_grad_weight, false);
+  call_back.record_parameter_on_epoch_end(
+      relu_layer, Layer_Parameter::relu_training_output, false);
 
-  // call_back.record_parameter_on_epoch_end(
-  //     dense_1, Layer_Parameter::dense_grad_bias, false);
+  call_back.record_parameter_on_epoch_end(
+      dense_1, Layer_Parameter::dense_grad_weight, false);
 
-  // call_back.record_parameter_on_epoch_end(
-  //     dense_1, Layer_Parameter::dense_updated_weight, false);
+  call_back.record_parameter_on_epoch_end(
+      dense_1, Layer_Parameter::dense_grad_bias, false);
 
-  // call_back.record_parameter_on_epoch_end(
-  //     dense_1, Layer_Parameter::dense_updated_bias, false);
+  call_back.record_parameter_on_epoch_end(
+      dense_1, Layer_Parameter::dense_updated_weight, false);
+
+  call_back.record_parameter_on_epoch_end(
+      dense_1, Layer_Parameter::dense_updated_bias, false);
   /* --- call back setting end --- */
 
   /* --- model creation --- */
@@ -194,18 +197,135 @@ TEST_F(FrameworkTest, ReluLayer_Test_1) {
   mymodel.shuffle(false);
   mymodel.compile(OptimizerType::SGD, LossType::squared_error);
   /* --- end model creation --- */
-  /*
-    tf::loss loss_sgd = mymodel.get_model_loss(dense_output[0]);
-    call_back.record_tensor_loss_on_epoch_end(
-        loss_sgd, Loss_Parameter::squared_error_predicted_output, false);
 
-    call_back.record_tensor_loss_on_epoch_end(
-        loss_sgd, Loss_Parameter::squared_error_grad_predicted_output);
+  tf::loss loss_sgd = mymodel.get_model_loss(relu_output[0]);
+  call_back.record_tensor_loss_on_epoch_end(
+      loss_sgd, Loss_Parameter::squared_error_predicted_output, false);
 
-    call_back.record_scalar_loss_on_epoch_end(loss_sgd, false);
-  */
+  call_back.record_tensor_loss_on_epoch_end(
+      loss_sgd, Loss_Parameter::squared_error_grad_predicted_output);
+
+  call_back.record_scalar_loss_on_epoch_end(loss_sgd, false);
+
   /* --- model training --- */
   unsigned epoch = 1;
   mymodel.fit({input}, {target_output}, {call_back.callback()}, epoch,
               batch_size);
+
+  /* --- Intercepting training parameters --- */
+  std::vector<std::vector<tf::tensor>> dense_outputs =
+      call_back.get_parameter_on_epoch_end(
+          dense_1, Layer_Parameter::dense_training_output);
+
+  std::vector<std::vector<tf::tensor>> relu_outputs =
+      call_back.get_parameter_on_epoch_end(
+          relu_layer, Layer_Parameter::relu_training_output);
+
+  std::vector<std::vector<tf::tensor>> train_dense_1_grad_weights =
+      call_back.get_parameter_on_epoch_end(dense_1,
+                                           Layer_Parameter::dense_grad_weight);
+
+  std::vector<std::vector<tf::tensor>> train_dense_1_grad_bias =
+      call_back.get_parameter_on_epoch_end(dense_1,
+                                           Layer_Parameter::dense_grad_bias);
+
+  std::vector<std::vector<tf::tensor>> train_dense_1_updated_weights =
+      call_back.get_parameter_on_epoch_end(
+          dense_1, Layer_Parameter::dense_updated_weight);
+
+  std::vector<std::vector<tf::tensor>> train_dense_1_updated_bias =
+      call_back.get_parameter_on_epoch_end(dense_1,
+                                           Layer_Parameter::dense_updated_bias);
+
+  std::vector<std::vector<tf::tensor>> training_losses =
+      call_back.get_tensor_loss_on_epoch_end(
+          loss_sgd, Loss_Parameter::squared_error_predicted_output);
+
+  std::vector<std::vector<tf::tensor>> grad_training_losses =
+      call_back.get_tensor_loss_on_epoch_end(
+          loss_sgd, Loss_Parameter::squared_error_grad_predicted_output);
+
+  auto expected_dense_output = load_bin(
+      "test/data/ReluDense_Test_5_dense_output_data.bin",
+      no_of_dense_neuron * batch_size);
+  auto expected_relu_output = load_bin(
+      "test/data/ReluDense_Test_5_relu_output_data.bin",
+      no_of_dense_neuron * batch_size);
+  auto expected_loss =
+      load_bin("test/data/ReluDense_Test_5_loss_data.bin", no_of_dense_neuron);
+  auto expected_grad_relu_output = load_bin(
+      "test/data/ReluDense_Test_5_grad_relu_output_data.bin",
+      no_of_dense_neuron * batch_size);
+  auto expected_grad_weight = load_bin(
+      "test/data/ReluDense_Test_5_grad_weight_data.bin",
+      no_of_dense_neuron * input_features);
+  auto expected_grad_bias = load_bin(
+      "test/data/ReluDense_Test_5_grad_bias_data.bin", no_of_dense_neuron);
+  auto expected_updated_weight = load_bin(
+      "test/data/ReluDense_Test_5_updated_weight_data.bin",
+      no_of_dense_neuron * input_features);
+  auto expected_updated_bias = load_bin(
+      "test/data/ReluDense_Test_5_updated_bias_data.bin", no_of_dense_neuron);
+
+  ASSERT_EQ(dense_outputs.size(), epoch);
+  ASSERT_EQ(relu_outputs.size(), epoch);
+  ASSERT_EQ(train_dense_1_grad_weights.size(), epoch);
+  ASSERT_EQ(train_dense_1_grad_bias.size(), epoch);
+  ASSERT_EQ(train_dense_1_updated_weights.size(), epoch);
+  ASSERT_EQ(train_dense_1_updated_bias.size(), epoch);
+  ASSERT_EQ(training_losses.size(), epoch);
+  ASSERT_EQ(grad_training_losses.size(), epoch);
+
+  for (unsigned ep = 0; ep < epoch; ep++) {
+    ASSERT_EQ(dense_outputs[ep].size(), 1);
+    ASSERT_EQ(relu_outputs[ep].size(), 1);
+    ASSERT_EQ(train_dense_1_grad_weights[ep].size(), 1);
+    ASSERT_EQ(train_dense_1_grad_bias[ep].size(), 1);
+    ASSERT_EQ(train_dense_1_updated_weights[ep].size(), 1);
+    ASSERT_EQ(train_dense_1_updated_bias[ep].size(), 1);
+    ASSERT_EQ(training_losses[ep].size(), 1);
+    ASSERT_EQ(grad_training_losses[ep].size(), 1);
+
+    for (unsigned j = 0; j < batch_size; j++) {
+      for (unsigned i = 0; i < no_of_dense_neuron; i++) {
+        unsigned index = i + j * no_of_dense_neuron;
+        EXPECT_NEAR(dense_outputs[ep][0].getData()[index],
+                    expected_dense_output[index], 1e-6)
+            << "dense output at ep: " << ep << " i: " << i << " j: " << j;
+        EXPECT_NEAR(relu_outputs[ep][0].getData()[index],
+                    expected_relu_output[index], 1e-6)
+            << "relu output at ep: " << ep << " i: " << i << " j: " << j;
+        EXPECT_NEAR(grad_training_losses[ep][0].getData()[index],
+                    expected_grad_relu_output[index], 1e-5)
+            << "grad relu output at ep: " << ep << " i: " << i << " j: " << j;
+      }
+    }
+
+    for (unsigned i = 0; i < no_of_dense_neuron; i++) {
+      EXPECT_NEAR(training_losses[ep][0].getData()[i], expected_loss[i], 1e-5)
+          << "loss at ep: " << ep << " i: " << i;
+      EXPECT_NEAR(train_dense_1_grad_bias[ep][0].getData()[i],
+                  expected_grad_bias[i], 1e-5)
+          << "grad bias at ep: " << ep << " i: " << i;
+      EXPECT_NEAR(train_dense_1_updated_bias[ep][0].getData()[i],
+                  expected_updated_bias[i], 1e-5)
+          << "updated bias at ep: " << ep << " i: " << i;
+    }
+
+    for (unsigned j = 0; j < input_features; j++) {
+      for (unsigned i = 0; i < no_of_dense_neuron; i++) {
+        unsigned index = i + j * no_of_dense_neuron;
+        EXPECT_NEAR(train_dense_1_grad_weights[ep][0].getData()[index],
+                    expected_grad_weight[index], 1e-5)
+            << "grad weight at ep: " << ep << " i: " << i << " j: " << j;
+        EXPECT_NEAR(train_dense_1_updated_weights[ep][0].getData()[index],
+                    expected_updated_weight[index], 1e-5)
+            << "updated weight at ep: " << ep << " i: " << i << " j: " << j;
+      }
+    }
+  }
+
+  std::vector<std::float64_t> scalar_losses =
+      call_back.get_scaler_loss_on_epoch_end(loss_sgd);
+  ASSERT_EQ(scalar_losses.size(), epoch);
 }

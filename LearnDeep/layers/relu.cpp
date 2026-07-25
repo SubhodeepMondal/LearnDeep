@@ -31,7 +31,7 @@ Relu::operator()(std::vector<tf::tensor> input_tensors) {
 
     std::vector<unsigned> dims;
     for (unsigned i = 0; i < input_tensors[0].getNoOfDimensions(); i++)
-      dims.push_back(input_tensors[0].getDimensions()[0]);
+      dims.push_back(input_tensors[0].getDimensions()[i]);
 
     this->output.tf_create(dims, tf_float64);
     this->layer_outputs.push_back(&output);
@@ -53,7 +53,7 @@ Relu::forward(std::vector<const tf::tensor *> &input, unsigned batch_size) {
 
     this->training_inputs = input[0];
 
-    tf::tensor training_output = training_inputs->relu();
+    this->training_output = training_inputs->relu();
     this->training_outputs.push_back(&training_output);
 
   } else {
@@ -90,19 +90,24 @@ Relu::getLayerParameter(Layer_Parameter layer_parameter, bool print_flag) {
   switch (layer_parameter) {
   case Layer_Parameter::relu_input:
     LOG(INFO) << "Layer: Relu, input:\n";
-    // layer_parameter_tensor = layer_inputs;
     break;
   case Layer_Parameter::relu_output:
-    LOG(INFO) << "Layer: Relu, weight:\n";
-    // layer_parameter_tensor.push_back(&this->layer_outputs);
+    LOG(INFO) << "Layer: Relu, output:\n";
+    layer_parameter_tensor = this->layer_outputs;
     break;
   case Layer_Parameter::relu_training_input:
     LOG(INFO) << "Layer: Relu, training input:\n";
-    // layer_parameter_tensor = layer_inputs;
+    layer_parameter_tensor.push_back(
+        const_cast<tf::tensor *>(this->training_inputs));
     break;
   case Layer_Parameter::relu_training_output:
     LOG(INFO) << "Layer: Relu, training output:\n";
-    // layer_parameter_tensor.push_back(&this->output);
+    for (tf::tensor *training_output_tensor : this->training_outputs)
+      layer_parameter_tensor.push_back(training_output_tensor);
+    break;
+  default:
+    LOG(ERROR) << "Sever! the selected layer parameter is not available for "
+                  "relu layer.\n";
     break;
   }
   if (print_flag && layer_parameter_tensor.size())

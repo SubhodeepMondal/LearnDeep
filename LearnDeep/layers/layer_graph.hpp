@@ -18,6 +18,7 @@ class LayerGraph {
 
 public:
   LayerGraph();
+  ~LayerGraph();
 
   void addNode(Layer *node);
   void removeNode(Layer *node);

@@ -18,6 +18,7 @@ class Relu : public Layer {
 
   const tf::tensor *training_inputs;
   tf::tensor output;
+  tf::tensor training_output;
   std::vector<tf::tensor *> training_outputs;
 
   unsigned batch_size;

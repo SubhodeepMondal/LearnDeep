@@ -246,7 +246,15 @@ public:
                                        Layer_Parameter trainable_parameter_no,
                                        bool print_flag = false);
 
+  void record_parameter_on_epoch_begin(const layer::relu &relu_layer,
+                                       Layer_Parameter trainable_parameter_no,
+                                       bool print_flag = false);
+
   void record_parameter_on_epoch_end(const layer::dense &dense_layer,
+                                     Layer_Parameter trainable_parameter_no,
+                                     bool print_flag = false);
+
+  void record_parameter_on_epoch_end(const layer::relu &relu_layer,
                                      Layer_Parameter trainable_parameter_no,
                                      bool print_flag = false);
 
@@ -254,7 +262,15 @@ public:
                                        Layer_Parameter trainable_parameter_no,
                                        bool print_flag = false);
 
+  void record_parameter_on_batch_begin(const layer::relu &relu_layer,
+                                       Layer_Parameter trainable_parameter_no,
+                                       bool print_flag = false);
+
   void record_parameter_on_batch_end(const layer::dense &dense_layer,
+                                     Layer_Parameter trainable_parameter_no,
+                                     bool print_flag = false);
+
+  void record_parameter_on_batch_end(const layer::relu &relu_layer,
                                      Layer_Parameter trainable_parameter_no,
                                      bool print_flag = false);
 
@@ -275,7 +291,15 @@ public:
                                Layer_Parameter trainable_parameter_no);
 
   std::vector<std::vector<tf::tensor>>
+  get_parameter_on_epoch_begin(const layer::relu &relu_layer,
+                               Layer_Parameter trainable_parameter_no);
+
+  std::vector<std::vector<tf::tensor>>
   get_parameter_on_epoch_end(const layer::dense &dense_layer,
+                             Layer_Parameter trainable_parameter_no);
+
+  std::vector<std::vector<tf::tensor>>
+  get_parameter_on_epoch_end(const layer::relu &relu_layer,
                              Layer_Parameter trainable_parameter_no);
 
   std::vector<std::vector<std::vector<tf::tensor>>>
@@ -283,7 +307,15 @@ public:
                                Layer_Parameter trainable_parameter_no);
 
   std::vector<std::vector<std::vector<tf::tensor>>>
+  get_parameter_on_batch_begin(const layer::relu &relu_layer,
+                               Layer_Parameter trainable_parameter_no);
+
+  std::vector<std::vector<std::vector<tf::tensor>>>
   get_parameter_on_batch_end(const layer::dense &dense_layer,
+                             Layer_Parameter trainable_parameter_no);
+
+  std::vector<std::vector<std::vector<tf::tensor>>>
+  get_parameter_on_batch_end(const layer::relu &relu_layer,
                              Layer_Parameter trainable_parameter_no);
 
   std::vector<std::float64_t> get_scaler_loss_on_epoch_end(tf::loss loss);
