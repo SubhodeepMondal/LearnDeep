@@ -17,7 +17,11 @@ enum class Layer_Parameter {
   dense_grad_weight,
   dense_grad_bias,
   dense_updated_weight,
-  dense_updated_bias
+  dense_updated_bias,
+  relu_input,
+  relu_output,
+  relu_training_input,
+  relu_training_output
 };
 
 enum class InitializationMethod {

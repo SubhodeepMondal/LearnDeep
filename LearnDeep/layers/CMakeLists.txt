@@ -9,7 +9,8 @@ set(LAYER_RESOURCES
     layers.hpp
 )
 
-add_library(layer SHARED ${LAYER_RESOURCES})
+add_library(layer SHARED ${LAYER_RESOURCES}
+    relu.cpp)
 target_include_directories(layer PUBLIC ${CMAKE_SOURCE_DIR})
 
 target_link_libraries(layer PUBLIC core)

@@ -12,6 +12,8 @@ LayerGraph global_layer_graph;
 
 LayerGraph::LayerGraph() {}
 
+LayerGraph::~LayerGraph() { this->layers.clear(); }
+
 void LayerGraph::addNode(Layer *layer) { this->layers.insert(layer); }
 
 std::vector<Layer *>
