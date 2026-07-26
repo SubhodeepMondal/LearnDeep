@@ -165,31 +165,31 @@ TEST_F(FrameworkTest, ReluLayer_Test_1) {
   /* --- call back setting --- */
   tf::callback::trace call_back;
   call_back.record_parameter_on_epoch_begin(
-      dense_1, Layer_Parameter::dense_training_input, false);
+      dense_1.getLayerPtr(), Layer_Parameter::dense_training_input, false);
 
   call_back.record_parameter_on_epoch_end(
-      dense_1, Layer_Parameter::dense_training_weight, false);
+      dense_1.getLayerPtr(), Layer_Parameter::dense_training_weight, false);
 
   call_back.record_parameter_on_epoch_end(
-      dense_1, Layer_Parameter::dense_training_bias, false);
+      dense_1.getLayerPtr(), Layer_Parameter::dense_training_bias, false);
 
   call_back.record_parameter_on_epoch_end(
-      dense_1, Layer_Parameter::dense_training_output, false);
+      dense_1.getLayerPtr(), Layer_Parameter::dense_training_output, false);
 
   call_back.record_parameter_on_epoch_end(
-      relu_layer, Layer_Parameter::relu_training_output, false);
+      relu_layer.getLayerPtr(), Layer_Parameter::relu_training_output, false);
 
   call_back.record_parameter_on_epoch_end(
-      dense_1, Layer_Parameter::dense_grad_weight, false);
+      dense_1.getLayerPtr(), Layer_Parameter::dense_grad_weight, false);
 
   call_back.record_parameter_on_epoch_end(
-      dense_1, Layer_Parameter::dense_grad_bias, false);
+      dense_1.getLayerPtr(), Layer_Parameter::dense_grad_bias, false);
 
   call_back.record_parameter_on_epoch_end(
-      dense_1, Layer_Parameter::dense_updated_weight, false);
+      dense_1.getLayerPtr(), Layer_Parameter::dense_updated_weight, false);
 
   call_back.record_parameter_on_epoch_end(
-      dense_1, Layer_Parameter::dense_updated_bias, false);
+      dense_1.getLayerPtr(), Layer_Parameter::dense_updated_bias, false);
   /* --- call back setting end --- */
 
   /* --- model creation --- */
@@ -215,26 +215,26 @@ TEST_F(FrameworkTest, ReluLayer_Test_1) {
   /* --- Intercepting training parameters --- */
   std::vector<std::vector<tf::tensor>> dense_outputs =
       call_back.get_parameter_on_epoch_end(
-          dense_1, Layer_Parameter::dense_training_output);
+          dense_1.getLayerPtr(), Layer_Parameter::dense_training_output);
 
   std::vector<std::vector<tf::tensor>> relu_outputs =
       call_back.get_parameter_on_epoch_end(
-          relu_layer, Layer_Parameter::relu_training_output);
+          relu_layer.getLayerPtr(), Layer_Parameter::relu_training_output);
 
   std::vector<std::vector<tf::tensor>> train_dense_1_grad_weights =
-      call_back.get_parameter_on_epoch_end(dense_1,
+      call_back.get_parameter_on_epoch_end(dense_1.getLayerPtr(),
                                            Layer_Parameter::dense_grad_weight);
 
   std::vector<std::vector<tf::tensor>> train_dense_1_grad_bias =
-      call_back.get_parameter_on_epoch_end(dense_1,
+      call_back.get_parameter_on_epoch_end(dense_1.getLayerPtr(),
                                            Layer_Parameter::dense_grad_bias);
 
   std::vector<std::vector<tf::tensor>> train_dense_1_updated_weights =
       call_back.get_parameter_on_epoch_end(
-          dense_1, Layer_Parameter::dense_updated_weight);
+          dense_1.getLayerPtr(), Layer_Parameter::dense_updated_weight);
 
   std::vector<std::vector<tf::tensor>> train_dense_1_updated_bias =
-      call_back.get_parameter_on_epoch_end(dense_1,
+      call_back.get_parameter_on_epoch_end(dense_1.getLayerPtr(),
                                            Layer_Parameter::dense_updated_bias);
 
   std::vector<std::vector<tf::tensor>> training_losses =
@@ -245,25 +245,25 @@ TEST_F(FrameworkTest, ReluLayer_Test_1) {
       call_back.get_tensor_loss_on_epoch_end(
           loss_sgd, Loss_Parameter::squared_error_grad_predicted_output);
 
-  auto expected_dense_output = load_bin(
-      "test/data/ReluDense_Test_5_dense_output_data.bin",
-      no_of_dense_neuron * batch_size);
-  auto expected_relu_output = load_bin(
-      "test/data/ReluDense_Test_5_relu_output_data.bin",
-      no_of_dense_neuron * batch_size);
+  auto expected_dense_output =
+      load_bin("test/data/ReluDense_Test_5_dense_output_data.bin",
+               no_of_dense_neuron * batch_size);
+  auto expected_relu_output =
+      load_bin("test/data/ReluDense_Test_5_relu_output_data.bin",
+               no_of_dense_neuron * batch_size);
   auto expected_loss =
       load_bin("test/data/ReluDense_Test_5_loss_data.bin", no_of_dense_neuron);
-  auto expected_grad_relu_output = load_bin(
-      "test/data/ReluDense_Test_5_grad_relu_output_data.bin",
-      no_of_dense_neuron * batch_size);
-  auto expected_grad_weight = load_bin(
-      "test/data/ReluDense_Test_5_grad_weight_data.bin",
-      no_of_dense_neuron * input_features);
+  auto expected_grad_relu_output =
+      load_bin("test/data/ReluDense_Test_5_grad_relu_output_data.bin",
+               no_of_dense_neuron * batch_size);
+  auto expected_grad_weight =
+      load_bin("test/data/ReluDense_Test_5_grad_weight_data.bin",
+               no_of_dense_neuron * input_features);
   auto expected_grad_bias = load_bin(
       "test/data/ReluDense_Test_5_grad_bias_data.bin", no_of_dense_neuron);
-  auto expected_updated_weight = load_bin(
-      "test/data/ReluDense_Test_5_updated_weight_data.bin",
-      no_of_dense_neuron * input_features);
+  auto expected_updated_weight =
+      load_bin("test/data/ReluDense_Test_5_updated_weight_data.bin",
+               no_of_dense_neuron * input_features);
   auto expected_updated_bias = load_bin(
       "test/data/ReluDense_Test_5_updated_bias_data.bin", no_of_dense_neuron);
 

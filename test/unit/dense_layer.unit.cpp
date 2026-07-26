@@ -33,28 +33,28 @@ TEST_F(FrameworkTest, DenseLayer_Test_1) {
   /* --- call back setting --- */
   tf::callback::trace call_back;
   call_back.record_parameter_on_epoch_begin(
-      dense_1, Layer_Parameter::dense_training_input, false);
+      dense_1.getLayerPtr(), Layer_Parameter::dense_training_input, false);
 
   call_back.record_parameter_on_epoch_end(
-      dense_1, Layer_Parameter::dense_training_weight, false);
+      dense_1.getLayerPtr(), Layer_Parameter::dense_training_weight, false);
 
   call_back.record_parameter_on_epoch_end(
-      dense_1, Layer_Parameter::dense_training_bias, false);
+      dense_1.getLayerPtr(), Layer_Parameter::dense_training_bias, false);
 
   call_back.record_parameter_on_epoch_end(
-      dense_1, Layer_Parameter::dense_training_output, false);
+      dense_1.getLayerPtr(), Layer_Parameter::dense_training_output, false);
 
   call_back.record_parameter_on_epoch_end(
-      dense_1, Layer_Parameter::dense_grad_weight, false);
+      dense_1.getLayerPtr(), Layer_Parameter::dense_grad_weight, false);
 
   call_back.record_parameter_on_epoch_end(
-      dense_1, Layer_Parameter::dense_grad_bias, false);
+      dense_1.getLayerPtr(), Layer_Parameter::dense_grad_bias, false);
 
   call_back.record_parameter_on_epoch_end(
-      dense_1, Layer_Parameter::dense_updated_weight, false);
+      dense_1.getLayerPtr(), Layer_Parameter::dense_updated_weight, false);
 
   call_back.record_parameter_on_epoch_end(
-      dense_1, Layer_Parameter::dense_updated_bias, false);
+      dense_1.getLayerPtr(), Layer_Parameter::dense_updated_bias, false);
   /* --- call back setting end --- */
 
   /* --- model creation --- */
@@ -81,26 +81,26 @@ TEST_F(FrameworkTest, DenseLayer_Test_1) {
   /* --- Intercepting  training parameters --- */
   std::vector<std::vector<tf::tensor>> outputs =
       call_back.get_parameter_on_epoch_end(
-          dense_1, Layer_Parameter::dense_training_output);
+          dense_1.getLayerPtr(), Layer_Parameter::dense_training_output);
 
   std::vector<std::vector<tf::tensor>> training_weights =
       call_back.get_parameter_on_epoch_end(
-          dense_1, Layer_Parameter::dense_training_weight);
+          dense_1.getLayerPtr(), Layer_Parameter::dense_training_weight);
 
   std::vector<std::vector<tf::tensor>> train_dense_1_grad_weights =
-      call_back.get_parameter_on_epoch_end(dense_1,
+      call_back.get_parameter_on_epoch_end(dense_1.getLayerPtr(),
                                            Layer_Parameter::dense_grad_weight);
 
   std::vector<std::vector<tf::tensor>> train_dense_1_grad_bias =
-      call_back.get_parameter_on_epoch_end(dense_1,
+      call_back.get_parameter_on_epoch_end(dense_1.getLayerPtr(),
                                            Layer_Parameter::dense_grad_bias);
 
   std::vector<std::vector<tf::tensor>> train_dense_1_updated_weights =
       call_back.get_parameter_on_epoch_end(
-          dense_1, Layer_Parameter::dense_updated_weight);
+          dense_1.getLayerPtr(), Layer_Parameter::dense_updated_weight);
 
   std::vector<std::vector<tf::tensor>> train_dense_1_updated_bias =
-      call_back.get_parameter_on_epoch_end(dense_1,
+      call_back.get_parameter_on_epoch_end(dense_1.getLayerPtr(),
                                            Layer_Parameter::dense_updated_bias);
 
   std::vector<std::vector<tf::tensor>> training_losses =
@@ -201,22 +201,22 @@ TEST_F(FrameworkTest, DenseLayer_Test_2) {
   /* --- call back setting --- */
   tf::callback::trace call_back;
   call_back.record_parameter_on_batch_begin(
-      dense_1, Layer_Parameter::dense_training_input, false);
+      dense_1.getLayerPtr(), Layer_Parameter::dense_training_input, false);
 
   call_back.record_parameter_on_batch_end(
-      dense_1, Layer_Parameter::dense_updated_weight, false);
+      dense_1.getLayerPtr(), Layer_Parameter::dense_updated_weight, false);
 
   call_back.record_parameter_on_batch_end(
-      dense_1, Layer_Parameter::dense_updated_bias, false);
+      dense_1.getLayerPtr(), Layer_Parameter::dense_updated_bias, false);
 
   call_back.record_parameter_on_batch_end(
-      dense_1, Layer_Parameter::dense_training_output, false);
+      dense_1.getLayerPtr(), Layer_Parameter::dense_training_output, false);
 
   call_back.record_parameter_on_batch_end(
-      dense_1, Layer_Parameter::dense_grad_weight, false);
+      dense_1.getLayerPtr(), Layer_Parameter::dense_grad_weight, false);
 
   call_back.record_parameter_on_batch_end(
-      dense_1, Layer_Parameter::dense_grad_bias, false);
+      dense_1.getLayerPtr(), Layer_Parameter::dense_grad_bias, false);
 
   /* --- call back setting end --- */
 
@@ -249,19 +249,19 @@ TEST_F(FrameworkTest, DenseLayer_Test_2) {
   /* --- Intercepting  training parameters --- */
   std::vector<std::vector<std::vector<tf::tensor>>> dense_training_inputs =
       call_back.get_parameter_on_batch_begin(
-          dense_1, Layer_Parameter::dense_training_input);
+          dense_1.getLayerPtr(), Layer_Parameter::dense_training_input);
 
   std::vector<std::vector<std::vector<tf::tensor>>> update_weights =
       call_back.get_parameter_on_batch_end(
-          dense_1, Layer_Parameter::dense_updated_weight);
+          dense_1.getLayerPtr(), Layer_Parameter::dense_updated_weight);
 
   std::vector<std::vector<std::vector<tf::tensor>>> updated_bias =
-      call_back.get_parameter_on_batch_end(dense_1,
+      call_back.get_parameter_on_batch_end(dense_1.getLayerPtr(),
                                            Layer_Parameter::dense_updated_bias);
 
   std::vector<std::vector<std::vector<tf::tensor>>> outputs =
       call_back.get_parameter_on_batch_end(
-          dense_1, Layer_Parameter::dense_training_output);
+          dense_1.getLayerPtr(), Layer_Parameter::dense_training_output);
 
   std::vector<std::vector<std::vector<tf::tensor>>> training_losses =
       call_back.get_tensor_loss_on_batch_end(
@@ -276,11 +276,11 @@ TEST_F(FrameworkTest, DenseLayer_Test_2) {
           loss_sgd, Loss_Parameter::squared_error_target_output);
 
   std::vector<std::vector<std::vector<tf::tensor>>> grad_weights =
-      call_back.get_parameter_on_batch_end(dense_1,
+      call_back.get_parameter_on_batch_end(dense_1.getLayerPtr(),
                                            Layer_Parameter::dense_grad_weight);
 
   std::vector<std::vector<std::vector<tf::tensor>>> grad_bias =
-      call_back.get_parameter_on_batch_end(dense_1,
+      call_back.get_parameter_on_batch_end(dense_1.getLayerPtr(),
                                            Layer_Parameter::dense_grad_bias);
 
   unsigned const no_of_batches = sample_size / batch_size;

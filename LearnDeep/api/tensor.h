@@ -242,35 +242,19 @@ public:
 
   ~trace();
 
-  void record_parameter_on_epoch_begin(const layer::dense &dense_layer,
+  void record_parameter_on_epoch_begin(Layer *const layer_ptr,
                                        Layer_Parameter trainable_parameter_no,
                                        bool print_flag = false);
 
-  void record_parameter_on_epoch_begin(const layer::relu &relu_layer,
-                                       Layer_Parameter trainable_parameter_no,
-                                       bool print_flag = false);
-
-  void record_parameter_on_epoch_end(const layer::dense &dense_layer,
+  void record_parameter_on_epoch_end(Layer *const layer_ptr,
                                      Layer_Parameter trainable_parameter_no,
                                      bool print_flag = false);
 
-  void record_parameter_on_epoch_end(const layer::relu &relu_layer,
-                                     Layer_Parameter trainable_parameter_no,
-                                     bool print_flag = false);
-
-  void record_parameter_on_batch_begin(const layer::dense &dense_layer,
+  void record_parameter_on_batch_begin(Layer *const layer_ptr,
                                        Layer_Parameter trainable_parameter_no,
                                        bool print_flag = false);
 
-  void record_parameter_on_batch_begin(const layer::relu &relu_layer,
-                                       Layer_Parameter trainable_parameter_no,
-                                       bool print_flag = false);
-
-  void record_parameter_on_batch_end(const layer::dense &dense_layer,
-                                     Layer_Parameter trainable_parameter_no,
-                                     bool print_flag = false);
-
-  void record_parameter_on_batch_end(const layer::relu &relu_layer,
+  void record_parameter_on_batch_end(Layer *const layer_ptr,
                                      Layer_Parameter trainable_parameter_no,
                                      bool print_flag = false);
 
@@ -287,35 +271,19 @@ public:
                                        bool printFlag = false);
 
   std::vector<std::vector<tf::tensor>>
-  get_parameter_on_epoch_begin(const layer::dense &dense_layer,
+  get_parameter_on_epoch_begin(Layer *const layer_ptr,
                                Layer_Parameter trainable_parameter_no);
 
   std::vector<std::vector<tf::tensor>>
-  get_parameter_on_epoch_begin(const layer::relu &relu_layer,
-                               Layer_Parameter trainable_parameter_no);
-
-  std::vector<std::vector<tf::tensor>>
-  get_parameter_on_epoch_end(const layer::dense &dense_layer,
-                             Layer_Parameter trainable_parameter_no);
-
-  std::vector<std::vector<tf::tensor>>
-  get_parameter_on_epoch_end(const layer::relu &relu_layer,
+  get_parameter_on_epoch_end(Layer *const layer_ptr,
                              Layer_Parameter trainable_parameter_no);
 
   std::vector<std::vector<std::vector<tf::tensor>>>
-  get_parameter_on_batch_begin(const layer::dense &dense_layer,
+  get_parameter_on_batch_begin(Layer *const layer_ptr,
                                Layer_Parameter trainable_parameter_no);
 
   std::vector<std::vector<std::vector<tf::tensor>>>
-  get_parameter_on_batch_begin(const layer::relu &relu_layer,
-                               Layer_Parameter trainable_parameter_no);
-
-  std::vector<std::vector<std::vector<tf::tensor>>>
-  get_parameter_on_batch_end(const layer::dense &dense_layer,
-                             Layer_Parameter trainable_parameter_no);
-
-  std::vector<std::vector<std::vector<tf::tensor>>>
-  get_parameter_on_batch_end(const layer::relu &relu_layer,
+  get_parameter_on_batch_end(Layer *const layer_ptr,
                              Layer_Parameter trainable_parameter_no);
 
   std::vector<std::float64_t> get_scaler_loss_on_epoch_end(tf::loss loss);
