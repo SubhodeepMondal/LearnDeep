@@ -611,67 +611,35 @@ tf::callback::trace::trace() {
 tf::callback::trace::~trace() {}
 
 void tf::callback::trace::record_parameter_on_epoch_begin(
-    const tf::layer::dense &dense_layer, Layer_Parameter trainable_parameter_no,
+    Layer *const layer_ptr, Layer_Parameter trainable_parameter_no,
     bool print_flag) {
   static_cast<CallbackTrace *>(this->callback_ptr.get())
-      ->onEpochBeginGetTrainableParameter(dense_layer.getLayerPtr(),
-                                          trainable_parameter_no, print_flag);
-}
-
-void tf::callback::trace::record_parameter_on_epoch_begin(
-    const tf::layer::relu &relu_layer, Layer_Parameter trainable_parameter_no,
-    bool print_flag) {
-  static_cast<CallbackTrace *>(this->callback_ptr.get())
-      ->onEpochBeginGetTrainableParameter(relu_layer.getLayerPtr(),
-                                          trainable_parameter_no, print_flag);
+      ->onEpochBeginGetTrainableParameter(layer_ptr, trainable_parameter_no,
+                                          print_flag);
 }
 
 void tf::callback::trace::record_parameter_on_epoch_end(
-    const tf::layer::dense &dense_layer, Layer_Parameter trainable_parameter_no,
+    Layer *const layer_ptr, Layer_Parameter trainable_parameter_no,
     bool print_flag) {
   static_cast<CallbackTrace *>(this->callback_ptr.get())
-      ->onEpochEndGetTrainableParameter(dense_layer.getLayerPtr(),
-                                        trainable_parameter_no, print_flag);
-}
-
-void tf::callback::trace::record_parameter_on_epoch_end(
-    const tf::layer::relu &relu_layer, Layer_Parameter trainable_parameter_no,
-    bool print_flag) {
-  static_cast<CallbackTrace *>(this->callback_ptr.get())
-      ->onEpochEndGetTrainableParameter(relu_layer.getLayerPtr(),
-                                        trainable_parameter_no, print_flag);
+      ->onEpochEndGetTrainableParameter(layer_ptr, trainable_parameter_no,
+                                        print_flag);
 }
 
 void tf::callback::trace::record_parameter_on_batch_begin(
-    const tf::layer::dense &dense_layer, Layer_Parameter trainable_parameter_no,
+    Layer *const layer_ptr, Layer_Parameter trainable_parameter_no,
     bool print_flag) {
   static_cast<CallbackTrace *>(this->callback_ptr.get())
-      ->recordTrainableParameterOnBatchBegin(
-          dense_layer.getLayerPtr(), trainable_parameter_no, print_flag);
-}
-
-void tf::callback::trace::record_parameter_on_batch_begin(
-    const tf::layer::relu &relu_layer, Layer_Parameter trainable_parameter_no,
-    bool print_flag) {
-  static_cast<CallbackTrace *>(this->callback_ptr.get())
-      ->recordTrainableParameterOnBatchBegin(
-          relu_layer.getLayerPtr(), trainable_parameter_no, print_flag);
+      ->recordTrainableParameterOnBatchBegin(layer_ptr, trainable_parameter_no,
+                                             print_flag);
 }
 
 void tf::callback::trace::record_parameter_on_batch_end(
-    const tf::layer::dense &dense_layer, Layer_Parameter trainable_parameter_no,
+    Layer *const layer_ptr, Layer_Parameter trainable_parameter_no,
     bool print_flag) {
   static_cast<CallbackTrace *>(this->callback_ptr.get())
-      ->recordTrainableParameterOnBatchEnd(dense_layer.getLayerPtr(),
-                                           trainable_parameter_no, print_flag);
-}
-
-void tf::callback::trace::record_parameter_on_batch_end(
-    const tf::layer::relu &relu_layer, Layer_Parameter trainable_parameter_no,
-    bool print_flag) {
-  static_cast<CallbackTrace *>(this->callback_ptr.get())
-      ->recordTrainableParameterOnBatchEnd(relu_layer.getLayerPtr(),
-                                           trainable_parameter_no, print_flag);
+      ->recordTrainableParameterOnBatchEnd(layer_ptr, trainable_parameter_no,
+                                           print_flag);
 }
 
 void tf::callback::trace::record_scalar_loss_on_epoch_end(tf::loss loss,
@@ -702,13 +670,12 @@ void tf::callback::trace::record_tensor_loss_on_batch_end(
 
 std::vector<std::vector<tf::tensor>>
 tf::callback::trace::get_parameter_on_epoch_begin(
-    const tf::layer::dense &dense_layer,
-    Layer_Parameter trainable_parameter_no) {
+    Layer *const layer_ptr, Layer_Parameter trainable_parameter_no) {
   std::vector<std::vector<tf::tensor>> trainable_parametes_on_epoch_begin;
 
   std::vector<std::vector<tf::tensor *>> vector_vector_tensors =
       static_cast<CallbackTrace *>(this->callback_ptr.get())
-          ->getTrainableParameterEpochOnBegin(dense_layer.getLayerPtr(),
+          ->getTrainableParameterEpochOnBegin(layer_ptr,
                                               trainable_parameter_no);
 
   trainable_parametes_on_epoch_begin.resize(vector_vector_tensors.size());
@@ -723,35 +690,13 @@ tf::callback::trace::get_parameter_on_epoch_begin(
 }
 
 std::vector<std::vector<tf::tensor>>
-tf::callback::trace::get_parameter_on_epoch_begin(
-    const tf::layer::relu &relu_layer, Layer_Parameter trainable_parameter_no) {
-  std::vector<std::vector<tf::tensor>> trainable_parametes_on_epoch_begin;
-
-  std::vector<std::vector<tf::tensor *>> vector_vector_tensors =
-      static_cast<CallbackTrace *>(this->callback_ptr.get())
-          ->getTrainableParameterEpochOnBegin(relu_layer.getLayerPtr(),
-                                              trainable_parameter_no);
-
-  trainable_parametes_on_epoch_begin.resize(vector_vector_tensors.size());
-
-  for (unsigned i = 0; i < vector_vector_tensors.size(); i++) {
-    for (tf::tensor *tensor : vector_vector_tensors[i])
-      trainable_parametes_on_epoch_begin[i].push_back(*tensor);
-  }
-
-  return trainable_parametes_on_epoch_begin;
-}
-
-std::vector<std::vector<tf::tensor>>
 tf::callback::trace::get_parameter_on_epoch_end(
-    const tf::layer::dense &dense_layer,
-    Layer_Parameter trainable_parameter_no) {
+    Layer *const layer_ptr, Layer_Parameter trainable_parameter_no) {
   std::vector<std::vector<tf::tensor>> trainable_parametes_on_epoch_end;
 
   std::vector<std::vector<tf::tensor *>> vector_vector_tensors =
       static_cast<CallbackTrace *>(this->callback_ptr.get())
-          ->getTrainableParameterEpochOnEnd(dense_layer.getLayerPtr(),
-                                            trainable_parameter_no);
+          ->getTrainableParameterEpochOnEnd(layer_ptr, trainable_parameter_no);
 
   trainable_parametes_on_epoch_end.resize(vector_vector_tensors.size());
 
@@ -765,62 +710,15 @@ tf::callback::trace::get_parameter_on_epoch_end(
   return trainable_parametes_on_epoch_end;
 }
 
-std::vector<std::vector<tf::tensor>>
-tf::callback::trace::get_parameter_on_epoch_end(
-    const tf::layer::relu &relu_layer, Layer_Parameter trainable_parameter_no) {
-  std::vector<std::vector<tf::tensor>> trainable_parametes_on_epoch_end;
-
-  std::vector<std::vector<tf::tensor *>> vector_vector_tensors =
-      static_cast<CallbackTrace *>(this->callback_ptr.get())
-          ->getTrainableParameterEpochOnEnd(relu_layer.getLayerPtr(),
-                                            trainable_parameter_no);
-
-  trainable_parametes_on_epoch_end.resize(vector_vector_tensors.size());
-
-  for (unsigned i = 0; i < vector_vector_tensors.size(); i++) {
-    for (tf::tensor *tensor : vector_vector_tensors[i]) {
-      trainable_parametes_on_epoch_end[i].push_back(*tensor);
-    }
-  }
-
-  return trainable_parametes_on_epoch_end;
-}
-
 std::vector<std::vector<std::vector<tf::tensor>>>
 tf::callback::trace::get_parameter_on_batch_begin(
-    const tf::layer::dense &dense_layer,
-    Layer_Parameter trainable_parameter_no) {
+    Layer *const layer_ptr, Layer_Parameter trainable_parameter_no) {
   std::vector<std::vector<std::vector<tf::tensor>>>
       trainable_parametes_on_batch_begin;
 
   std::vector<std::vector<std::vector<tf::tensor *>>> vector_vector_tensors =
       static_cast<CallbackTrace *>(this->callback_ptr.get())
-          ->getTrainableParameterBatchOnBegin(dense_layer.getLayerPtr(),
-                                              trainable_parameter_no);
-
-  trainable_parametes_on_batch_begin.resize(vector_vector_tensors.size());
-
-  for (unsigned j = 0; j < vector_vector_tensors.size(); j++) {
-    trainable_parametes_on_batch_begin[j].resize(
-        vector_vector_tensors[j].size());
-    for (unsigned i = 0; i < vector_vector_tensors[j].size(); i++) {
-      for (tf::tensor *tensor : vector_vector_tensors[j][i])
-        trainable_parametes_on_batch_begin[j][i].push_back(*tensor);
-    }
-  }
-
-  return trainable_parametes_on_batch_begin;
-}
-
-std::vector<std::vector<std::vector<tf::tensor>>>
-tf::callback::trace::get_parameter_on_batch_begin(
-    const tf::layer::relu &relu_layer, Layer_Parameter trainable_parameter_no) {
-  std::vector<std::vector<std::vector<tf::tensor>>>
-      trainable_parametes_on_batch_begin;
-
-  std::vector<std::vector<std::vector<tf::tensor *>>> vector_vector_tensors =
-      static_cast<CallbackTrace *>(this->callback_ptr.get())
-          ->getTrainableParameterBatchOnBegin(relu_layer.getLayerPtr(),
+          ->getTrainableParameterBatchOnBegin(layer_ptr,
                                               trainable_parameter_no);
 
   trainable_parametes_on_batch_begin.resize(vector_vector_tensors.size());
@@ -839,39 +737,13 @@ tf::callback::trace::get_parameter_on_batch_begin(
 
 std::vector<std::vector<std::vector<tf::tensor>>>
 tf::callback::trace::get_parameter_on_batch_end(
-    const tf::layer::dense &dense_layer,
-    Layer_Parameter trainable_parameter_no) {
+    Layer *const layer_ptr, Layer_Parameter trainable_parameter_no) {
   std::vector<std::vector<std::vector<tf::tensor>>>
       trainable_parametes_on_batch_end;
 
   std::vector<std::vector<std::vector<tf::tensor *>>> vector_vector_tensors =
       static_cast<CallbackTrace *>(this->callback_ptr.get())
-          ->getTrainableParameterBatchOnEnd(dense_layer.getLayerPtr(),
-                                            trainable_parameter_no);
-
-  trainable_parametes_on_batch_end.resize(vector_vector_tensors.size());
-
-  for (unsigned j = 0; j < vector_vector_tensors.size(); j++) {
-    trainable_parametes_on_batch_end[j].resize(vector_vector_tensors[j].size());
-    for (unsigned i = 0; i < vector_vector_tensors[j].size(); i++) {
-      for (tf::tensor *tensor : vector_vector_tensors[j][i])
-        trainable_parametes_on_batch_end[j][i].push_back(*tensor);
-    }
-  }
-
-  return trainable_parametes_on_batch_end;
-}
-
-std::vector<std::vector<std::vector<tf::tensor>>>
-tf::callback::trace::get_parameter_on_batch_end(
-    const tf::layer::relu &relu_layer, Layer_Parameter trainable_parameter_no) {
-  std::vector<std::vector<std::vector<tf::tensor>>>
-      trainable_parametes_on_batch_end;
-
-  std::vector<std::vector<std::vector<tf::tensor *>>> vector_vector_tensors =
-      static_cast<CallbackTrace *>(this->callback_ptr.get())
-          ->getTrainableParameterBatchOnEnd(relu_layer.getLayerPtr(),
-                                            trainable_parameter_no);
+          ->getTrainableParameterBatchOnEnd(layer_ptr, trainable_parameter_no);
 
   trainable_parametes_on_batch_end.resize(vector_vector_tensors.size());
 

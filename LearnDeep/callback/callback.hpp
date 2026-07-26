@@ -88,58 +88,64 @@ public:
       : print_callback_log(print_callback_log){};
   CallbackTrace(unsigned callback_level);
   ~CallbackTrace();
-  void onEpochBeginGetTrainableParameter(Layer *layer,
+  void onEpochBeginGetTrainableParameter(Layer *const layer,
                                          Layer_Parameter trainable_parameter_no,
                                          bool print = false);
 
-  void onEpochEndGetTrainableParameter(Layer *layer,
+  void onEpochEndGetTrainableParameter(Layer *const layer,
                                        Layer_Parameter trainable_paramter_no,
                                        bool print = false);
 
-  void recordTrainableParameterOnBatchBegin(
-      Layer *layer, Layer_Parameter trainable_parameter_no, bool print = false);
+  void
+  recordTrainableParameterOnBatchBegin(Layer *const layer,
+                                       Layer_Parameter trainable_parameter_no,
+                                       bool print = false);
 
-  void recordTrainableParameterOnBatchEnd(
-      Layer *layer, Layer_Parameter trainable_parameter_no, bool print = false);
+  void
+  recordTrainableParameterOnBatchEnd(Layer *const layer,
+                                     Layer_Parameter trainable_parameter_no,
+                                     bool print = false);
 
-  void recordScalerLossEpochEnd(Loss *loss_ptr, bool printFlag = false);
+  void recordScalerLossEpochEnd(Loss *const loss_ptr, bool printFlag = false);
 
-  void recordTensorLossEpochEnd(Loss *loss_ptr, Loss_Parameter loss_parameter,
+  void recordTensorLossEpochEnd(Loss *const loss_ptr,
+                                Loss_Parameter loss_parameter,
                                 bool printFlag = false);
 
-  void recordScalerLossBatchEnd(Loss *loss_ptr, bool printFlag = false);
+  void recordScalerLossBatchEnd(Loss *const loss_ptr, bool printFlag = false);
 
-  void recordTensorLossBatchEnd(Loss *loss_ptr, Loss_Parameter loss_parameter,
+  void recordTensorLossBatchEnd(Loss *const loss_ptr,
+                                Loss_Parameter loss_parameter,
                                 bool printFlag = false);
 
   /* --- epoch batch vector-tensor --- */
   std::vector<std::vector<tf::tensor *>>
-  getTrainableParameterEpochOnBegin(Layer *layer,
+  getTrainableParameterEpochOnBegin(Layer *const layer,
                                     Layer_Parameter trainable_parameter_no);
 
   std::vector<std::vector<tf::tensor *>>
-  getTrainableParameterEpochOnEnd(Layer *layer,
+  getTrainableParameterEpochOnEnd(Layer *const layer,
                                   Layer_Parameter trainable_parameter_no);
 
   /* --- epoch batch vector-tensor --- */
   std::vector<std::vector<std::vector<tf::tensor *>>>
-  getTrainableParameterBatchOnBegin(Layer *layer,
+  getTrainableParameterBatchOnBegin(Layer *const layer,
                                     Layer_Parameter trainable_parameter_no);
 
   std::vector<std::vector<std::vector<tf::tensor *>>>
-  getTrainableParameterBatchOnEnd(Layer *layer,
+  getTrainableParameterBatchOnEnd(Layer *const layer,
                                   Layer_Parameter trainable_parameter_no);
 
   std::vector<std::float64_t> getScalerLossEpochEnd(Loss *loss_ptr);
 
   std::vector<std::vector<tf::tensor *>>
-  getLossParameterEpochEnd(Loss *loss_ptr, Loss_Parameter loss_parameter);
+  getLossParameterEpochEnd(Loss *const loss_ptr, Loss_Parameter loss_parameter);
 
   std::vector<std::vector<std::float64_t>>
-  getScalerLossBatchEnd(Loss *loss_ptr);
+  getScalerLossBatchEnd(Loss *const loss_ptr);
 
   std::vector<std::vector<std::vector<tf::tensor *>>>
-  getLossParameterBatchEnd(Loss *loss_ptr, Loss_Parameter loss_parameter);
+  getLossParameterBatchEnd(Loss *const loss_ptr, Loss_Parameter loss_parameter);
 
   void callOnEpochBegin();
 

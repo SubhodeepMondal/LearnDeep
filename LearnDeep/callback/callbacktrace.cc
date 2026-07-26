@@ -41,7 +41,7 @@ CallbackTrace::~CallbackTrace() {
 }
 
 void CallbackTrace::onEpochBeginGetTrainableParameter(
-    Layer *layer, Layer_Parameter traiable_parameter_no, bool print) {
+    Layer *const layer, Layer_Parameter traiable_parameter_no, bool print) {
   if (std::ranges::contains(global_layer_graph.getAllLayers(), layer)) {
     this->layers_on_epoch_begin[layer].push_back(
         {traiable_parameter_no, print});
@@ -49,21 +49,21 @@ void CallbackTrace::onEpochBeginGetTrainableParameter(
 }
 
 void CallbackTrace::onEpochEndGetTrainableParameter(
-    Layer *layer, Layer_Parameter traiable_parameter_no, bool print) {
+    Layer *const layer, Layer_Parameter traiable_parameter_no, bool print) {
   if (std::ranges::contains(global_layer_graph.getAllLayers(), layer)) {
     this->layers_on_epoch_end[layer].push_back({traiable_parameter_no, print});
   }
 }
 
 void CallbackTrace::recordTrainableParameterOnBatchBegin(
-    Layer *layer, Layer_Parameter trainable_parameter, bool print) {
+    Layer *const layer, Layer_Parameter trainable_parameter, bool print) {
   if (std::ranges::contains(global_layer_graph.getAllLayers(), layer)) {
     this->layers_on_batch_begin[layer].push_back({trainable_parameter, print});
   }
 }
 
 void CallbackTrace::recordTrainableParameterOnBatchEnd(
-    Layer *layer, Layer_Parameter trainable_parameter, bool print) {
+    Layer *const layer, Layer_Parameter trainable_parameter, bool print) {
   if (std::ranges::contains(global_layer_graph.getAllLayers(), layer)) {
     this->layers_on_batch_end[layer].push_back({trainable_parameter, print});
   }
@@ -95,7 +95,7 @@ void CallbackTrace::recordTensorLossBatchEnd(Loss *const loss_ptr,
 
 std::vector<std::vector<tf::tensor *>>
 CallbackTrace::getTrainableParameterEpochOnBegin(
-    Layer *layer, Layer_Parameter trainable_parameter_no) {
+    Layer *const layer, Layer_Parameter trainable_parameter_no) {
 
   std::vector<std::vector<tf::tensor *>> layer_parameter_output;
 
@@ -121,7 +121,7 @@ CallbackTrace::getTrainableParameterEpochOnBegin(
 
 std::vector<std::vector<tf::tensor *>>
 CallbackTrace::getTrainableParameterEpochOnEnd(
-    Layer *layer, Layer_Parameter trainable_parameter_no) {
+    Layer *const layer, Layer_Parameter trainable_parameter_no) {
 
   std::vector<std::vector<tf::tensor *>> layer_parameter_output;
 
@@ -147,7 +147,7 @@ CallbackTrace::getTrainableParameterEpochOnEnd(
 
 std::vector<std::vector<std::vector<tf::tensor *>>>
 CallbackTrace::getTrainableParameterBatchOnBegin(
-    Layer *layer, Layer_Parameter trainable_parameter_no) {
+    Layer *const layer, Layer_Parameter trainable_parameter_no) {
 
   std::vector<std::vector<std::vector<tf::tensor *>>> layer_parameter_output;
 
@@ -208,7 +208,7 @@ CallbackTrace::getLossParameterEpochEnd(Loss *loss,
 }
 
 std::vector<std::vector<std::float64_t>>
-CallbackTrace::getScalerLossBatchEnd(Loss *loss) {
+CallbackTrace::getScalerLossBatchEnd(Loss *const loss) {
   return this->scalar_loss_batch_end[loss];
 }
 
