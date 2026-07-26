@@ -6,6 +6,7 @@
 #include <LearnDeep/api/tensor.h>
 #include <gtest/gtest.h>
 
+#include <iostream>
 #include <stdfloat>
 
 TEST_F(FrameworkTest, DenseLayer_Test_1) {
@@ -534,5 +535,166 @@ TEST_F(FrameworkTest, DenseLayer_Test_3) {
   for (std::float64_t scalar_loss : hist["loss"]) {
     EXPECT_NEAR(scalar_loss, loss_data[i], 1e-4) << "at" << i;
     i++;
+  }
+}
+
+TEST_F(FrameworkTest, Quadratic_Func_Fit_Test) {
+
+  tf::tensor x;
+  tf::tensor weight_1, weight_2, bias_1, bias_2;
+  tf::tensor input, target_output;
+
+  unsigned sample_size = 1024;
+  unsigned batch_size = 32;
+  unsigned epoch = 1000;
+  unsigned no_of_batches = sample_size / batch_size;
+  unsigned no_of_input_feature = 1;
+  unsigned no_of_dense_unit_1 = 8;
+  unsigned no_of_dense_unit_2 = 1;
+
+  x.tf_create(tf_float64, no_of_input_feature, batch_size);
+  input.tf_create(tf_float64, no_of_input_feature, sample_size);
+  weight_1.tf_create(tf_float64, no_of_dense_unit_1, no_of_input_feature);
+  bias_1.tf_create(tf_float64, no_of_dense_unit_1, 1);
+  weight_2.tf_create(tf_float64, no_of_dense_unit_2, no_of_dense_unit_1);
+  bias_2.tf_create(tf_float64, no_of_dense_unit_2, 1);
+  target_output.tf_create(tf_float64, no_of_dense_unit_2, sample_size);
+
+  input.tensor_of(
+      load_bin("test/data/Quadratic_ReluDense_Test_1_input_data.bin",
+               no_of_input_feature * sample_size)
+          .data());
+  target_output.tensor_of(
+      load_bin("test/data/Quadratic_ReluDense_Test_1_target_output_data.bin",
+               no_of_dense_unit_2 * sample_size)
+          .data());
+  weight_1.tensor_of(
+      load_bin("test/data/Quadratic_ReluDense_Test_1_initial_weights_1.bin",
+               no_of_dense_unit_1 * no_of_input_feature)
+          .data());
+  bias_1.tensor_of(
+      load_bin("test/data/Quadratic_ReluDense_Test_1_initial_bias_1.bin",
+               no_of_dense_unit_1)
+          .data());
+  weight_2.tensor_of(
+      load_bin("test/data/Quadratic_ReluDense_Test_1_initial_weights_2.bin",
+               no_of_dense_unit_2 * no_of_dense_unit_1)
+          .data());
+  bias_2.tensor_of(
+      load_bin("test/data/Quadratic_ReluDense_Test_1_initial_bias_2.bin",
+               no_of_dense_unit_2)
+          .data());
+
+  auto dense_1 = tf::layer::dense(no_of_dense_unit_1);
+  auto relu_layer = tf::layer::relu();
+  auto dense_2 = tf::layer::dense(no_of_dense_unit_2);
+
+  auto dense_1_output = dense_1({x});
+  auto relu_output = relu_layer(dense_1_output);
+  auto predicted_output = dense_2(relu_output);
+
+  dense_1.set_weight(weight_1);
+  dense_1.set_bias(bias_1);
+  dense_2.set_weight(weight_2);
+  dense_2.set_bias(bias_2);
+
+  tf::callback::trace call_back;
+  call_back.record_parameter_on_batch_begin(
+      dense_1.getLayerPtr(), Layer_Parameter::dense_training_input, false);
+  call_back.record_parameter_on_batch_end(
+      dense_2.getLayerPtr(), Layer_Parameter::dense_training_output, false);
+
+  tf::model mymodel({x}, predicted_output);
+  mymodel.shuffle(false);
+  mymodel.compile(OptimizerType::SGD, LossType::squared_error);
+
+  tf::loss loss_sgd = mymodel.get_model_loss(predicted_output[0]);
+  call_back.record_tensor_loss_on_batch_end(
+      loss_sgd, Loss_Parameter::squared_error_target_output, false);
+  call_back.record_scalar_loss_on_batch_end(loss_sgd, false);
+
+  mymodel.fit({input}, {target_output}, {call_back.callback()}, epoch,
+              batch_size);
+
+  std::vector<std::vector<std::vector<tf::tensor>>> input_batches =
+      call_back.get_parameter_on_batch_begin(
+          dense_1.getLayerPtr(), Layer_Parameter::dense_training_input);
+  std::vector<std::vector<std::vector<tf::tensor>>> output_batches =
+      call_back.get_parameter_on_batch_end(
+          dense_2.getLayerPtr(), Layer_Parameter::dense_training_output);
+  std::vector<std::vector<std::vector<tf::tensor>>> target_output_batches =
+      call_back.get_tensor_loss_on_batch_end(
+          loss_sgd, Loss_Parameter::squared_error_target_output);
+  std::vector<std::vector<std::float64_t>> scalar_losses =
+      call_back.get_scaler_loss_on_batch_end(loss_sgd);
+
+  std::cout << "Quadratic_Func_Fit_Test mean squared error: "
+            << scalar_losses.back().back() << "\n";
+
+  ASSERT_EQ(input_batches.size(), epoch);
+  ASSERT_EQ(output_batches.size(), epoch);
+  ASSERT_EQ(target_output_batches.size(), epoch);
+  ASSERT_EQ(scalar_losses.size(), epoch);
+
+  auto expected_input_batches = load_bin(
+      "test/data/Quadratic_ReluDense_Test_1_input_batch_history.bin",
+      epoch * no_of_batches * batch_size * no_of_input_feature);
+  auto expected_target_output_batches = load_bin(
+      "test/data/Quadratic_ReluDense_Test_1_target_output_batch_history.bin",
+      epoch * no_of_batches * batch_size * no_of_dense_unit_2);
+  auto expected_predicted_output_batches = load_bin(
+      "test/data/Quadratic_ReluDense_Test_1_predicted_output_batch_history.bin",
+      epoch * no_of_batches * batch_size * no_of_dense_unit_2);
+  auto expected_loss_batches = load_bin(
+      "test/data/Quadratic_ReluDense_Test_1_loss_batch_history.bin",
+      epoch * no_of_batches);
+
+  for (unsigned ep = 0; ep < epoch; ep++) {
+    ASSERT_EQ(input_batches[ep].size(), no_of_batches);
+    ASSERT_EQ(output_batches[ep].size(), no_of_batches);
+    ASSERT_EQ(target_output_batches[ep].size(), no_of_batches);
+    ASSERT_EQ(scalar_losses[ep].size(), no_of_batches);
+
+    for (unsigned bt = 0; bt < no_of_batches; bt++) {
+      ASSERT_EQ(input_batches[ep][bt].size(), 1);
+      ASSERT_EQ(output_batches[ep][bt].size(), 1);
+      ASSERT_EQ(target_output_batches[ep][bt].size(), 1);
+
+      unsigned batch_data_offset =
+          (ep * no_of_batches + bt) * batch_size * no_of_input_feature;
+      for (unsigned j = 0; j < batch_size; j++) {
+        for (unsigned i = 0; i < no_of_input_feature; i++) {
+          unsigned index = i + j * no_of_input_feature;
+          EXPECT_NEAR(input_batches[ep][bt][0].getData()[index],
+                      expected_input_batches[batch_data_offset + index], 1e-6)
+              << "input at epoch " << ep << ", batch " << bt << ", index "
+              << index;
+        }
+      }
+
+      batch_data_offset =
+          (ep * no_of_batches + bt) * batch_size * no_of_dense_unit_2;
+      for (unsigned j = 0; j < batch_size; j++) {
+        for (unsigned i = 0; i < no_of_dense_unit_2; i++) {
+          unsigned index = i + j * no_of_dense_unit_2;
+          EXPECT_NEAR(target_output_batches[ep][bt][0].getData()[index],
+                      expected_target_output_batches[batch_data_offset + index],
+                      1e-6)
+              << "target output at epoch " << ep << ", batch " << bt
+              << ", index " << index;
+          EXPECT_NEAR(output_batches[ep][bt][0].getData()[index],
+                      expected_predicted_output_batches[batch_data_offset +
+                                                        index],
+                      1e-5)
+              << "predicted output at epoch " << ep << ", batch " << bt
+              << ", index " << index;
+        }
+      }
+
+      unsigned loss_index = ep * no_of_batches + bt;
+      EXPECT_NEAR(scalar_losses[ep][bt], expected_loss_batches[loss_index],
+                  1e-5)
+          << "loss at epoch " << ep << ", batch " << bt;
+    }
   }
 }
