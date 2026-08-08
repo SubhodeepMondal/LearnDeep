@@ -1,62 +1,120 @@
+#include <LearnDeep/api/tensor.h>
 #include <gtest/gtest.h>
-#include <tensor.h>
 
 #include "LinearAlgebraFixtures.unit.hpp"
 
-TEST_F(MathTest, Eager_MatrixScale_2D) {
+namespace {
 
-  std::float64_t a[] = {0.37454012, 0.95071431, 0.73199394, 0.59865848,
-                        0.15601864, 0.15599452, 0.05808361, 0.86617615,
-                        0.60111501, 0.70807258, 0.02058449, 0.96990985,
-                        0.83244264, 0.21233911, 0.18182497, 0.18340451};
-
-  std::float64_t c_scale[] = {0.23408757, 0.59419644, 0.45749621, 0.37416155,
-                              0.09751165, 0.09749658, 0.03630226, 0.54136009,
-                              0.37569688, 0.44254536, 0.01286531, 0.60619366,
-                              0.52027665, 0.13271194, 0.1136406,  0.11462782};
-
-  tf::tensor A, C;
-  A.tf_create(tf_float64, 4, 4);
-  C.tf_create(tf_float64, 4, 4);
-
-  A.tensor_of(a);
-
-  C = A.scale(0.625);
-
-  auto *tensorC_scale = static_cast<Tensor<std::float64_t> *>(C.ptr);
-  for (int i = 0; i < 16; i++) {
-    EXPECT_NEAR(tensorC_scale->getData()[i], c_scale[i], 0.0001);
+void expect_near_tensor(const tf::tensor &actual,
+                        const std::vector<std::float64_t> &expected) {
+  for (size_t i = 0; i < expected.size(); i++) {
+    EXPECT_NEAR(actual.getData()[i], expected[i], 1e-6) << "at: " << i;
   }
 }
 
-TEST_F(MathTest, Graph_MatrixScale_2D) {
+} // namespace
 
-  std::float64_t a[] = {0.37454012, 0.95071431, 0.73199394, 0.59865848,
-                        0.15601864, 0.15599452, 0.05808361, 0.86617615,
-                        0.60111501, 0.70807258, 0.02058449, 0.96990985,
-                        0.83244264, 0.21233911, 0.18182497, 0.18340451};
-
-  std::float64_t c_scale[] = {0.23408757, 0.59419644, 0.45749621, 0.37416155,
-                              0.09751165, 0.09749658, 0.03630226, 0.54136009,
-                              0.37569688, 0.44254536, 0.01286531, 0.60619366,
-                              0.52027665, 0.13271194, 0.1136406,  0.11462782};
+TEST_F(MathTest, Softmax_Test_1_Eager_2D_Axis0) {
+  constexpr size_t tensor_size = 167 * 544;
 
   tf::tensor A, C;
-  A.tf_create(tf_float64, 4, 4);
-  C.tf_create(tf_float64, 4, 4);
+  A.tf_create(tf_float64, 167, 544);
+  A.tensor_of(
+      load_bin("test/data/Softmax_Test_1_input.bin", tensor_size).data());
 
-  A.tensor_of(a);
+  C = A.softmax(0);
 
-  tf::graph g_scale;
-  g_scale.tf_create_graph();
+  const std::vector<std::float64_t> output =
+      load_bin("test/data/Softmax_Test_1_output.bin", tensor_size);
+  expect_near_tensor(C, output);
+}
 
-  C = A.scale(g_scale, 0.625);
+TEST_F(MathTest, Softmax_Test_1_Graph_2D_Axis0) {
+  constexpr size_t tensor_size = 167 * 544;
 
-  g_scale.graph_execute();
+  tf::tensor A, C;
+  A.tf_create(tf_float64, 167, 544);
+  A.tensor_of(
+      load_bin("test/data/Softmax_Test_1_input.bin", tensor_size).data());
 
-  auto *tensorC_scale = static_cast<Tensor<std::float64_t> *>(C.ptr);
-  for (int i = 0; i < 16; i++) {
-    EXPECT_NEAR(tensorC_scale->getData()[i], c_scale[i], 0.0001);
+  {
+    tf::graph_context ctx;
+
+    C = A.softmax(0);
+    ctx.run();
+
+    const std::vector<std::float64_t> output =
+        load_bin("test/data/Softmax_Test_1_output.bin", tensor_size);
+    expect_near_tensor(C, output);
   }
-  g_scale.graph_clear();
+}
+
+TEST_F(MathTest, Softmax_Test_2_Eager_3D_Axis1) {
+  constexpr size_t tensor_size = 78 * 37 * 19;
+
+  tf::tensor A, C;
+  A.tf_create(tf_float64, 78, 37, 19);
+  A.tensor_of(
+      load_bin("test/data/Softmax_Test_2_input.bin", tensor_size).data());
+
+  C = A.softmax(1);
+
+  const std::vector<std::float64_t> output =
+      load_bin("test/data/Softmax_Test_2_output.bin", tensor_size);
+  expect_near_tensor(C, output);
+}
+
+TEST_F(MathTest, Softmax_Test_2_Graph_3D_Axis1) {
+  constexpr size_t tensor_size = 78 * 37 * 19;
+
+  tf::tensor A, C;
+  A.tf_create(tf_float64, 78, 37, 19);
+  A.tensor_of(
+      load_bin("test/data/Softmax_Test_2_input.bin", tensor_size).data());
+
+  {
+    tf::graph_context ctx;
+
+    C = A.softmax(1);
+    ctx.run();
+
+    const std::vector<std::float64_t> output =
+        load_bin("test/data/Softmax_Test_2_output.bin", tensor_size);
+    expect_near_tensor(C, output);
+  }
+}
+
+TEST_F(MathTest, Softmax_Test_3_Eager_5D_Axis4) {
+  constexpr size_t tensor_size = 7 * 11 * 112 * 5 * 6;
+
+  tf::tensor A, C;
+  A.tf_create(tf_float64, 7, 11, 112, 5, 6);
+  A.tensor_of(
+      load_bin("test/data/Softmax_Test_3_input.bin", tensor_size).data());
+
+  C = A.softmax(4);
+
+  const std::vector<std::float64_t> output =
+      load_bin("test/data/Softmax_Test_3_output.bin", tensor_size);
+  expect_near_tensor(C, output);
+}
+
+TEST_F(MathTest, Softmax_Test_3_Graph_5D_Axis4) {
+  constexpr size_t tensor_size = 7 * 11 * 112 * 5 * 6;
+
+  tf::tensor A, C;
+  A.tf_create(tf_float64, 7, 11, 112, 5, 6);
+  A.tensor_of(
+      load_bin("test/data/Softmax_Test_3_input.bin", tensor_size).data());
+
+  {
+    tf::graph_context ctx;
+
+    C = A.softmax(4);
+    ctx.run();
+
+    const std::vector<std::float64_t> output =
+        load_bin("test/data/Softmax_Test_3_output.bin", tensor_size);
+    expect_near_tensor(C, output);
+  }
 }

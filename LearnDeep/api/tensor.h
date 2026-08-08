@@ -123,6 +123,8 @@ public:
 
   tensor relu(bool graph_flag = true) const;
 
+  tensor softmax(unsigned const axis = 0, bool graph_flag = true) const;
+
   tensor sigmoid(bool graph_flag = true);
 
   tensor scale(const std::float64_t scaleFactor, bool graph_flag = true);

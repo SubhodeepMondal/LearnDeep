@@ -8,65 +8,19 @@
 #include <core/LAS/avx2_micro_kernels.h>
 #include <core/framework/MathLibrary.h>
 
-void Opssoftmax::recursive_iterator(unsigned index, unsigned *dimension_arr,
-                                    std::string function_name, unsigned *ui_arr,
-                                    std::float64_t *dl_arr,
-                                    Tensor<std::float64_t> *misc_arr) {
-  if (index < 2) {
-    unsigned i, inpA_x, inpA_y, inpB_x, inpB_y, out_x, out_y;
-    unsigned a_plane_size, b_plane_size, c_plane_size, a_index, b_index,
-        c_index;
-
-    inpA_x = (inputs[0]->getNoOfDimensions() > 0)
-                 ? inputs[0]->getDimensions()[0]
-                 : 1;
-    inpA_y = (inputs[0]->getNoOfDimensions() > 1)
-                 ? inputs[0]->getDimensions()[1]
-                 : 1;
-
-    out_x = (output->getNoOfDimensions() > 0) ? output->getDimensions()[0] : 1;
-    out_y = (output->getNoOfDimensions() > 1) ? output->getDimensions()[1] : 1;
-
-    a_plane_size = inpA_x * inpA_y;
-    c_plane_size = out_x * out_y;
-
-    a_index = b_index = c_index = 0;
-    if (inputs[0]->getNoOfDimensions() > 2)
-      for (i = 2; i < inputs[0]->getNoOfDimensions(); i++) {
-        a_index += a_plane_size * dimension_arr[i];
-        c_index += c_plane_size * dimension_arr[i];
-
-        a_plane_size *= inputs[0]->getDimensions()[i];
-        c_plane_size *= output->getDimensions()[i];
-      }
-    unsigned a[2];
-    std::float64_t *ptr[3];
-
-    a[0] = inpA_x;
-    a[1] = inpA_y;
-
-    ptr[0] = inputs[0]->getData() + a_index;
-    ptr[1] = dl_arr;
-    ptr[2] = output->getData() + c_index;
-
-    kernel_dispatch(ptr, a);
-  } else {
-    for (unsigned i = 0; i < inputs[0]->getDimensions()[index]; i++) {
-      dimension_arr[index] = i;
-      recursive_iterator(index - 1, dimension_arr, function_name, ui_arr,
-                         dl_arr, misc_arr);
-    }
-  }
-};
-
 void Opssoftmax::compute() {
-  unsigned *arr;
+  arr = new unsigned[this->inputs[0]->getNoOfDimensions() + 2];
+  std::float64_t *ptr[2];
+  ptr[0] = this->inputs[0]->getData();
+  ptr[1] = this->output->getData();
 
-  arr = new unsigned[inputs[0]->getNoOfDimensions()];
+  arr[0] = this->axis;
+  arr[1] = this->inputs[0]->getNoOfDimensions();
 
-  recursive_iterator(inputs[0]->getNoOfDimensions() - 1, arr,
-                     "matrix_scaler_multiplication", NULL, NULL, NULL);
-  delete[] arr;
+  for (unsigned i = 0; i < this->inputs[0]->getNoOfDimensions(); i++)
+    arr[i + 2] = this->inputs[0]->getDimensions()[i];
+
+  kernel_dispatch(ptr, arr);
 }
 
 void Opssoftmax::initializeinputs(Tensor<std::float64_t> **inputs) {
@@ -92,7 +46,8 @@ void Opssoftmax::printoutput() {
   std::cout << "\n";
 }
 
-void Opssoftmax::kernel_dispatch(std::float64_t **ptr, unsigned *arr) {
+void Opssoftmax::kernel_dispatch(std::float64_t *const *const ptr,
+                                 unsigned *arr) {
 #ifdef CUDA_ENABLED
   double *d_arr[3];
   d_arr[0] = reinterpret_cast<double *>(ptr[0]);
@@ -102,7 +57,8 @@ void Opssoftmax::kernel_dispatch(std::float64_t **ptr, unsigned *arr) {
   gpu::gpu_mat_softmax_f64(d_arr, arr);
 #else
   if (__builtin_cpu_supports("avx2")) {
-    avx2::avx2_softmax_f64(ptr, arr);
+    // avx2::avx2_softmax_f64(ptr, arr);
+    cpu::__msoftmax(ptr, arr);
   } else {
     cpu::__msoftmax(ptr, arr);
   }

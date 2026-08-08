@@ -594,6 +594,7 @@ Tensor<T> *Tensor<T>::softmax(const unsigned axis, bool graph_flag) {
   Tensor<T> *inputs[1];
   inputs[0] = this;
   ops->initializeinputs(inputs);
+  ops->initializeAxis(axis);
   ops->initializeoutput(output);
 
   Graph *g = GraphManager::instance().getCurrentGraph();

@@ -812,8 +812,8 @@ void cpu::__msigmoid(std::float64_t **ptr, unsigned *arr) {
 }
 
 inline std::float64_t findMax(std::float64_t *const ptr, unsigned const n) {
-  std::float64_t max = 1e-10;
-  for (unsigned i = 0; n; i++)
+  std::float64_t max = ptr[0];
+  for (unsigned i = 1; i < n; i++)
     if (max < ptr[i])
       max = ptr[i];
 
@@ -821,7 +821,7 @@ inline std::float64_t findMax(std::float64_t *const ptr, unsigned const n) {
 }
 
 inline void reduceByMax(std::float64_t *const ptr_A,
-                        std::float64_t *const ptr_B, unsigned const max,
+                        std::float64_t *const ptr_B, std::float64_t const max,
                         unsigned const n) {
   for (unsigned i = 0; i < n; i++)
     ptr_B[i] = ptr_A[i] - max;
@@ -851,60 +851,45 @@ inline void getSoftMaxOnRow(std::float64_t *const ptr, unsigned const n,
  *            arr[2-n]: dimensions
  */
 void cpu::__msoftmax(std::float64_t *const *const ptr, unsigned *const arr) {
-  std::float64_t *A, *C;
-  unsigned x, y;
-
-  A = ptr[0];
-  C = ptr[1];
+  std::float64_t *A = ptr[0];
+  std::float64_t *C = ptr[1];
 
   unsigned axis = arr[0];
   unsigned dims = arr[1];
+  unsigned axis_size = arr[axis + 2];
+  unsigned inner_stride = 1;
+  unsigned outer_count = 1;
 
-  if (!axis) {
-    unsigned no_of_lines = 1;
-    for (unsigned i = 1; i < arr[1]; i++)
-      no_of_lines *= arr[i];
+  for (unsigned i = axis + 1; i < dims; i++)
+    inner_stride *= arr[i + 2];
+
+  for (unsigned i = 0; i < axis; i++)
+    outer_count *= arr[i + 2];
+
+  unsigned no_of_lines = outer_count * inner_stride;
 
 #pragma omp parallel for
-    for (unsigned j = 0; j < no_of_lines; j++) {
-      std::float64_t max = findMax(A + j * arr[axis + 2], arr[axis + 2]);
-      reduceByMax(A + j * arr[1], C + j * arr[axis + 2], arr[axis + 2], max);
-      std::float64_t sum = sumofExponents(C + j * arr[axis + 2], arr[axis + 2]);
-      getSoftMaxOnRow(C + j * arr[1], arr[1], sum);
-    }
-  } else {
-    unsigned no_of_lines = 1;
-    unsigned stride = 1;
-    for (unsigned i = 0; i < arr[1]; i++) {
-      if (i != axis)
-        no_of_lines *= arr[i];
-      if (i < axis)
-        stride *= arr[i];
-    }
-    // clang-format off
-#pragma omp parallel
-{
-      // clang-format on
-      thread_local std::vector<std::float64_t> line_in;
-      thread_local std::vector<std::float64_t> line_out;
-      line_in.resize(arr[axis + 2]);
-      line_out.resize(arr[axis + 2]);
-#pragma omp for
-      for (unsigned j = 0; j < no_of_lines; j++) {
-        for (unsigned i = 0; i < arr[axis + 2]; i++)
-          line_in[i] = A[i * stride + j];
+  for (unsigned line = 0; line < no_of_lines; line++) {
+    unsigned outer = line / inner_stride;
+    unsigned inner = line % inner_stride;
+    unsigned base = outer * axis_size * inner_stride + inner;
 
-        std::float64_t max = findMax(line_in.data(), arr[axis + 2]);
-        reduceByMax(line_in.data(), line_out.data(), max, arr[axis + 2]);
-        std::float64_t sum = sumofExponents(line_out.data(), arr[axis + 2]);
-        getSoftMaxOnRow(line_out.data(), arr[axis + 2], sum);
+    std::float64_t max = A[base];
+    for (unsigned i = 1; i < axis_size; i++) {
+      std::float64_t value = A[base + i * inner_stride];
+      if (max < value)
+        max = value;
+    }
 
-        for (unsigned i = 0; i < arr[axis + 2]; i++)
-          C[i * stride + j] = line_out[i];
-      }
-      // clang-format off
-      }
-    // clang-format on
+    std::float64_t sum = 0.0;
+    for (unsigned i = 0; i < axis_size; i++) {
+      std::float64_t value = std::exp(A[base + i * inner_stride] - max);
+      C[base + i * inner_stride] = value;
+      sum += value;
+    }
+
+    for (unsigned i = 0; i < axis_size; i++)
+      C[base + i * inner_stride] /= sum;
   }
 }
 

@@ -500,14 +500,11 @@ public:
 class Opssoftmax : public Ops {
   std::vector<Tensor<std::float64_t> *> inputs;
   int axis;
+  unsigned *arr;
   Tensor<std::float64_t> *output;
   Tensor<std::float64_t> *outgoing_gradient;
-  void recursive_iterator(unsigned index, unsigned *dimension_arr,
-                          std::string function_name, unsigned *ui_arr,
-                          std::float64_t *dl_arr,
-                          Tensor<std::float64_t> *misc_arr);
 
-  void kernel_dispatch(std::float64_t **, unsigned *);
+  void kernel_dispatch(std::float64_t *const *const, unsigned *);
 
 public:
   Opssoftmax() = default;
@@ -523,7 +520,7 @@ public:
     return grads;
   }
   void initializeinputs(Tensor<std::float64_t> **inputs);
-  void initializeAxis(const unsigned axis) { this->axis = axis; }
+  void initializeAxis(const unsigned axis = 0) { this->axis = axis; }
   void initializeoutput(Tensor<std::float64_t> *output);
   std::vector<Tensor<std::float64_t> *> getinputs() { return inputs; }
   Tensor<std::float64_t> *getoutput() { return output; }

@@ -375,6 +375,20 @@ tf::tensor tf::tensor::relu(bool graph_flag) const {
   return output;
 }
 
+tf::tensor tf::tensor::softmax(unsigned const axis, bool graph_flag) const {
+  tensor output;
+
+  switch (dt_type) {
+  case tf_float64:
+    output.dt_type = this->dt_type;
+    output = tensor(this->dt_type, this->ptr->softmax(axis, graph_flag));
+    break;
+  default:
+    LOG(ERROR) << "Invalid data type!";
+  }
+  return output;
+}
+
 tf::tensor tf::tensor::mean(const unsigned dim, bool graph_flag) {
   tensor output;
 
