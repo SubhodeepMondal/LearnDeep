@@ -810,24 +810,75 @@ void cpu::__msigmoid(std::float64_t **ptr, unsigned *arr) {
       C[i + j * x] = 1 / (1 + std::exp(-A[i + j * x]));
 }
 
-void cpu::__msoftmax(std::float64_t **ptr, unsigned *arr) {
+inline std::float64_t findMax(std::float64_t *const ptr, unsigned const n) {
+  std::float64_t max = 1e-10;
+  for (unsigned i = 0; n; i++)
+    if (max < ptr[i])
+      max = ptr[i];
+
+  return max;
+}
+
+inline void reduceByMax(std::float64_t *const ptr_A,
+                        std::float64_t *const ptr_B, unsigned const max,
+                        unsigned const n) {
+  for (unsigned i = 0; i < n; i++)
+    ptr_B[i] = ptr_A[i] - max;
+}
+
+inline std::float64_t sumofExponents(std::float64_t *const ptr,
+                                     unsigned const n) {
+  std::float64_t sum = 0;
+  for (unsigned i = 0; i < n; i++)
+    sum += std::exp(ptr[i]);
+  return sum;
+}
+
+inline void getSoftMaxOnRow(std::float64_t *const ptr, unsigned const n,
+                            std::float64_t const sum) {
+
+  for (unsigned i = 0; i < n; i++)
+    ptr[i] = std::exp(ptr[i]) / sum;
+}
+
+/**
+ * @brief Micro Kernel: Softmax on tensor
+ * @param ptr double pointer to input and output tensor index respectively
+ * @param arr encoded unsigned array
+ *            arr[0]: softmax axis
+ *            arr[1]: no of dimensions for the tensors
+ *            arr[2-n]: dimensions
+ */
+void cpu::__msoftmax(std::float64_t *const *const ptr, unsigned *const arr) {
   std::float64_t *A, *C;
   unsigned x, y;
 
   A = ptr[0];
   C = ptr[1];
 
-  x = arr[0];
-  y = arr[1];
+  unsigned axis = arr[0];
+  unsigned dims = arr[1];
+
+  if (!axis) {
+    unsigned no_of_lines = 1;
+    for (unsigned i = 1; i < arr[1]; i++)
+      no_of_lines *= arr[i];
+
 #pragma omp parallel for
-  for (unsigned j = 0; j < y; j++) {
-    std::float64_t sum = 0;
-    for (unsigned i = 0; i < x; i++) {
-      C[i + j * x] = std::exp(A[i + j * x]);
-      sum += C[i + j * x];
+    for (unsigned j = 0; j < no_of_lines; j++) {
+      std::float64_t max = findMax(A + j * arr[axis + 2], arr[axis + 2]);
+
+      reduceByMax(A + j * arr[1], C + j * arr[axis + 2], arr[axis + 2], max);
+
+      std::float64_t sum = sumofExponents(C + j * arr[axis + 2], arr[axis + 2]);
+
+      getSoftMaxOnRow(C + j * arr[1], arr[1], sum);
     }
-    for (unsigned i = 0; i < x; i++)
-      C[i + j * x] = C[i + j * x] / sum;
+  } else {
+    unsigned no_of_lines = 1;
+    for (unsigned i = 0; i < arr[1]; i++)
+      if (axis != i)
+        no_of_lines *= arr[i];
   }
 }
 
