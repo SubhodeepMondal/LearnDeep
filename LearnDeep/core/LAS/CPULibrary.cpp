@@ -5,6 +5,7 @@
 #include <iostream>
 #include <omp.h>
 #include <stdexcept>
+#include <vector>
 
 #define TILE_DOUBLE_X 8
 #define TILE_DOUBLE_Y 16
@@ -867,18 +868,43 @@ void cpu::__msoftmax(std::float64_t *const *const ptr, unsigned *const arr) {
 #pragma omp parallel for
     for (unsigned j = 0; j < no_of_lines; j++) {
       std::float64_t max = findMax(A + j * arr[axis + 2], arr[axis + 2]);
-
       reduceByMax(A + j * arr[1], C + j * arr[axis + 2], arr[axis + 2], max);
-
       std::float64_t sum = sumofExponents(C + j * arr[axis + 2], arr[axis + 2]);
-
       getSoftMaxOnRow(C + j * arr[1], arr[1], sum);
     }
   } else {
     unsigned no_of_lines = 1;
-    for (unsigned i = 0; i < arr[1]; i++)
-      if (axis != i)
+    unsigned stride = 1;
+    for (unsigned i = 0; i < arr[1]; i++) {
+      if (i != axis)
         no_of_lines *= arr[i];
+      if (i < axis)
+        stride *= arr[i];
+    }
+    // clang-format off
+#pragma omp parallel
+{
+      // clang-format on
+      thread_local std::vector<std::float64_t> line_in;
+      thread_local std::vector<std::float64_t> line_out;
+      line_in.resize(arr[axis + 2]);
+      line_out.resize(arr[axis + 2]);
+#pragma omp for
+      for (unsigned j = 0; j < no_of_lines; j++) {
+        for (unsigned i = 0; i < arr[axis + 2]; i++)
+          line_in[i] = A[i * stride + j];
+
+        std::float64_t max = findMax(line_in.data(), arr[axis + 2]);
+        reduceByMax(line_in.data(), line_out.data(), max, arr[axis + 2]);
+        std::float64_t sum = sumofExponents(line_out.data(), arr[axis + 2]);
+        getSoftMaxOnRow(line_out.data(), arr[axis + 2], sum);
+
+        for (unsigned i = 0; i < arr[axis + 2]; i++)
+          C[i * stride + j] = line_out[i];
+      }
+      // clang-format off
+      }
+    // clang-format on
   }
 }
 
