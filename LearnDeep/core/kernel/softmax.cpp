@@ -57,8 +57,7 @@ void Opssoftmax::kernel_dispatch(std::float64_t *const *const ptr,
   gpu::gpu_mat_softmax_f64(d_arr, arr);
 #else
   if (__builtin_cpu_supports("avx2")) {
-    // avx2::avx2_softmax_f64(ptr, arr);
-    cpu::__msoftmax(ptr, arr);
+    avx2::avx2_softmax_f64(ptr, arr);
   } else {
     cpu::__msoftmax(ptr, arr);
   }

@@ -811,37 +811,6 @@ void cpu::__msigmoid(std::float64_t **ptr, unsigned *arr) {
       C[i + j * x] = 1 / (1 + std::exp(-A[i + j * x]));
 }
 
-inline std::float64_t findMax(std::float64_t *const ptr, unsigned const n) {
-  std::float64_t max = ptr[0];
-  for (unsigned i = 1; i < n; i++)
-    if (max < ptr[i])
-      max = ptr[i];
-
-  return max;
-}
-
-inline void reduceByMax(std::float64_t *const ptr_A,
-                        std::float64_t *const ptr_B, std::float64_t const max,
-                        unsigned const n) {
-  for (unsigned i = 0; i < n; i++)
-    ptr_B[i] = ptr_A[i] - max;
-}
-
-inline std::float64_t sumofExponents(std::float64_t *const ptr,
-                                     unsigned const n) {
-  std::float64_t sum = 0;
-  for (unsigned i = 0; i < n; i++)
-    sum += std::exp(ptr[i]);
-  return sum;
-}
-
-inline void getSoftMaxOnRow(std::float64_t *const ptr, unsigned const n,
-                            std::float64_t const sum) {
-
-  for (unsigned i = 0; i < n; i++)
-    ptr[i] = std::exp(ptr[i]) / sum;
-}
-
 /**
  * @brief Micro Kernel: Softmax on tensor
  * @param ptr double pointer to input and output tensor index respectively
