@@ -3,6 +3,7 @@
 #endif
 
 // Library Headers
+#include "kernelmanager.h"
 #include "opskernel.h"
 #include <core/LAS/CPULibrary.h>
 #include <core/LAS/avx2_micro_kernels.h>
@@ -47,19 +48,60 @@ void Opssoftmax::printoutput() {
 }
 
 void Opssoftmax::kernel_dispatch(std::float64_t *const *const ptr,
-                                 unsigned *arr) {
+                                 unsigned *const arr) {
+  KernelType kernel = get_global_kernel();
 #ifdef CUDA_ENABLED
-  double *d_arr[3];
-  d_arr[0] = reinterpret_cast<double *>(ptr[0]);
-  d_arr[1] = reinterpret_cast<double *>(ptr[1]);
-  d_arr[2] = reinterpret_cast<double *>(ptr[2]);
-
-  gpu::gpu_mat_softmax_f64(d_arr, arr);
-#else
-  if (__builtin_cpu_supports("avx2")) {
-    avx2::avx2_softmax_f64(ptr, arr);
-  } else {
+  switch (kernel) {
+  case KernelType::GPU: {
+    double *d_arr[3];
+    d_arr[0] = reinterpret_cast<double *>(ptr[0]);
+    d_arr[1] = reinterpret_cast<double *>(ptr[1]);
+    d_arr[2] = reinterpret_cast<double *>(ptr[2]);
+    gpu::gpu_mat_softmax_f64(d_arr, arr);
+    break;
+  }
+  case KernelType::AVX2:
+    if (__builtin_cpu_supports("avx2")) {
+      avx2::avx2_softmax_f64(ptr, arr);
+    } else {
+      throw std::runtime_error("AVX2 not supported on this CPU");
+    }
+    break;
+  case KernelType::CPU_SCALAR:
     cpu::__msoftmax(ptr, arr);
+    break;
+  case KernelType::AUTO:
+  default: {
+    double *d_arr[3];
+    d_arr[0] = reinterpret_cast<double *>(ptr[0]);
+    d_arr[1] = reinterpret_cast<double *>(ptr[1]);
+    d_arr[2] = reinterpret_cast<double *>(ptr[2]);
+    gpu::gpu_mat_softmax_f64(d_arr, arr);
+    break;
+  }
+  }
+#else
+  switch (kernel) {
+  case KernelType::GPU:
+    throw std::runtime_error("GPU kernel requested but CUDA not enabled");
+  case KernelType::AVX2:
+    if (__builtin_cpu_supports("avx2")) {
+      avx2::avx2_softmax_f64(ptr, arr);
+    } else {
+      throw std::runtime_error("AVX2 not supported on this CPU");
+    }
+    break;
+  case KernelType::CPU_SCALAR:
+    cpu::__msoftmax(ptr, arr);
+    break;
+  case KernelType::AUTO:
+  default:
+    if (__builtin_cpu_supports("avx2")) {
+      avx2::avx2_softmax_f64(ptr, arr);
+    } else {
+      cpu::__msoftmax(ptr, arr);
+    }
+    break;
   }
 #endif
 }

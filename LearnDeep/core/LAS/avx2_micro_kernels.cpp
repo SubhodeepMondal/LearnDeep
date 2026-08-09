@@ -750,10 +750,10 @@ void avx2::avx2_softmax_f64(std::float64_t *const *const ptr,
   unsigned inner_stride = 1;
   unsigned outer_count = 1;
 
-  for (unsigned i = axis + 1; i < dims; i++)
+  for (unsigned i = 0; i < axis; i++)
     inner_stride *= arr[i + 2];
 
-  for (unsigned i = 0; i < axis; i++)
+  for (unsigned i = axis + 1; i < dims; i++)
     outer_count *= arr[i + 2];
 
   unsigned no_of_lines = outer_count * inner_stride;

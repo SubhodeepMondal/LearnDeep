@@ -811,6 +811,26 @@ void cpu::__msigmoid(std::float64_t **ptr, unsigned *arr) {
       C[i + j * x] = 1 / (1 + std::exp(-A[i + j * x]));
 }
 
+inline std::float64_t findMax(std::float64_t *const ptr, unsigned const n) {
+  std::float64_t max = ptr[0];
+  for (unsigned i = 1; i < n; i++)
+    if (max < ptr[i])
+      max = ptr[i];
+  return max;
+}
+
+inline std::float64_t expAndReduce(std::float64_t *const ptr_A,
+                                   std::float64_t *const ptr_B,
+                                   unsigned const n, std::float64_t const max) {
+  std::float64_t sum = 0;
+  for (unsigned i = 0; i < n; i++) {
+    std::float64_t value = std::exp(ptr_A[i] - max);
+    ptr_B[i] = value;
+    sum += ptr_B[i];
+  }
+  return sum;
+}
+
 /**
  * @brief Micro Kernel: Softmax on tensor
  * @param ptr double pointer to input and output tensor index respectively
@@ -830,35 +850,62 @@ void cpu::__msoftmax(std::float64_t *const *const ptr, unsigned *const arr) {
   unsigned outer_count = 1;
 
   for (unsigned i = axis + 1; i < dims; i++)
-    inner_stride *= arr[i + 2];
-
-  for (unsigned i = 0; i < axis; i++)
     outer_count *= arr[i + 2];
 
   unsigned no_of_lines = outer_count * inner_stride;
 
+  if (!axis) {
 #pragma omp parallel for
-  for (unsigned line = 0; line < no_of_lines; line++) {
-    unsigned outer = line / inner_stride;
-    unsigned inner = line % inner_stride;
-    unsigned base = outer * axis_size * inner_stride + inner;
+    for (unsigned line = 0; line < no_of_lines; line++) {
+      unsigned base_address = axis_size * line;
 
-    std::float64_t max = A[base];
-    for (unsigned i = 1; i < axis_size; i++) {
-      std::float64_t value = A[base + i * inner_stride];
-      if (max < value)
-        max = value;
+      std::float64_t max = findMax(A + base_address, axis_size);
+
+      std::float64_t sum =
+          expAndReduce(A + base_address, C + base_address, axis_size, max);
+
+      for (unsigned i = 0; i < axis_size; i++)
+        C[base_address + i] /= sum;
     }
+  } else {
 
-    std::float64_t sum = 0.0;
-    for (unsigned i = 0; i < axis_size; i++) {
-      std::float64_t value = std::exp(A[base + i * inner_stride] - max);
-      C[base + i * inner_stride] = value;
-      sum += value;
+    for (unsigned i = 0; i < axis; i++)
+      inner_stride *= arr[i + 2];
+
+    no_of_lines = outer_count * inner_stride;
+    // clang-format off`
+#pragma omp parallel
+    {
+      // clang-format on
+      thread_local std::vector<std::float64_t> line_vector;
+      if (line_vector.capacity() < axis_size)
+        line_vector.reserve(axis_size);
+
+      line_vector.resize(axis_size);
+#pragma omp for
+      for (unsigned line = 0; line < no_of_lines; line++) {
+        /*
+          lets imagine each line is arranged in a 2d (inner_stride x
+          outer_count) grid and the softmax axis is on z-axis, then inner
+          dimension is idx_x which is  and other one is idx_y;
+        */
+        unsigned idx_x = line / inner_stride;
+        unsigned idx_y = line % inner_stride;
+        unsigned base_address = idx_x * axis_size * inner_stride + idx_y;
+
+        // accumulate the data first
+        for (unsigned i = 0; i < axis_size; i++)
+          line_vector[i] = A[base_address + i * inner_stride];
+
+        std::float64_t max = findMax(line_vector.data(), axis_size);
+
+        std::float64_t sum = expAndReduce(line_vector.data(),
+                                          line_vector.data(), axis_size, max);
+
+        for (unsigned i = 0; i < axis_size; i++)
+          C[base_address + i * inner_stride] = line_vector[i] / sum;
+      }
     }
-
-    for (unsigned i = 0; i < axis_size; i++)
-      C[base + i * inner_stride] /= sum;
   }
 }
 

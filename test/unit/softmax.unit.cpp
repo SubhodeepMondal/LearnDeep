@@ -18,11 +18,11 @@ TEST_F(MathTest, Softmax_Test_1_Eager_2D_Axis0) {
   constexpr size_t tensor_size = 167 * 544;
 
   tf::tensor A, C;
-  A.tf_create(tf_float64, 167, 544);
+  A.tf_create(tf_float64, 544, 167);
   A.tensor_of(
       load_bin("test/data/Softmax_Test_1_input.bin", tensor_size).data());
 
-  C = A.softmax(0);
+  C = A.softmax(1);
 
   const std::vector<std::float64_t> output =
       load_bin("test/data/Softmax_Test_1_output.bin", tensor_size);
@@ -33,14 +33,14 @@ TEST_F(MathTest, Softmax_Test_1_Graph_2D_Axis0) {
   constexpr size_t tensor_size = 167 * 544;
 
   tf::tensor A, C;
-  A.tf_create(tf_float64, 167, 544);
+  A.tf_create(tf_float64, 544, 167);
   A.tensor_of(
       load_bin("test/data/Softmax_Test_1_input.bin", tensor_size).data());
 
   {
     tf::graph_context ctx;
 
-    C = A.softmax(0);
+    C = A.softmax(1);
     ctx.run();
 
     const std::vector<std::float64_t> output =
@@ -53,7 +53,7 @@ TEST_F(MathTest, Softmax_Test_2_Eager_3D_Axis1) {
   constexpr size_t tensor_size = 78 * 37 * 19;
 
   tf::tensor A, C;
-  A.tf_create(tf_float64, 78, 37, 19);
+  A.tf_create(tf_float64, 19, 37, 78);
   A.tensor_of(
       load_bin("test/data/Softmax_Test_2_input.bin", tensor_size).data());
 
@@ -68,7 +68,7 @@ TEST_F(MathTest, Softmax_Test_2_Graph_3D_Axis1) {
   constexpr size_t tensor_size = 78 * 37 * 19;
 
   tf::tensor A, C;
-  A.tf_create(tf_float64, 78, 37, 19);
+  A.tf_create(tf_float64, 19, 37, 78);
   A.tensor_of(
       load_bin("test/data/Softmax_Test_2_input.bin", tensor_size).data());
 
@@ -88,11 +88,11 @@ TEST_F(MathTest, Softmax_Test_3_Eager_5D_Axis4) {
   constexpr size_t tensor_size = 7 * 11 * 112 * 5 * 6;
 
   tf::tensor A, C;
-  A.tf_create(tf_float64, 7, 11, 112, 5, 6);
+  A.tf_create(tf_float64, 6, 5, 112, 11, 7);
   A.tensor_of(
       load_bin("test/data/Softmax_Test_3_input.bin", tensor_size).data());
 
-  C = A.softmax(4);
+  C = A.softmax(0);
 
   const std::vector<std::float64_t> output =
       load_bin("test/data/Softmax_Test_3_output.bin", tensor_size);
@@ -103,14 +103,14 @@ TEST_F(MathTest, Softmax_Test_3_Graph_5D_Axis4) {
   constexpr size_t tensor_size = 7 * 11 * 112 * 5 * 6;
 
   tf::tensor A, C;
-  A.tf_create(tf_float64, 7, 11, 112, 5, 6);
+  A.tf_create(tf_float64, 6, 5, 112, 11, 7);
   A.tensor_of(
       load_bin("test/data/Softmax_Test_3_input.bin", tensor_size).data());
 
   {
     tf::graph_context ctx;
 
-    C = A.softmax(4);
+    C = A.softmax(0);
     ctx.run();
 
     const std::vector<std::float64_t> output =
