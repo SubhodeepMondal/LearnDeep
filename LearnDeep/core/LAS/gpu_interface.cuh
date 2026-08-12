@@ -140,7 +140,7 @@ void gpu_mat_relu_f64(double **ptr, const unsigned nDim, unsigned const *arr);
 
 void gpu_mat_sigmoid_f64(double **ptr, unsigned *arr);
 
-void gpu_mat_softmax_f64(double **ptr, unsigned *arr);
+void gpu_mat_softmax_f64(double *const *const ptr, unsigned *const arr);
 
 void gpu_mat_transpose_f64(double **ptr, unsigned *arr);
 } // namespace gpu

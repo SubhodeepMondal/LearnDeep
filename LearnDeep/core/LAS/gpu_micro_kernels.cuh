@@ -114,8 +114,14 @@ matrixSubBroadCast(double *const input_1, double *const input_2,
 
 __global__ void matrixLinear(double *a, double *d_a, int x, int y);
 
-__global__ void matrixSoftmax(double *a, double *softmax_sum, double *d_a,
-                              unsigned x, unsigned y);
+__global__ void tensorSoftmax(double *const input, double *const output,
+                              unsigned const vector_length,
+                              unsigned const no_vector);
+
+__global__ void tensorSoftmaxOffAxis(double *const input, double *const output,
+                                     unsigned const vector_length,
+                                     unsigned const num_vector,
+                                     unsigned const axis);
 
 __global__ void matrixSquaredError(double *a, double *b, unsigned x,
                                    unsigned y);
