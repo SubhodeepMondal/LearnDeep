@@ -810,7 +810,7 @@ __global__ void gpu_kernel::tensorSoftmaxOffAxis(double *const input,
 
   // find rolling max
   // find max for max-two's grouped_length to remainder
-  if (idx_x < inner_stride && idx_z < outer_stride) {
+  if (idx_x < inner_stride) {
     global_shared_mem_d[shared_idx] = input[base_idx];
     if (idx_y < remain)
       global_shared_mem_d[shared_idx] =
@@ -820,7 +820,7 @@ __global__ void gpu_kernel::tensorSoftmaxOffAxis(double *const input,
   __syncthreads();
 
   // group reduction to get everything into shared memory
-  if (idx_x < inner_stride && idx_z < outer_stride)
+  if (idx_x < inner_stride)
     for (unsigned i = blockDim.y; i < grouped_length; i += blockDim.y) {
       global_shared_mem_d[shared_idx] = fmax(
           global_shared_mem_d[shared_idx], input[base_idx + i * inner_stride]);
@@ -829,7 +829,7 @@ __global__ void gpu_kernel::tensorSoftmaxOffAxis(double *const input,
 
   // find max from 0 to max-two's grouped_length
   for (unsigned i = blockDim.y >> 1; i > 0; i >>= 1) {
-    if (threadIdx.y < i && idx_x < inner_stride && idx_z < outer_stride)
+    if (threadIdx.y < i && idx_x < inner_stride)
       global_shared_mem_d[shared_idx] =
           fmax(global_shared_mem_d[shared_idx],
                global_shared_mem_d[shared_idx + i * blockDim.x]);
@@ -841,7 +841,7 @@ __global__ void gpu_kernel::tensorSoftmaxOffAxis(double *const input,
 
   // find rolling sum
   // reduction for elements out of range of powercle
-  if (idx_x < inner_stride && idx_z < outer_stride) {
+  if (idx_x < inner_stride) {
     global_shared_mem_d[shared_idx] = exp(input[base_idx] - line_max);
     output[base_idx] = global_shared_mem_d[shared_idx];
     if (idx_y < remain) {
@@ -854,7 +854,7 @@ __global__ void gpu_kernel::tensorSoftmaxOffAxis(double *const input,
   __syncthreads();
 
   // group reduction to get everything into shared memory
-  if (idx_x < inner_stride && idx_z < outer_stride)
+  if (idx_x < inner_stride)
     for (unsigned i = blockDim.y; i < grouped_length; i += blockDim.y) {
       double sum = exp(input[base_idx + i * inner_stride] - line_max);
       global_shared_mem_d[shared_idx] += sum;
@@ -864,14 +864,14 @@ __global__ void gpu_kernel::tensorSoftmaxOffAxis(double *const input,
 
   // rolling sum on shared memory
   for (unsigned i = blockDim.y >> 1; i > 0; i >>= 1) {
-    if (threadIdx.y < i && idx_x < inner_stride && idx_z < outer_stride)
+    if (threadIdx.y < i && idx_x < inner_stride)
       global_shared_mem_d[shared_idx] +=
           global_shared_mem_d[shared_idx + i * blockDim.x];
     __syncthreads();
   } // end of finding rolling sum
 
   // putting the result back to where it belong
-  if (idx_x < inner_stride && idx_z < outer_stride) {
+  if (idx_x < inner_stride) {
     output[base_idx] /= global_shared_mem_d[shared_base];
     if (idx_y < remain)
       output[base_idx + grouped_length * inner_stride] /=
