@@ -504,7 +504,9 @@ class Opssoftmax : public Ops {
   Tensor<std::float64_t> *output;
   Tensor<std::float64_t> *outgoing_gradient;
 
-  void kernel_dispatch(std::float64_t *const *const, unsigned *);
+  void kernel_dispatch(std::float64_t *const *const ptr, unsigned const axis,
+                       unsigned const axis_len, unsigned const inner_stride,
+                       unsigned const outer_stride);
 
 public:
   Opssoftmax() = default;

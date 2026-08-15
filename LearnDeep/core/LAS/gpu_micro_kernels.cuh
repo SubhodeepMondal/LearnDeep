@@ -119,9 +119,9 @@ __global__ void tensorSoftmax(double *const input, double *const output,
                               unsigned const no_vector);
 
 __global__ void tensorSoftmaxOffAxis(double *const input, double *const output,
-                                     unsigned const vector_length,
-                                     unsigned const num_vector,
-                                     unsigned const axis);
+                                     unsigned const vegtor_length,
+                                     unsigned const inner_stride,
+                                     unsigned const outer_stride);
 
 __global__ void matrixSquaredError(double *a, double *b, unsigned x,
                                    unsigned y);

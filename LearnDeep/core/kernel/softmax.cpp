@@ -10,18 +10,21 @@
 #include <core/framework/MathLibrary.h>
 
 void Opssoftmax::compute() {
-  arr = new unsigned[this->inputs[0]->getNoOfDimensions() + 2];
+  unsigned inner_stride = 1;
+  for (unsigned i = 0; i < this->axis; i++)
+    inner_stride *= this->inputs[0]->getDimensions()[i];
+
+  unsigned softmax_axis_len = this->inputs[0]->getDimensions()[this->axis];
+  unsigned outer_stride = 1;
+  for (unsigned i = this->axis + 1; i < this->inputs[0]->getNoOfDimensions();
+       i++)
+    outer_stride *= this->inputs[0]->getDimensions()[i];
+
   std::float64_t *ptr[2];
   ptr[0] = this->inputs[0]->getData();
   ptr[1] = this->output->getData();
-
-  arr[0] = this->axis;
-  arr[1] = this->inputs[0]->getNoOfDimensions();
-
-  for (unsigned i = 0; i < this->inputs[0]->getNoOfDimensions(); i++)
-    arr[i + 2] = this->inputs[0]->getDimensions()[i];
-
-  kernel_dispatch(ptr, arr);
+  kernel_dispatch(ptr, this->axis, softmax_axis_len, inner_stride,
+                  outer_stride);
 }
 
 void Opssoftmax::initializeinputs(Tensor<std::float64_t> **inputs) {
@@ -48,7 +51,9 @@ void Opssoftmax::printoutput() {
 }
 
 void Opssoftmax::kernel_dispatch(std::float64_t *const *const ptr,
-                                 unsigned *const arr) {
+                                 unsigned const axis, unsigned const axis_len,
+                                 unsigned const inner_stride,
+                                 unsigned const outer_stride) {
   KernelType kernel = get_global_kernel();
 #ifdef CUDA_ENABLED
   switch (kernel) {
@@ -57,18 +62,18 @@ void Opssoftmax::kernel_dispatch(std::float64_t *const *const ptr,
     d_arr[0] = reinterpret_cast<double *>(ptr[0]);
     d_arr[1] = reinterpret_cast<double *>(ptr[1]);
     d_arr[2] = reinterpret_cast<double *>(ptr[2]);
-    gpu::gpu_mat_softmax_f64(d_arr, arr);
+    gpu::gpu_mat_softmax_f64(d_arr, axis, axis_len, inner_stride, outer_stride);
     break;
   }
   case KernelType::AVX2:
     if (__builtin_cpu_supports("avx2")) {
-      avx2::avx2_softmax_f64(ptr, arr);
+      avx2::avx2_softmax_f64(ptr, axis, axis_len, inner_stride, outer_stride);
     } else {
       throw std::runtime_error("AVX2 not supported on this CPU");
     }
     break;
   case KernelType::CPU_SCALAR:
-    cpu::__msoftmax(ptr, arr);
+    cpu::__msoftmax(ptr, axis, axis_len, inner_stride, outer_stride);
     break;
   case KernelType::AUTO:
   default: {
@@ -76,7 +81,7 @@ void Opssoftmax::kernel_dispatch(std::float64_t *const *const ptr,
     d_arr[0] = reinterpret_cast<double *>(ptr[0]);
     d_arr[1] = reinterpret_cast<double *>(ptr[1]);
     d_arr[2] = reinterpret_cast<double *>(ptr[2]);
-    gpu::gpu_mat_softmax_f64(d_arr, arr);
+    gpu::gpu_mat_softmax_f64(d_arr, axis, axis_len, inner_stride, outer_stride);
     break;
   }
   }
@@ -86,20 +91,20 @@ void Opssoftmax::kernel_dispatch(std::float64_t *const *const ptr,
     throw std::runtime_error("GPU kernel requested but CUDA not enabled");
   case KernelType::AVX2:
     if (__builtin_cpu_supports("avx2")) {
-      avx2::avx2_softmax_f64(ptr, arr);
+      avx2::avx2_softmax_f64(ptr, axis, axis_len, inner_stride, outer_stride);
     } else {
       throw std::runtime_error("AVX2 not supported on this CPU");
     }
     break;
   case KernelType::CPU_SCALAR:
-    cpu::__msoftmax(ptr, arr);
+    cpu::__msoftmax(ptr, axis, axis_len, inner_stride, outer_stride);
     break;
   case KernelType::AUTO:
   default:
     if (__builtin_cpu_supports("avx2")) {
-      avx2::avx2_softmax_f64(ptr, arr);
+      avx2::avx2_softmax_f64(ptr, axis, axis_len, inner_stride, outer_stride);
     } else {
-      cpu::__msoftmax(ptr, arr);
+      cpu::__msoftmax(ptr, axis, axis_len, inner_stride, outer_stride);
     }
     break;
   }

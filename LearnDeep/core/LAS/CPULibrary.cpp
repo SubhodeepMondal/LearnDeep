@@ -839,70 +839,58 @@ inline std::float64_t expAndReduce(std::float64_t *const ptr_A,
  *            arr[1]: no of dimensions for the tensors
  *            arr[2-n]: dimensions
  */
-void cpu::__msoftmax(std::float64_t *const *const ptr, unsigned *const arr) {
+void cpu::__msoftmax(std::float64_t *const *const ptr, unsigned const axis,
+                     unsigned const vector_length, unsigned const inner_stride,
+                     unsigned const outer_stride) {
   std::float64_t *A = ptr[0];
   std::float64_t *C = ptr[1];
 
-  unsigned axis = arr[0];
-  unsigned dims = arr[1];
-  unsigned axis_size = arr[axis + 2];
-  unsigned inner_stride = 1;
-  unsigned outer_count = 1;
-
-  for (unsigned i = axis + 1; i < dims; i++)
-    outer_count *= arr[i + 2];
-
-  unsigned no_of_lines = outer_count * inner_stride;
+  unsigned no_of_lines = outer_stride * inner_stride;
 
   if (!axis) {
 #pragma omp parallel for
     for (unsigned line = 0; line < no_of_lines; line++) {
-      unsigned base_address = axis_size * line;
+      unsigned base_address = vector_length * line;
 
-      std::float64_t max = findMax(A + base_address, axis_size);
+      std::float64_t max = findMax(A + base_address, vector_length);
 
       std::float64_t sum =
-          expAndReduce(A + base_address, C + base_address, axis_size, max);
+          expAndReduce(A + base_address, C + base_address, vector_length, max);
 
-      for (unsigned i = 0; i < axis_size; i++)
+      for (unsigned i = 0; i < vector_length; i++)
         C[base_address + i] /= sum;
     }
   } else {
-
-    for (unsigned i = 0; i < axis; i++)
-      inner_stride *= arr[i + 2];
-
-    no_of_lines = outer_count * inner_stride;
     // clang-format off`
 #pragma omp parallel
     {
       // clang-format on
       thread_local std::vector<std::float64_t> line_vector;
-      if (line_vector.capacity() < axis_size)
-        line_vector.reserve(axis_size);
+      if (line_vector.capacity() < vector_length)
+        line_vector.reserve(vector_length);
 
-      line_vector.resize(axis_size);
+      line_vector.resize(vector_length);
 #pragma omp for
       for (unsigned line = 0; line < no_of_lines; line++) {
         /*
           lets imagine each line is arranged in a 2d (inner_stride x
-          outer_count) grid and the softmax axis is on z-axis, then inner
+          outer_stride) grid and the softmax axis is on z-axis, then inner
           dimension is idx_x which is  and other one is idx_y;
         */
         unsigned idx_x = line / inner_stride;
         unsigned idx_y = line % inner_stride;
-        unsigned base_address = idx_x * axis_size * inner_stride + idx_y;
+        unsigned base_address = idx_x * vector_length * inner_stride + idx_y;
 
         // accumulate the data first
-        for (unsigned i = 0; i < axis_size; i++)
+        for (unsigned i = 0; i < vector_length; i++)
           line_vector[i] = A[base_address + i * inner_stride];
 
-        std::float64_t max = findMax(line_vector.data(), axis_size);
+        std::float64_t max = findMax(line_vector.data(), vector_length);
 
-        std::float64_t sum = expAndReduce(line_vector.data(),
-                                          line_vector.data(), axis_size, max);
+        std::float64_t sum = expAndReduce(
+            line_vector.data(), line_vector.data(), vector_length, max);
 
-        for (unsigned i = 0; i < axis_size; i++)
+        for (unsigned i = 0; i < vector_length; i++)
           C[base_address + i * inner_stride] = line_vector[i] / sum;
       }
     }

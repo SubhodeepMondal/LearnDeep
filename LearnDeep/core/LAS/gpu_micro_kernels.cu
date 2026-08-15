@@ -749,11 +749,11 @@ __global__ void gpu_kernel::tensorSoftmax(double *const input,
   // reduction for elements out of range of powercle
   if (idx_y < num_vector) {
     global_shared_mem_d[shared_idx] =
-        exp(input[lin_idx] - global_shared_mem_d[idx_y * blockDim.x]);
+        exp(input[lin_idx] - global_shared_mem_d[threadIdx.y * blockDim.x]);
     output[lin_idx] = global_shared_mem_d[shared_idx];
     if (idx_x < remain) {
       double sum = exp(input[lin_idx + grouped_length] -
-                       global_shared_mem_d[idx_y * blockDim.x]);
+                       global_shared_mem_d[threadIdx.y * blockDim.x]);
       global_shared_mem_d[shared_idx] += sum;
       output[lin_idx + grouped_length] = sum;
     }
@@ -763,8 +763,8 @@ __global__ void gpu_kernel::tensorSoftmax(double *const input,
   // group reduction to get everything into shared memory
   if (idx_y < num_vector)
     for (unsigned i = blockDim.x; i < grouped_length; i += blockDim.x) {
-      double sum =
-          exp(input[lin_idx + i] - global_shared_mem_d[idx_y * blockDim.x]);
+      double sum = exp(input[lin_idx + i] -
+                       global_shared_mem_d[threadIdx.x * blockDim.x]);
       global_shared_mem_d[shared_idx] += sum;
       output[lin_idx + i] = sum;
     }
@@ -792,9 +792,94 @@ __global__ void gpu_kernel::tensorSoftmax(double *const input,
 
 __global__ void gpu_kernel::tensorSoftmaxOffAxis(double *const input,
                                                  double *const output,
-                                                 unsigned const vector_size,
-                                                 unsigned const num_vector,
-                                                 unsigned const axis) {}
+                                                 unsigned const vector_length,
+                                                 unsigned const inner_stride,
+                                                 unsigned const outer_stride) {
+
+  unsigned idx_x = threadIdx.x + blockIdx.x * blockDim.x;
+  unsigned idx_y = threadIdx.y;
+  unsigned idx_z = blockIdx.z;
+
+  unsigned base_idx =
+      idx_x + idx_y * inner_stride + idx_z * inner_stride * vector_length;
+  unsigned shared_idx = threadIdx.x + threadIdx.y * blockDim.x;
+
+  unsigned grouped_length = (vector_length / blockDim.y) * blockDim.y;
+  unsigned remain = vector_length - grouped_length;
+
+  // find rolling max
+  // find max for max-two's grouped_length to remainder
+  if (idx_x < inner_stride && idx_z < outer_stride) {
+    global_shared_mem_d[shared_idx] = input[base_idx];
+    if (idx_y < remain)
+      global_shared_mem_d[shared_idx] =
+          fmax(global_shared_mem_d[shared_idx],
+               input[base_idx + grouped_length * inner_stride]);
+  }
+  __syncthreads();
+
+  // group reduction to get everything into shared memory
+  if (idx_x < inner_stride && idx_z < outer_stride)
+    for (unsigned i = blockDim.y; i < grouped_length; i += blockDim.y) {
+      global_shared_mem_d[shared_idx] = fmax(
+          global_shared_mem_d[shared_idx], input[base_idx + i * inner_stride]);
+    }
+  __syncthreads();
+
+  // find max from 0 to max-two's grouped_length
+  for (unsigned i = blockDim.y >> 1; i > 0; i >>= 1) {
+    if (threadIdx.y < i && idx_x < inner_stride && idx_z < outer_stride)
+      global_shared_mem_d[shared_idx] =
+          fmax(global_shared_mem_d[shared_idx],
+               global_shared_mem_d[shared_idx + i * blockDim.x]);
+    __syncthreads();
+  } // end of finding max
+
+  // find rolling sum
+  // reduction for elements out of range of powercle
+  if (idx_x < inner_stride && idx_z < outer_stride) {
+    global_shared_mem_d[shared_idx] =
+        exp(input[base_idx] - global_shared_mem_d[threadIdx.x]);
+    output[base_idx] = global_shared_mem_d[shared_idx];
+    if (idx_y < remain) {
+      double sum = exp(input[base_idx + grouped_length * inner_stride] -
+                       global_shared_mem_d[threadIdx.x]);
+      global_shared_mem_d[threadIdx.x] += sum;
+      output[base_idx + grouped_length * inner_stride] = sum;
+    }
+  }
+  __syncthreads();
+
+  // group reduction to get everything into shared memory
+  if (idx_x < inner_stride && idx_z < outer_stride)
+    for (unsigned i = blockDim.y; i < grouped_length; i += blockDim.y) {
+      double sum = exp(input[base_idx + i * inner_stride] -
+                       global_shared_mem_d[threadIdx.x]);
+      global_shared_mem_d[shared_idx] += sum;
+      output[base_idx + i * inner_stride] = sum;
+    }
+  __syncthreads();
+
+  // rolling sum on shared memory
+  for (unsigned i = blockDim.y >> 1; i > 0; i >>= 1) {
+    if (threadIdx.y < i && idx_x < inner_stride && idx_z < outer_stride)
+      global_shared_mem_d[shared_idx] +=
+          global_shared_mem_d[shared_idx + i * inner_stride];
+    __syncthreads();
+  } // end of finding rolling sum
+
+  // putting the result back to where it belong
+  if (idx_x < inner_stride && idx_z < outer_stride) {
+    output[base_idx] /= global_shared_mem_d[threadIdx.x];
+    if (idx_y < remain)
+      output[base_idx + grouped_length * inner_stride] /=
+          global_shared_mem_d[threadIdx.x];
+
+    // group reduction to get everything into shared memory
+    for (unsigned i = blockDim.y; i < grouped_length; i += blockDim.y)
+      output[base_idx + i * inner_stride] /= global_shared_mem_d[threadIdx.x];
+  } // end of write
+}
 
 __global__ void gpu_kernel::matrixSquaredError(double *a, double *b, unsigned x,
                                                unsigned y) {

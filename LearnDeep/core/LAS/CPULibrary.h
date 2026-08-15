@@ -61,7 +61,9 @@ void __mrelu(std::float64_t **, unsigned const *);
 
 void __msigmoid(std::float64_t **, unsigned *);
 
-void __msoftmax(std::float64_t *const *const, unsigned *const);
+void __msoftmax(std::float64_t *const *const, unsigned const axis,
+                unsigned const vector_length, unsigned const inner_stride,
+                unsigned const outer_stride);
 
 void __mgreaterthanzero(std::float64_t *const *const ptr, unsigned const *dims,
                         unsigned const nDims);

@@ -629,41 +629,48 @@ void gpu::gpu_mat_sigmoid_f64(double **ptr, unsigned int *arr) {
  * @param ptr double pointer receives base pointer of input & output
  * @param arr encoded value received vector_size and number of vectors & axis
  * along which softmax to be performed */
-void gpu::gpu_mat_softmax_f64(double *const *const ptr,
-                              unsigned int *const arr) {
+void gpu::gpu_mat_softmax_f64(double *const *const ptr, unsigned axis,
+                              unsigned const vector_length,
+                              unsigned const inner_stride,
+                              unsigned const outer_stride) {
 
   double *a = ptr[0];
   double *c = ptr[1];
-  unsigned vector_length = arr[0];
-  unsigned num_vector = arr[1];
-  unsigned axis = arr[3];
 
   LOG(INFO) << "GPU kernel for matrix Softmax is running...";
-  unsigned power_of_2 =
-      vector_length > 1 ? 1u << (30 - __builtin_clz(vector_length)) : 1;
-
-  dim3 block;
-  dim3 grid;
-  block.x = fmin(power_of_2, 1024);
-  block.y = 1024 / block.x;
-  grid.y = (num_vector + block.y - 1) / block.y;
+  unsigned power_of_2;
+  dim3 grid, block;
   size_t req_shared_mem = 1024;
-
   double *d_a, *d_c;
 
+  unsigned num_vector = inner_stride * outer_stride;
   cudaMalloc((void **)&d_a, vector_length * num_vector * sizeof(double));
   cudaMalloc((void **)&d_c, vector_length * num_vector * sizeof(double));
 
   cudaMemcpy(d_a, a, vector_length * num_vector * sizeof(double),
              cudaMemcpyHostToDevice);
   cudaError_t err;
-  if (axis)
+  if (axis) {
+    if (outer_stride > (1e16 - 1))
+      LOG(ERROR) << "Kernel capasity exceeded!";
+    power_of_2 =
+        vector_length > 1 ? 1u << (30 - __builtin_clz(vector_length)) : 1;
+    block.y = fmin(power_of_2, 1024);
+    block.x = 1024 / block.y;
+    grid.x = (inner_stride + block.x - 1) / block.x;
+    grid.z = outer_stride;
     gpu_kernel::
         tensorSoftmaxOffAxis<<<grid, block, req_shared_mem * sizeof(double)>>>(
-            d_a, d_c, vector_length, num_vector, axis);
-  else
+            d_a, d_c, vector_length, inner_stride, outer_stride);
+  } else {
+    power_of_2 =
+        vector_length > 1 ? 1u << (30 - __builtin_clz(vector_length)) : 1;
+    block.x = fmin(power_of_2, 1024);
+    block.y = 1024 / block.x;
+    grid.y = (num_vector + block.y - 1) / block.y;
     gpu_kernel::tensorSoftmax<<<grid, block, req_shared_mem * sizeof(double)>>>(
-        d_a, d_c, vector_length, num_vector);
+        d_a, d_c, vector_length, outer_stride);
+  }
   cudaMemcpy(c, d_c, vector_length * num_vector * sizeof(double),
              cudaMemcpyDeviceToHost);
   cudaFree(d_a);

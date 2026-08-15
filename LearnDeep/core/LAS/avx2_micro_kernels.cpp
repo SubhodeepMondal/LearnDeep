@@ -739,46 +739,35 @@ void avx2::avx2_sigmoid_f64(std::float64_t **ptr, unsigned *arr) {
  *            arr[2-n]: dimensions
  */
 void avx2::avx2_softmax_f64(std::float64_t *const *const ptr,
-                            unsigned *const arr) {
+                            unsigned const axis, unsigned const vector_length,
+                            unsigned const inner_stride,
+                            unsigned const outer_stride) {
   std::float64_t *A = ptr[0];
   std::float64_t *C = ptr[1];
 
-  unsigned axis = arr[0];
-  unsigned dims = arr[1];
-  unsigned axis_size = arr[axis + 2];
-
-  unsigned inner_stride = 1;
-  unsigned outer_count = 1;
-
-  for (unsigned i = 0; i < axis; i++)
-    inner_stride *= arr[i + 2];
-
-  for (unsigned i = axis + 1; i < dims; i++)
-    outer_count *= arr[i + 2];
-
-  unsigned no_of_lines = outer_count * inner_stride;
+  unsigned no_of_lines = outer_stride * inner_stride;
 
 #pragma omp parallel for
   for (unsigned line = 0; line < no_of_lines; line++) {
     unsigned outer = line / inner_stride;
     unsigned inner = line % inner_stride;
-    unsigned base = outer * axis_size * inner_stride + inner;
+    unsigned base = outer * vector_length * inner_stride + inner;
 
     std::float64_t max = A[base];
-    for (unsigned i = 1; i < axis_size; i++) {
+    for (unsigned i = 1; i < vector_length; i++) {
       std::float64_t value = A[base + i * inner_stride];
       if (max < value)
         max = value;
     }
 
     std::float64_t sum = 0.0;
-    for (unsigned i = 0; i < axis_size; i++) {
+    for (unsigned i = 0; i < vector_length; i++) {
       std::float64_t value = std::exp(A[base + i * inner_stride] - max);
       C[base + i * inner_stride] = value;
       sum += value;
     }
 
-    for (unsigned i = 0; i < axis_size; i++)
+    for (unsigned i = 0; i < vector_length; i++)
       C[base + i * inner_stride] /= sum;
   }
 }
