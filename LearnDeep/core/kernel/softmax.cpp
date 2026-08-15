@@ -58,10 +58,9 @@ void Opssoftmax::kernel_dispatch(std::float64_t *const *const ptr,
 #ifdef CUDA_ENABLED
   switch (kernel) {
   case KernelType::GPU: {
-    double *d_arr[3];
+    double *d_arr[2];
     d_arr[0] = reinterpret_cast<double *>(ptr[0]);
     d_arr[1] = reinterpret_cast<double *>(ptr[1]);
-    d_arr[2] = reinterpret_cast<double *>(ptr[2]);
     gpu::gpu_mat_softmax_f64(d_arr, axis, axis_len, inner_stride, outer_stride);
     break;
   }
@@ -77,10 +76,9 @@ void Opssoftmax::kernel_dispatch(std::float64_t *const *const ptr,
     break;
   case KernelType::AUTO:
   default: {
-    double *d_arr[3];
+    double *d_arr[2];
     d_arr[0] = reinterpret_cast<double *>(ptr[0]);
     d_arr[1] = reinterpret_cast<double *>(ptr[1]);
-    d_arr[2] = reinterpret_cast<double *>(ptr[2]);
     gpu::gpu_mat_softmax_f64(d_arr, axis, axis_len, inner_stride, outer_stride);
     break;
   }

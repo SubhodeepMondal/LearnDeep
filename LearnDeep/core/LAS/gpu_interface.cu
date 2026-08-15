@@ -1,5 +1,7 @@
 // C++ Headers
 #include <iostream>
+#include <stdexcept>
+#include <string>
 
 // CUDA Headers
 #include <cuda_runtime.h>
@@ -641,15 +643,25 @@ void gpu::gpu_mat_softmax_f64(double *const *const ptr, unsigned axis,
   unsigned power_of_2;
   dim3 grid, block;
   size_t req_shared_mem = 1024;
-  double *d_a, *d_c;
-
+  double *d_a = nullptr, *d_c = nullptr;
   unsigned num_vector = inner_stride * outer_stride;
-  cudaMalloc((void **)&d_a, vector_length * num_vector * sizeof(double));
-  cudaMalloc((void **)&d_c, vector_length * num_vector * sizeof(double));
+  const size_t total_elements = vector_length * num_vector;
 
-  cudaMemcpy(d_a, a, vector_length * num_vector * sizeof(double),
-             cudaMemcpyHostToDevice);
-  cudaError_t err;
+  auto check_cuda = [](cudaError_t err, const char *operation) {
+    if (err != cudaSuccess) {
+      throw std::runtime_error(std::string(operation) + " failed: " +
+                               cudaGetErrorString(err));
+    }
+  };
+
+  check_cuda(cudaMalloc((void **)&d_a, total_elements * sizeof(double)),
+             "cudaMalloc softmax input");
+  check_cuda(cudaMalloc((void **)&d_c, total_elements * sizeof(double)),
+             "cudaMalloc softmax output");
+
+  check_cuda(cudaMemcpy(d_a, a, total_elements * sizeof(double),
+                        cudaMemcpyHostToDevice),
+             "cudaMemcpy softmax host-to-device");
   if (axis) {
     if (outer_stride > (1e16 - 1))
       LOG(ERROR) << "Kernel capasity exceeded!";
@@ -662,6 +674,7 @@ void gpu::gpu_mat_softmax_f64(double *const *const ptr, unsigned axis,
     gpu_kernel::
         tensorSoftmaxOffAxis<<<grid, block, req_shared_mem * sizeof(double)>>>(
             d_a, d_c, vector_length, inner_stride, outer_stride);
+    check_cuda(cudaGetLastError(), "tensorSoftmaxOffAxis launch");
   } else {
     power_of_2 =
         vector_length > 1 ? 1u << (30 - __builtin_clz(vector_length)) : 1;
@@ -669,16 +682,15 @@ void gpu::gpu_mat_softmax_f64(double *const *const ptr, unsigned axis,
     block.y = 1024 / block.x;
     grid.y = (num_vector + block.y - 1) / block.y;
     gpu_kernel::tensorSoftmax<<<grid, block, req_shared_mem * sizeof(double)>>>(
-        d_a, d_c, vector_length, outer_stride);
+        d_a, d_c, vector_length, num_vector);
+    check_cuda(cudaGetLastError(), "tensorSoftmax launch");
   }
-  cudaMemcpy(c, d_c, vector_length * num_vector * sizeof(double),
-             cudaMemcpyDeviceToHost);
+  check_cuda(cudaDeviceSynchronize(), "softmax kernel execution");
+  check_cuda(cudaMemcpy(c, d_c, total_elements * sizeof(double),
+                        cudaMemcpyDeviceToHost),
+             "cudaMemcpy softmax device-to-host");
   cudaFree(d_a);
   cudaFree(d_c);
-  err = cudaGetLastError();
-  if (err != cudaSuccess) {
-    LOG(ERROR) << "CUDA error: " << cudaGetErrorString(err);
-  }
 }
 
 void gpu::gpu_mat_transpose_f64(double **ptr, unsigned *arr) {
