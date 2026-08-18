@@ -499,9 +499,10 @@ public:
 
 class Opssoftmax : public Ops {
   std::vector<Tensor<std::float64_t> *> inputs;
-  int axis;
+  unsigned axis;
   unsigned *arr;
   Tensor<std::float64_t> *output;
+  Tensor<std::float64_t> *incoming_gradient;
   Tensor<std::float64_t> *outgoing_gradient;
 
   void kernel_dispatch(std::float64_t *const *const ptr, unsigned const axis,
@@ -512,7 +513,7 @@ public:
   Opssoftmax() = default;
   ~Opssoftmax() {}
   void compute();
-  void addGradGraph(Graph *gradient_graph) {}
+  void addGradGraph(Graph *gradient_graph);
   Tensor<std::float64_t> *getOutgoingGradientTensor() {
     return outgoing_gradient;
   }
