@@ -154,7 +154,7 @@ void Opssub::compute() {
         } else {
           throw std::runtime_error(
               "Dimension of input a is not a match with input "
-              "b. and also not broad casting compatable");
+              "b. and also not broadcasting compatable");
         }
       } else {
         this->broadCastAxies.push_back(i);

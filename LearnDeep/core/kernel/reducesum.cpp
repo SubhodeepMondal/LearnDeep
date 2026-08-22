@@ -102,26 +102,44 @@ void Opsreducesum::addGradGraph(Graph *gradient_graph) {
 }
 
 void Opsreducesum::compute() {
+  unsigned i, k, resulting_no_of_dims;
+  unsigned *resulting_dims, *arr_dims;
+  unsigned nElements = 1;
 
-  unsigned total_elem = this->inputs[0]->getNoOfElem();
-  if (this->isFirstRun) {
-    arr = new unsigned[this->inputs[0]->getNoOfDimensions() + 2];
-    temp_input = new std::float64_t[total_elem];
-    temp_output = new std::float64_t[total_elem];
-    this->isFirstRun = false;
+  // OUTPUT RECONFIGURATION
+  if (this->first_init) {
+    unsigned no_of_resultent_dims;
+    std::vector<unsigned> resultent_dims;
+    no_of_resultent_dims =
+        inputs[0]->getNoOfDimensions() - no_of_reduction_dim < 0
+            ? 0
+            : inputs[0]->getNoOfDimensions() - no_of_reduction_dim;
+
+    unsigned j = 0;
+    for (unsigned i = 0; i < inputs[0]->getNoOfDimensions(); i++) {
+      if (i != this->reduction_dims[j]) {
+        resultent_dims.push_back(inputs[0]->getDimensions()[i]);
+      } else {
+        resultent_dims.push_back(1);
+        no_of_resultent_dims++;
+        j++;
+      }
+    }
+    this->output->reshape(inputs[0]->getNoOfDimensions(),
+                          resultent_dims.data());
+    this->first_init = false;
   }
 
-  std::memcpy(temp_output, this->inputs[0]->getData(),
-              this->inputs[0]->getNoOfElem() * sizeof(std::float64_t));
-  unsigned no_of_temp_dims = this->inputs[0]->getNoOfDimensions();
-  std::float64_t *ptr[2];
-  ptr[0] = temp_input;
-  ptr[1] = temp_output;
+  temp_output = new Tensor<std::float64_t>(*this->output);
 
-  arr[0] = no_of_temp_dims;
-  for (unsigned i = 0; i < this->inputs[0]->getNoOfDimensions(); i++) {
-    arr[i + 1] = this->inputs[0]->getDimensions()[i];
-  }
+  this->temp_input = new Tensor<std::float64_t>(*this->inputs[0]);
+  for (i = 0; i < this->inputs[0]->getNoOfDimensions() && i < 3; i++)
+    nElements *= this->inputs[0]->getDimensions()[i];
+  std::float64_t *intermediate_input = new std::float64_t[nElements];
+  resulting_dims = new unsigned[inputs[0]->getNoOfDimensions()];
+  arr_dims = new unsigned[inputs[0]->getNoOfDimensions()];
+
+  temp_input->initData(this->inputs[0]->getData());
 
   for (unsigned i = 0; i < no_of_reduction_dim; i++) {
 
@@ -161,28 +179,8 @@ void Opsreducesum::initializeReductionDims(const unsigned n,
 }
 
 void Opsreducesum::initializeoutput(Tensor<std::float64_t> *output) {
-  unsigned no_of_resultent_dims;
-  std::vector<unsigned> resultent_dims;
+
   this->output = output;
-
-  no_of_resultent_dims =
-      inputs[0]->getNoOfDimensions() - no_of_reduction_dim < 0
-          ? 0
-          : inputs[0]->getNoOfDimensions() - no_of_reduction_dim;
-
-  unsigned j = 0;
-  for (unsigned i = 0; i < inputs[0]->getNoOfDimensions(); i++) {
-    if (i != this->reduction_dims[j]) {
-      resultent_dims.push_back(inputs[0]->getDimensions()[i]);
-    } else if (i == reduction_dims[j] && i == 0 && no_of_resultent_dims == 0) {
-      resultent_dims.push_back(1);
-      no_of_resultent_dims++;
-      j++;
-    } else {
-      j++;
-    }
-  }
-  this->output->reshape(no_of_resultent_dims, resultent_dims.data());
 }
 
 void Opsreducesum::printinputs() {

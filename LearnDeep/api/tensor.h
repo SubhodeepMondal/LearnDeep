@@ -183,6 +183,8 @@ public:
 
   void initialize_gradient();
 
+  void inject_gradient(tf::tensor injection_for, tf::tensor injection_gradient);
+
   void compute_gradient();
 } graph_context;
 

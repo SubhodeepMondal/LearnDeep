@@ -10,6 +10,12 @@
 #include <core/framework/MathLibrary.h>
 
 void Opssoftmax::addGradGraph(Graph *gradient_graph) {
+  if (!gradient_graph)
+    throw std::runtime_error("Opssoftmax::addGradGraph received null graph");
+  if (this->inputs.empty() || !this->inputs[0] || !this->output)
+    throw std::runtime_error(
+        "Opssoftmax::addGradGraph called before inputs/output initialization");
+
   // .......... reverse mode autodiff graph .........
   //        [softmax]  *  [[incoming_gradients]...]
   //                   |[T1]
@@ -76,6 +82,7 @@ void Opssoftmax::addGradGraph(Graph *gradient_graph) {
 
   gradient_graph->addGradientNode(temp_grad_tensors[0]);
   gradient_graph->addGradientNode(temp_grad_tensors[1]);
+  gradient_graph->addGradientNode(mul_output);
   gradient_graph->addGradientNode(ops_mul);
 
   gradient_graph->addGradientEdge(temp_grad_tensors[0], ops_mul);
@@ -129,10 +136,12 @@ void Opssoftmax::addGradGraph(Graph *gradient_graph) {
   gradient_graph->addGradientEdge(tensor_ptr[1], ops_mul_2);
 
   // output initialization
-  this->outgoing_gradient = new Tensor<std::float64_t>(*this->inputs[0]);
-  ops_mul_2->initializeoutput(this->outgoing_gradient);
-  gradient_graph->addGradientNode(this->outgoing_gradient);
-  gradient_graph->addGradientEdge(ops_mul_2, this->outgoing_gradient);
+  Tensor<std::float64_t> *temp_out_grad =
+      new Tensor<std::float64_t>(*this->inputs[0]);
+  ops_mul_2->initializeoutput(temp_out_grad);
+  gradient_graph->addGradientNode(temp_out_grad);
+  gradient_graph->addGradientEdge(ops_mul_2, temp_out_grad);
+  this->outgoing_gradients.push_back(temp_out_grad);
   // End of d/dx[i] * z'
 }
 
@@ -175,6 +184,22 @@ void Opssoftmax::printoutput() {
   std::cout << "output:\n";
   output->printData();
   std::cout << "\n";
+}
+
+Tensor<std::float64_t> *
+Opssoftmax::getOutgoingGradientTensor(Tensor<std::float64_t> *gradient_input) {
+  auto it = std::find(inputs.begin(), inputs.end(), gradient_input);
+  Tensor<std::float64_t> *ptr = nullptr;
+  if (inputs.end() != it) {
+    int idx = std::distance(inputs.begin(), it);
+    ptr = outgoing_gradients[idx];
+  }
+  return ptr;
+}
+
+Tensor<std::float64_t> *
+Opssoftmax::getIncomingGradientTensor(Tensor<std::float64_t> *tensor) {
+  return incoming_gradient;
 }
 
 void Opssoftmax::kernel_dispatch(std::float64_t *const *const ptr,

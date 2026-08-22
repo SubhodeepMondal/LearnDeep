@@ -37,6 +37,11 @@ public:
 
   void graph_initialize_gradient() { graph->createGradientGraph(); }
 
+  void inject_gradient(Tensor<std::float64_t> *gradient_for,
+                       Tensor<std::float64_t> *injection_gradient) {
+    graph->injectGradient(gradient_for, injection_gradient);
+  }
+
   void tensor_to_be_spared(const std::unordered_set<Tensor<std::float64_t> *>
                                &tensors_to_be_spared) {
     graph->setTensorToBeSpared(tensors_to_be_spared);

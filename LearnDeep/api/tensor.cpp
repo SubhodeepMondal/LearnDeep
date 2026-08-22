@@ -474,6 +474,12 @@ void tf::graph_context::initialize_gradient() {
   static_cast<GraphContext *>(this->graph_ctx)->graph_initialize_gradient();
 }
 
+void tf::graph_context::inject_gradient(tf::tensor injection_for,
+                                        tf::tensor injection_gradient) {
+  static_cast<GraphContext *>(this->graph_ctx)
+      ->inject_gradient(injection_for.getPtr(), injection_gradient.getPtr());
+}
+
 void tf::graph_context::compute_gradient() {
   static_cast<GraphContext *>(this->graph_ctx)->graph_compute_gradeint();
 }

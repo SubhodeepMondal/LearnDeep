@@ -272,6 +272,7 @@ public:
 };
 
 class Opsreducesum : public Ops {
+  bool first_init = true;
   unsigned no_of_reduction_dim;
   bool isFirstRun = true;
   unsigned *arr{nullptr};
@@ -503,7 +504,7 @@ class Opssoftmax : public Ops {
   unsigned *arr;
   Tensor<std::float64_t> *output;
   Tensor<std::float64_t> *incoming_gradient;
-  Tensor<std::float64_t> *outgoing_gradient;
+  std::vector<Tensor<std::float64_t> *> outgoing_gradients;
 
   void kernel_dispatch(std::float64_t *const *const ptr, unsigned const axis,
                        unsigned const axis_len, unsigned const inner_stride,
@@ -514,9 +515,10 @@ public:
   ~Opssoftmax() {}
   void compute();
   void addGradGraph(Graph *gradient_graph);
-  Tensor<std::float64_t> *getOutgoingGradientTensor() {
-    return outgoing_gradient;
-  }
+  Tensor<std::float64_t> *
+  getIncomingGradientTensor(Tensor<std::float64_t> *gradient_input);
+  Tensor<std::float64_t> *
+  getOutgoingGradientTensor(Tensor<std::float64_t> *gradient_input);
 
   std::vector<Tensor<std::float64_t> *> getAllOutgoingGradientTensors() {
     std::vector<Tensor<std::float64_t> *> grads;
