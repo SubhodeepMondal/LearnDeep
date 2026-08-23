@@ -755,7 +755,6 @@ void cpu::__mreducesum(std::float64_t *const *const ptr,
     }
   } else {
 #pragma omp parallel for schedule(static, 1)
-
     for (unsigned line = 0; line < no_of_line; line++) {
       std::float64_t sum = 0.0;
       unsigned line_x = line % inner_stride;

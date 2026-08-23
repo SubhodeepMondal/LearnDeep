@@ -236,7 +236,7 @@ void Opsreducesum::kernel_dispatch(std::float64_t **ptr, unsigned *arr) {
 
   case KernelType::AVX2:
     if (__builtin_cpu_supports("avx2")) {
-      // avx2::avx2_add_f64(ptr, arr);
+      avx2::avx2_reduce_sum_f64(ptr, arr);
     } else {
       throw std::runtime_error("AVX2 not supported on this CPU");
     }
@@ -258,7 +258,7 @@ void Opsreducesum::kernel_dispatch(std::float64_t **ptr, unsigned *arr) {
   }
 #else
     if (__builtin_cpu_supports("avx2")) {
-      // avx2::avx2_add_f64(ptr, arr);
+      avx2::avx2_reduce_sum_f64(ptr, arr);
     } else {
       cpu::__mreducesum(ptr, arr);
     }

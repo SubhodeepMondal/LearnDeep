@@ -15,7 +15,7 @@ TEST_F(MathTest, MatrixMean_Test_1) {
   std::vector<std::float64_t> output =
       load_bin("test/data/MatrixMean_Test_1_output.bin", 11);
   for (int i = 0; i < 11; i++) {
-    EXPECT_NEAR(C.getData()[i], output[i], 1e-6);
+    EXPECT_NEAR(C.getData()[i], output[i], 1e-6) << "at i: " << i;
   }
 }
 
