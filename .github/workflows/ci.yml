@@ -9,6 +9,7 @@ on:
 jobs:
   test_cpu_avx:
     strategy:
+        fail-fast: false
       matrix:
         kernel: [CPU, AVX2]
 
