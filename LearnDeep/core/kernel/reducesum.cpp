@@ -16,7 +16,14 @@
 // standard Libery
 #include <algorithm>
 
-Opsreducesum::~Opsreducesum() { delete temp_output; }
+Opsreducesum::~Opsreducesum() {
+  if (this->arr)
+    delete[] arr;
+  if (this->temp_input)
+    delete[] this->temp_input;
+  if (this->temp_output)
+    delete[] this->temp_output;
+}
 
 void Opsreducesum::addGradGraph(Graph *gradient_graph) {
   // .......... reverse mode autodiff graph .........
@@ -96,15 +103,19 @@ void Opsreducesum::addGradGraph(Graph *gradient_graph) {
 
 void Opsreducesum::compute() {
 
-  std::float64_t *temp_output =
-      new std::float64_t[this->inputs[0]->getNoOfElem()];
+  unsigned total_elem = this->inputs[0]->getNoOfElem();
+  if (this->isFirstRun) {
+    arr = new unsigned[this->inputs[0]->getNoOfDimensions() + 2];
+    temp_input = new std::float64_t[total_elem];
+    temp_output = new std::float64_t[total_elem];
+    this->isFirstRun = false;
+  }
 
   std::memcpy(temp_output, this->inputs[0]->getData(),
               this->inputs[0]->getNoOfElem() * sizeof(std::float64_t));
-  unsigned *arr = new unsigned[this->inputs[0]->getNoOfDimensions() + 2];
   unsigned no_of_temp_dims = this->inputs[0]->getNoOfDimensions();
   std::float64_t *ptr[2];
-  ptr[0] = temp_output;
+  ptr[0] = temp_input;
   ptr[1] = temp_output;
 
   arr[0] = no_of_temp_dims;
@@ -113,6 +124,8 @@ void Opsreducesum::compute() {
   }
 
   for (unsigned i = 0; i < no_of_reduction_dim; i++) {
+
+    std::memcpy(temp_input, temp_output, total_elem * sizeof(std::float64_t));
     unsigned axis = reduction_dims[i] - i;
     arr[no_of_temp_dims + 1] = axis;
 
@@ -122,14 +135,12 @@ void Opsreducesum::compute() {
     for (unsigned j = 1; j <= no_of_temp_dims; j++)
       if (axis != j - 1)
         arr[k++] = arr[j];
+    total_elem /= this->inputs[0]->getDimensions()[reduction_dims[i]];
 
     no_of_temp_dims -= 1;
     arr[0] = no_of_temp_dims;
   }
   this->output->initData(temp_output);
-
-  delete[] arr;
-  delete[] temp_output;
 }
 
 void Opsreducesum::initializeinputs(Tensor<std::float64_t> **inputs) {
@@ -172,8 +183,6 @@ void Opsreducesum::initializeoutput(Tensor<std::float64_t> *output) {
     }
   }
   this->output->reshape(no_of_resultent_dims, resultent_dims.data());
-
-  temp_output = new Tensor<std::float64_t>(*this->output);
 }
 
 void Opsreducesum::printinputs() {

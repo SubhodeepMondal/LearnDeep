@@ -736,7 +736,8 @@ void cpu::__mreducesum(std::float64_t *const *const ptr,
 #pragma omp parallel for
     for (unsigned line = 0; line < no_of_line; line++) {
       std::float64_t sum = 0;
-      for (unsigned i = 0; i + 8 <= axis_depth; i += 8) {
+      unsigned i = 0;
+      for (; i + 8 <= axis_depth; i += 8) {
         sum += input[i + line * axis_depth];
         sum += input[(i + 1) + line * axis_depth];
         sum += input[(i + 2) + line * axis_depth];
@@ -747,45 +748,36 @@ void cpu::__mreducesum(std::float64_t *const *const ptr,
         sum += input[(i + 7) + line * axis_depth];
       }
 
-      for (unsigned i = (axis_depth / 8) * 8; i < axis_depth; i++)
+      for (; i < axis_depth; i++)
         sum += input[i + line * axis_depth];
+
       output[line] = sum;
     }
   } else {
-    // clang-format off
-#pragma omp parallel
-{
-      // clang-format on
-      unsigned parallel_threads = omp_get_num_threads();
-      unsigned thread_idx = omp_get_thread_num();
-#pragma omp for
-      for (unsigned line = thread_idx; line < no_of_line;
-           line += parallel_threads) {
-        unsigned line_x = line % inner_stride;
-        unsigned line_y = line / inner_stride;
-        unsigned base_index = line_x + line_y * inner_stride * axis_depth;
-        unsigned output_index = line_x + line_y * inner_stride;
+#pragma omp parallel for schedule(static, 1)
 
-        unsigned i = 0;
-        std::float64_t sum(0.0);
-        for (; i + 8 <= axis_depth; i += 8) {
-          sum += input[base_index + i * inner_stride];
-          sum += input[base_index + (i + 1) * inner_stride];
-          sum += input[base_index + (i + 2) * inner_stride];
-          sum += input[base_index + (i + 3) * inner_stride];
-          sum += input[base_index + (i + 4) * inner_stride];
-          sum += input[base_index + (i + 5) * inner_stride];
-          sum += input[base_index + (i + 6) * inner_stride];
-          sum += input[base_index + (i + 7) * inner_stride];
-        }
+    for (unsigned line = 0; line < no_of_line; line++) {
+      std::float64_t sum = 0.0;
+      unsigned line_x = line % inner_stride;
+      unsigned line_y = line / inner_stride;
+      unsigned base_index = line_x + line_y * inner_stride * axis_depth;
+      unsigned output_index = line_y * inner_stride + line_x;
 
-        for (; i < axis_depth; i++)
-          sum += input[base_index + i * inner_stride];
-        output[output_index] = sum;
+      unsigned i = 0;
+      for (; i + 8 <= axis_depth; i += 8) {
+        sum += input[base_index + i * inner_stride];
+        sum += input[base_index + (i + 1) * inner_stride];
+        sum += input[base_index + (i + 2) * inner_stride];
+        sum += input[base_index + (i + 3) * inner_stride];
+        sum += input[base_index + (i + 4) * inner_stride];
+        sum += input[base_index + (i + 5) * inner_stride];
+        sum += input[base_index + (i + 6) * inner_stride];
+        sum += input[base_index + (i + 7) * inner_stride];
       }
-      // clang-format off
-}
-    // clang-format on
+      for (; i < axis_depth; i++)
+        sum += input[base_index + i * inner_stride];
+      output[output_index] = sum;
+    }
   }
 }
 
