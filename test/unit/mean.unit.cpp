@@ -37,7 +37,7 @@ TEST_F(MathTest, MatrixMean_Test_2) {
         load_bin("test/data/MatrixMean_Test_2_output.bin", 37 * 11 * 8);
 
     for (int i = 0; i < 37 * 11 * 8; i++) {
-      EXPECT_NEAR(C.getData()[i], output[i], 1e-6);
+      EXPECT_NEAR(C.getData()[i], output[i], 1e-6) << "at i: " << i;
     }
   }
 }

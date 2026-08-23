@@ -277,8 +277,6 @@ class Opsreducesum : public Ops {
   Tensor<std::float64_t> *output;
   Tensor<std::float64_t> *incoming_gradient;
   std::vector<Tensor<std::float64_t> *> outgoing_gradients;
-  void recursive_sum(unsigned index, unsigned *dimension_arr,
-                     unsigned reduction_dim, std::float64_t *temp_arr);
 
 public:
   Opsreducesum() = default;

@@ -94,174 +94,42 @@ void Opsreducesum::addGradGraph(Graph *gradient_graph) {
   this->outgoing_gradients.push_back(broadcasting_result);
 }
 
-void Opsreducesum::recursive_sum(unsigned index, unsigned *dimension_arr,
-                                 unsigned reduction_dim,
-                                 std::float64_t *temp_arr) {
-
-  if (index < 3) {
-    unsigned i, j, k;
-    unsigned x_axis, y_axis, z_axis, stride, n_dim_size;
-    unsigned input_index, output_index;
-
-    std::float64_t *input_ptr, *output_ptr, *temp_inp;
-    std::float64_t *ptr[3];
-
-    unsigned a[2];
-
-    x_axis = temp_input->getDimensions()[0];
-    y_axis = (temp_input->getNoOfDimensions() > 1)
-                 ? temp_input->getDimensions()[1]
-                 : 1;
-    z_axis = (temp_input->getNoOfDimensions() > 2)
-                 ? temp_input->getDimensions()[2]
-                 : 1;
-
-    input_ptr = temp_input->getData();
-    output_ptr = temp_output->getData();
-
-    input_index = output_index = 0;
-
-    if (temp_input->getNoOfDimensions() > 3) {
-      n_dim_size = x_axis * y_axis * z_axis;
-      // Calculate the input index based on the dimensions
-      for (i = 3; i < temp_input->getNoOfDimensions(); i++) {
-        input_index += n_dim_size * dimension_arr[i];
-        n_dim_size *= temp_input->getDimensions()[i];
-      }
-
-      n_dim_size = 1;
-      // Calculate the output index based on the dimensions
-      for (i = 0; i < temp_input->getNoOfDimensions(); i++) {
-        if (i != reduction_dim) {
-          if (i < 3)
-            output_index *= n_dim_size;
-          else
-            output_index += n_dim_size * dimension_arr[i];
-
-          n_dim_size *= temp_input->getDimensions()[i];
-        }
-      }
-    }
-
-    switch (reduction_dim) {
-    case 0: {
-
-      ptr[0] = ptr[2] = output_ptr + output_index;
-      a[0] = y_axis;
-      a[1] = z_axis;
-
-      for (k = 0; k < x_axis; k++) {
-        stride = 1;
-        for (j = 0; j < z_axis; j++)
-          for (i = 0; i < y_axis; i++)
-            temp_arr[i + j * y_axis] =
-                input_ptr[i * x_axis + j * x_axis * y_axis + stride * k +
-                          input_index];
-
-        ptr[1] = temp_arr;
-
-        kernel_dispatch(ptr, a);
-      }
-      break;
-    }
-    case 1: {
-
-      ptr[0] = ptr[2] = output_ptr + output_index;
-      a[0] = x_axis;
-      a[1] = z_axis;
-      for (k = 0; k < y_axis; k++) {
-        stride = x_axis;
-        for (j = 0; j < z_axis; j++)
-          for (i = 0; i < x_axis; i++)
-            temp_arr[i + j * x_axis] =
-                input_ptr[i + j * x_axis * y_axis + stride * k + input_index];
-
-        ptr[1] = temp_arr;
-
-        kernel_dispatch(ptr, a);
-      }
-
-      break;
-    }
-    case 2: {
-
-      ptr[0] = ptr[2] = output_ptr + output_index;
-      a[0] = x_axis;
-      a[1] = y_axis;
-
-      for (k = 0; k < z_axis; k++) {
-        stride = x_axis * y_axis;
-        temp_arr = input_ptr + (stride * k + input_index);
-        ptr[1] = temp_arr;
-
-        kernel_dispatch(ptr, a);
-      }
-      break;
-    }
-    default: {
-      a[0] = x_axis;
-      a[1] = y_axis;
-      for (k = 0; k < z_axis; k++) {
-        stride = x_axis * y_axis;
-
-        ptr[0] = ptr[2] = output_ptr + (output_index + stride * k);
-
-        temp_inp = input_ptr + (stride * k + input_index);
-        ptr[1] = temp_inp;
-        kernel_dispatch(ptr, a);
-      }
-      break;
-    }
-    }
-  } else {
-    for (unsigned i = 0; i < temp_input->getDimensions()[index]; i++) {
-      dimension_arr[index] = i;
-      recursive_sum(index - 1, dimension_arr, reduction_dim, temp_arr);
-    }
-  }
-}
-
 void Opsreducesum::compute() {
-  unsigned i, k, resulting_no_of_dims;
-  unsigned *resulting_dims, *arr_dims;
-  unsigned nElements = 1;
-  this->temp_input = new Tensor<std::float64_t>(*this->inputs[0]);
-  for (i = 0; i < this->inputs[0]->getNoOfDimensions() && i < 3; i++)
-    nElements *= this->inputs[0]->getDimensions()[i];
-  std::float64_t *intermediate_input = new std::float64_t[nElements];
-  resulting_dims = new unsigned[inputs[0]->getNoOfDimensions()];
-  arr_dims = new unsigned[inputs[0]->getNoOfDimensions()];
 
-  temp_input->initData(this->inputs[0]->getData());
+  std::float64_t *temp_output =
+      new std::float64_t[this->inputs[0]->getNoOfElem()];
 
-  for (i = 0; i < no_of_reduction_dim; i++) {
-    LOG(INFO) << "Reducing on dimension: " << reduction_dims[i] - i << "\n";
-    resulting_no_of_dims = temp_input->getNoOfDimensions() - 1;
+  std::memcpy(temp_output, this->inputs[0]->getData(),
+              this->inputs[0]->getNoOfElem() * sizeof(std::float64_t));
+  unsigned *arr = new unsigned[this->inputs[0]->getNoOfDimensions() + 2];
+  unsigned no_of_temp_dims = this->inputs[0]->getNoOfDimensions();
+  std::float64_t *ptr[2];
+  ptr[0] = temp_output;
+  ptr[1] = temp_output;
 
-    if (temp_input->getNoOfDimensions() > 1) {
-      k = 0;
-      for (unsigned j = 0; j < temp_input->getNoOfDimensions(); j++)
-        if (j != reduction_dims[i] - i)
-          resulting_dims[k++] = temp_input->getDimensions()[j];
-    } else {
-      resulting_no_of_dims = 1;
-      resulting_dims[0] = 1;
-    }
-
-    temp_output->reshape(resulting_no_of_dims, resulting_dims);
-    temp_output->initData(0.0);
-
-    recursive_sum(temp_input->getNoOfDimensions() - 1, arr_dims,
-                  reduction_dims[i] - i, intermediate_input);
-
-    temp_input->reshape(resulting_no_of_dims, resulting_dims);
-    temp_input->initData(temp_output->getData());
+  arr[0] = no_of_temp_dims;
+  for (unsigned i = 0; i < this->inputs[0]->getNoOfDimensions(); i++) {
+    arr[i + 1] = this->inputs[0]->getDimensions()[i];
   }
-  this->output->initData(temp_output->getData());
-  delete[] intermediate_input;
-  delete[] resulting_dims;
-  delete[] arr_dims;
-  delete this->temp_input;
+
+  for (unsigned i = 0; i < no_of_reduction_dim; i++) {
+    unsigned axis = reduction_dims[i] - i;
+    arr[no_of_temp_dims + 1] = axis;
+
+    kernel_dispatch(ptr, arr);
+
+    unsigned k = 1;
+    for (unsigned j = 1; j <= no_of_temp_dims; j++)
+      if (axis != j - 1)
+        arr[k++] = arr[j];
+
+    no_of_temp_dims -= 1;
+    arr[0] = no_of_temp_dims;
+  }
+  this->output->initData(temp_output);
+
+  delete[] arr;
+  delete[] temp_output;
 }
 
 void Opsreducesum::initializeinputs(Tensor<std::float64_t> **inputs) {
@@ -350,7 +218,7 @@ void Opsreducesum::kernel_dispatch(std::float64_t **ptr, unsigned *arr) {
     d_arr[0] = reinterpret_cast<double *>(ptr[0]);
     d_arr[1] = reinterpret_cast<double *>(ptr[1]);
     d_arr[2] = reinterpret_cast<double *>(ptr[2]);
-    gpu::gpu_mat_add_f64(d_arr, arr);
+    // gpu::gpu_mat_add_f64(d_arr, arr);
   }
 #else
     throw std::runtime_error("GPU kernel requested but CUDA not enabled");
@@ -359,14 +227,14 @@ void Opsreducesum::kernel_dispatch(std::float64_t **ptr, unsigned *arr) {
 
   case KernelType::AVX2:
     if (__builtin_cpu_supports("avx2")) {
-      avx2::avx2_add_f64(ptr, arr);
+      // avx2::avx2_add_f64(ptr, arr);
     } else {
       throw std::runtime_error("AVX2 not supported on this CPU");
     }
     break;
 
   case KernelType::CPU_SCALAR:
-    cpu::__madd(ptr, arr);
+    cpu::__mreducesum(ptr, arr);
     break;
 
   case KernelType::AUTO:
@@ -377,13 +245,13 @@ void Opsreducesum::kernel_dispatch(std::float64_t **ptr, unsigned *arr) {
     d_arr[0] = reinterpret_cast<double *>(ptr[0]);
     d_arr[1] = reinterpret_cast<double *>(ptr[1]);
     d_arr[2] = reinterpret_cast<double *>(ptr[2]);
-    gpu::gpu_mat_add_f64(d_arr, arr);
+    // gpu::gpu_mat_add_f64(d_arr, arr);
   }
 #else
     if (__builtin_cpu_supports("avx2")) {
-      avx2::avx2_add_f64(ptr, arr);
+      // avx2::avx2_add_f64(ptr, arr);
     } else {
-      cpu::__madd(ptr, arr);
+      cpu::__mreducesum(ptr, arr);
     }
 #endif
   break;

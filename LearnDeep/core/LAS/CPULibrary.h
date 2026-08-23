@@ -44,6 +44,19 @@ void __mtiled_transpose(std::float64_t **, unsigned *);
 
 void __msqrt(std::float64_t **, unsigned *);
 
+/**
+ * @brief does reduction sum on a given axis
+ * @param ptr pointer to pointer of long float pointing to
+ *            ptr[0] input
+ *            ptr[1] output
+ * @param arr enoded integers
+ *            arr[0]: n no of dimensions
+ *            arr[1-n]: value of each dimensions
+ *            arr[n]: reduction axis
+ * @return void this funciton returns nothing
+ */
+void __mreducesum(std::float64_t *const *const, unsigned const *const);
+
 void __mrelu(std::float64_t **, unsigned const *);
 
 void __msigmoid(std::float64_t **, unsigned *);
