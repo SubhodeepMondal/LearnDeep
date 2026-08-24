@@ -501,7 +501,7 @@ void gpu::gpu_reduce_sum_f64(double *const *const ptr,
   // size_t no_of_line = inner_stride * outer_stride;
   unsigned power_of_2;
   dim3 grid, block;
-  size_t req_shared_mem = 1024;
+  // size_t req_shared_mem = 1024;
   double *d_a = nullptr, *d_c = nullptr;
   unsigned num_vector = inner_stride * outer_stride;
   const size_t total_elements = vector_length * num_vector;
@@ -514,13 +514,13 @@ void gpu::gpu_reduce_sum_f64(double *const *const ptr,
   };
 
   check_cuda(cudaMalloc((void **)&d_a, total_elements * sizeof(double)),
-             "cudaMalloc softmax input");
+             "cudaMalloc reducesum input");
   check_cuda(cudaMalloc((void **)&d_c, total_elements * sizeof(double)),
-             "cudaMalloc softmax output");
+             "cudaMalloc reduce sum output");
 
   check_cuda(cudaMemcpy(d_a, input, total_elements * sizeof(double),
                         cudaMemcpyHostToDevice),
-             "cudaMemcpy softmax host-to-device");
+             "cudaMemcpy reducesum host-to-device");
   if (axis) {
     if (outer_stride > (1e16 - 1))
       LOG(ERROR) << "Kernel capasity exceeded!";
@@ -530,25 +530,23 @@ void gpu::gpu_reduce_sum_f64(double *const *const ptr,
     block.x = 1024 / block.y;
     grid.x = (inner_stride + block.x - 1) / block.x;
     grid.z = outer_stride;
-    gpu_kernel::tensorReduceSumOffAxis<<<grid, block,
-                                         req_shared_mem * sizeof(double)>>>(
+    gpu_kernel::tensorReduceSumOffAxis<<<grid, block>>>(
         d_a, d_c, vector_length, inner_stride, outer_stride);
     check_cuda(cudaGetLastError(), "tensorSoftmaxOffAxis launch");
   } else {
     power_of_2 =
         vector_length > 1 ? 1u << (30 - __builtin_clz(vector_length)) : 1;
     block.x = fmin(power_of_2, 1024);
-    block.y = 1024 / block.x;
+    block.y = (num_vector > (1024 / block.x)) ? 1024 / block.x : num_vector;
     grid.y = (num_vector + block.y - 1) / block.y;
-    gpu_kernel::
-        tensorReduceSum<<<grid, block, req_shared_mem * sizeof(double)>>>(
-            d_a, d_c, vector_length, num_vector);
-    check_cuda(cudaGetLastError(), "tensorSoftmax launch");
+    gpu_kernel::tensorReduceSum<<<grid, block>>>(d_a, d_c, vector_length,
+                                                 num_vector);
+    check_cuda(cudaGetLastError(), "tensor Reduction Sum launch");
   }
-  check_cuda(cudaDeviceSynchronize(), "softmax kernel execution");
+  check_cuda(cudaDeviceSynchronize(), "reduce sum kernel execution");
   check_cuda(cudaMemcpy(output, d_c, total_elements * sizeof(double),
                         cudaMemcpyDeviceToHost),
-             "cudaMemcpy softmax device-to-host");
+             "cudaMemcpy reduction sum device-to-host");
   cudaFree(d_a);
   cudaFree(d_c);
 }

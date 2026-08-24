@@ -24,6 +24,9 @@ typedef enum function_names {
 } function_names;
 
 class Ops {
+  protected:
+  bool warning_handled = false;
+
 public:
   virtual ~Ops() = 0;
   virtual void compute() = 0;
