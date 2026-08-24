@@ -86,6 +86,16 @@ __global__ void matrixDifferentialInput(double *weights, double *delta_output,
 __global__ void matrixRollingSum(double *input, double *output, unsigned x,
                                  unsigned y, unsigned z);
 
+__global__ void tensorReduceSum(double *const input, double *const output,
+                                unsigned const vector_length,
+                                unsigned const num_vector);
+
+__global__ void tensorReduceSumOffAxis(double *const input,
+                                       double *const output,
+                                       unsigned const vegtor_length,
+                                       unsigned const inner_stride,
+                                       unsigned const outer_stride);
+
 __global__ void matrixRelu(double *a, double *d_a, int x, int y);
 
 __global__ void matrixSigmoid(double *a, double *d_a, int x, int y);

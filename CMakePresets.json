@@ -14,7 +14,7 @@
             "cacheVariables": {
                 "BUILD_TESTING": "ON",
                 "CMAKE_BUILD_TYPE": "Release",
-                "ENABLE_CUDA": "OFF",
+                "CUDA_ENABLED": "ON",
                 "USE_SYSTEM_GTEST": "OFF",
                 "USE_SYSTEM_BENCHMARK ": "OFF"
             }
@@ -37,7 +37,7 @@
             "binaryDir": "${sourceDir}/build/release",
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Release",
-                "ENABLE_CUDA": "ON",
+                "CUDA_ENABLED": "ON",
                 "USE_SYSTEM_GTEST": "OFF",
                 "USE_SYSTEM_BENCHMARK ": "OFF"
             }
@@ -50,7 +50,7 @@
             "cacheVariables": {
                 "BUILD_TESTING": "ON",
                 "CMAKE_BUILD_TYPE": "Debug",
-                "ENABLE_CUDA": "OFF",
+                "CUDA_ENABLED": "OFF",
                 "USE_SYSTEM_GTEST": "OFF",
                 "CMAKE_EXPORT_COMPILE_COMMANDS": true,
                 "CMAKE_CXX_FLAGS": "-g -O0",
@@ -65,7 +65,7 @@
             "cacheVariables": {
                 "BUILD_TESTING": "ON",
                 "CMAKE_BUILD_TYPE": "Debug",
-                "ENABLE_CUDA": "ON",
+                "CUDA_ENABLED": "ON",
                 "USE_SYSTEM_GTEST": "OFF",
                 "USE_SYSTEM_BENCHMARK ": "OFF",
                 "CMAKE_EXPORT_COMPILE_COMMANDS": true,

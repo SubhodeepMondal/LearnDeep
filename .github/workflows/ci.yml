@@ -7,28 +7,52 @@ on:
     branches: [ master ]
 
 jobs:
-  build-and-test:
+  test_cpu_avx:
+    strategy:
+      fail-fast: false
+      matrix:
+        kernel: [CPU, AVX2]
+
     runs-on: ubuntu-latest
 
+    env:
+      DL_KERNEL: ${{ matrix.kernel }}
+
     steps:
-      # Checkout code
-      - name: Checkout repository
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
-      # Install dependencies (if you use FetchContent for gtest/benchmark, this may be optional)
       - name: Install dependencies
-        run: sudo apt-get update && sudo apt-get install -y cmake ninja-build g++
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake ninja-build g++
+
+      - name: Configure
+        run: cmake --preset release_cpu
+
+      - name: Build
+        run: cmake --build --preset release_cpu -- -j$(nproc)
+
+      - name: Test
+        run: ctest --test-dir build -R unit_test --output-on-failure
 
 
-      # Configure CMake (Debug build for testing)
-      - name: Configure (using preset)
+  test_cuda:
+    runs-on: [self-hosted, linux, x64, gpu]
+
+    env:
+      DL_KERNEL: CUDA
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check GPU
+        run: nvidia-smi
+
+      - name: Configure
         run: cmake --preset default
 
-
-      # Build
       - name: Build
         run: cmake --build --preset default -- -j$(nproc)
 
-      # Run tests (Google Test)
-      - name: Run unit tests
+      - name: Test
         run: ctest --test-dir build -R unit_test --output-on-failure

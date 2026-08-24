@@ -712,6 +712,74 @@ void cpu::__msqrt(std::float64_t **ptr, unsigned *arr) {
       C[i + j * x] = std::sqrt(A[i + j * x]);
 }
 
+void cpu::__mreducesum(std::float64_t *const *const ptr,
+                       unsigned const *const arr) {
+
+  std::float64_t *const input = ptr[0];
+  std::float64_t *const output = ptr[1];
+
+  unsigned inner_stride(1);
+  unsigned outer_stride(1);
+  unsigned no_of_dims = arr[0];
+  unsigned axis = arr[no_of_dims + 1];
+  unsigned axis_depth = arr[axis + 1];
+
+  for (unsigned i = 1; i <= axis; i++)
+    inner_stride *= arr[i];
+
+  for (unsigned i = axis + 2; i <= no_of_dims; i++)
+    outer_stride *= arr[i];
+
+  unsigned no_of_line = inner_stride * outer_stride;
+
+  if (!axis) {
+#pragma omp parallel for
+    for (unsigned line = 0; line < no_of_line; line++) {
+      std::float64_t sum = 0;
+      unsigned i = 0;
+      for (; i + 8 <= axis_depth; i += 8) {
+        sum += input[i + line * axis_depth];
+        sum += input[(i + 1) + line * axis_depth];
+        sum += input[(i + 2) + line * axis_depth];
+        sum += input[(i + 3) + line * axis_depth];
+        sum += input[(i + 4) + line * axis_depth];
+        sum += input[(i + 5) + line * axis_depth];
+        sum += input[(i + 6) + line * axis_depth];
+        sum += input[(i + 7) + line * axis_depth];
+      }
+
+      for (; i < axis_depth; i++)
+        sum += input[i + line * axis_depth];
+
+      output[line] = sum;
+    }
+  } else {
+#pragma omp parallel for schedule(static, 1)
+    for (unsigned line = 0; line < no_of_line; line++) {
+      std::float64_t sum = 0.0;
+      unsigned line_x = line % inner_stride;
+      unsigned line_y = line / inner_stride;
+      unsigned base_index = line_x + line_y * inner_stride * axis_depth;
+      unsigned output_index = line_y * inner_stride + line_x;
+
+      unsigned i = 0;
+      for (; i + 8 <= axis_depth; i += 8) {
+        sum += input[base_index + i * inner_stride];
+        sum += input[base_index + (i + 1) * inner_stride];
+        sum += input[base_index + (i + 2) * inner_stride];
+        sum += input[base_index + (i + 3) * inner_stride];
+        sum += input[base_index + (i + 4) * inner_stride];
+        sum += input[base_index + (i + 5) * inner_stride];
+        sum += input[base_index + (i + 6) * inner_stride];
+        sum += input[base_index + (i + 7) * inner_stride];
+      }
+      for (; i < axis_depth; i++)
+        sum += input[base_index + i * inner_stride];
+      output[output_index] = sum;
+    }
+  }
+}
+
 void cpu::__mrelu(std::float64_t **ptr, unsigned const *arr) {
   std::float64_t *A, *C;
   unsigned x, y;

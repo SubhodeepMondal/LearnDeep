@@ -511,6 +511,98 @@ void avx2::avx2_sqrt_f64(std::float64_t **ptr, unsigned *arr) {
     c[i] = std::sqrt(a[i]);
 }
 
+inline double horizontal_sum(__m256d v) {
+  __m256d h = _mm256_hadd_pd(v, v);
+
+  __m128d lo = _mm256_castpd256_pd128(h);
+  __m128d hi = _mm256_extractf128_pd(h, 1);
+
+  lo = _mm_add_pd(lo, hi);
+
+  return _mm_cvtsd_f64(lo);
+}
+
+void avx2::avx2_reduce_sum_f64(std::float64_t *const *const ptr,
+                               unsigned const *const arr) {
+
+  std::float64_t *const input = ptr[0];
+  std::float64_t *const output = ptr[1];
+
+  unsigned inner_stride(1);
+  unsigned outer_stride(1);
+  unsigned no_of_dims = arr[0];
+  unsigned axis = arr[no_of_dims + 1];
+  unsigned axis_depth = arr[axis + 1];
+
+  for (unsigned i = 1; i <= axis; i++)
+    inner_stride *= arr[i];
+
+  for (unsigned i = axis + 2; i <= no_of_dims; i++)
+    outer_stride *= arr[i];
+
+  unsigned no_of_line = inner_stride * outer_stride;
+
+  if (!axis) {
+#pragma omp parallel for
+    for (unsigned line = 0; line < no_of_line; line++) {
+      __m256d sum = _mm256_setzero_pd();
+      unsigned i = 0;
+      double result = 0.0;
+      for (; i + 8 <= axis_depth; i += 8) {
+        __m256d a = _mm256_loadu_pd(
+            reinterpret_cast<const double *>(input + i + (line * axis_depth)));
+        __m256d b = _mm256_loadu_pd(reinterpret_cast<const double *>(
+            input + (i + 4) + (line * axis_depth)));
+
+        sum = _mm256_add_pd(sum, a);
+        sum = _mm256_add_pd(sum, b);
+      }
+      result = horizontal_sum(sum);
+
+      for (; i < axis_depth; i++)
+        result += input[i + line * axis_depth];
+      output[line] = result;
+    }
+  } else {
+    // clang-format off
+#pragma omp parallel
+    {
+      // clang-format on
+      for (unsigned line = 0; line + 4 <= no_of_line; line += 4) {
+        unsigned line_x = line % inner_stride;
+        unsigned line_y = line / inner_stride;
+        unsigned base_index = line_x + line_y * inner_stride * axis_depth;
+        unsigned output_index = line_x + line_y * inner_stride;
+
+        __m256d sum = _mm256_loadu_pd(
+            reinterpret_cast<const double *>(input + base_index));
+        for (unsigned i = 1; i < axis_depth; i++) {
+          sum = _mm256_add_pd(sum,
+                              _mm256_loadu_pd(reinterpret_cast<const double *>(
+                                  input + (base_index + i * inner_stride))));
+        }
+        _mm256_storeu_pd(reinterpret_cast<double *>(output + output_index),
+                         sum);
+      }
+      // clang-format off
+    }
+    // clang-format on
+
+    for (unsigned line = (no_of_line / 4) * 4; line < no_of_line; line++) {
+      unsigned line_x = line % inner_stride;
+      unsigned line_y = line / inner_stride;
+      unsigned base_index = line_x + line_y * inner_stride * axis_depth;
+      unsigned output_index = line_x + line_y * inner_stride;
+
+      std::float64_t sum = input[base_index];
+      for (unsigned i = 1; i < axis_depth; i++) {
+        sum += input[base_index + i * inner_stride];
+      }
+      output[output_index] = sum;
+    }
+  }
+}
+
 void avx2::avx2_relu_f64(std::float64_t **ptr, unsigned const nDim,
                          unsigned const *arr) {
   std::float64_t *a, *c;

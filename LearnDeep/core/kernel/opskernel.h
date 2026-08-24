@@ -24,6 +24,9 @@ typedef enum function_names {
 } function_names;
 
 class Ops {
+  protected:
+  bool warning_handled = false;
+
 public:
   virtual ~Ops() = 0;
   virtual void compute() = 0;
@@ -270,15 +273,15 @@ public:
 
 class Opsreducesum : public Ops {
   unsigned no_of_reduction_dim;
+  bool isFirstRun = true;
+  unsigned *arr{nullptr};
+  std::float64_t *temp_input{nullptr};
+  std::float64_t *temp_output{nullptr};
   std::vector<unsigned> reduction_dims;
   std::vector<Tensor<std::float64_t> *> inputs;
-  Tensor<std::float64_t> *temp_output;
-  Tensor<std::float64_t> *temp_input;
   Tensor<std::float64_t> *output;
   Tensor<std::float64_t> *incoming_gradient;
   std::vector<Tensor<std::float64_t> *> outgoing_gradients;
-  void recursive_sum(unsigned index, unsigned *dimension_arr,
-                     unsigned reduction_dim, std::float64_t *temp_arr);
 
 public:
   Opsreducesum() = default;
