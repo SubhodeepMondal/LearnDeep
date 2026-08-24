@@ -150,11 +150,11 @@ void gpu::gpu_mat_hadamard_mul_f64(double **ptr, const unsigned *dimA,
   unsigned x = dimA[0];
   unsigned y = dimA[1];
   size_t total_plane = 1;
-  size_t nElemA = 1;
+  // size_t nElemA = 1;
 
   for (unsigned i = 2; i < nDimA; i++)
     total_plane *= dimA[i];
-  nElemA = dimA[0] * dimA[1] * total_plane;
+  // nElemA = dimA[0] * dimA[1] * total_plane;
 
   LOG(INFO) << "GPU kernel for matrix element wise multipliction is running...";
 
@@ -476,6 +476,81 @@ void gpu::gpu_mat_sqrt_f64(double **ptr, unsigned *arr) {
   if (err != cudaSuccess) {
     LOG(ERROR) << "CUDA error: " << cudaGetErrorString(err);
   }
+}
+
+void gpu::gpu_reduce_sum_f64(double *const *const ptr,
+                             unsigned const *const arr) {
+  double *input = ptr[0];
+  double *output = ptr[1];
+
+  LOG(INFO) << "GPU kernel for reduction sum is running...";
+
+  unsigned no_of_dims = arr[0];
+  // size_t total_plane(1);
+  unsigned axis = arr[no_of_dims + 1];
+  size_t vector_length = arr[axis + 1];
+  size_t inner_stride(1);
+  size_t outer_stride(1);
+
+  for (unsigned i = 1; i <= axis; i++)
+    inner_stride *= arr[i];
+
+  for (unsigned i = axis + 2; i <= no_of_dims; i++)
+    outer_stride *= arr[i];
+
+  // size_t no_of_line = inner_stride * outer_stride;
+  unsigned power_of_2;
+  dim3 grid, block;
+  size_t req_shared_mem = 1024;
+  double *d_a = nullptr, *d_c = nullptr;
+  unsigned num_vector = inner_stride * outer_stride;
+  const size_t total_elements = vector_length * num_vector;
+
+  auto check_cuda = [](cudaError_t err, const char *operation) {
+    if (err != cudaSuccess) {
+      throw std::runtime_error(std::string(operation) +
+                               " failed: " + cudaGetErrorString(err));
+    }
+  };
+
+  check_cuda(cudaMalloc((void **)&d_a, total_elements * sizeof(double)),
+             "cudaMalloc softmax input");
+  check_cuda(cudaMalloc((void **)&d_c, total_elements * sizeof(double)),
+             "cudaMalloc softmax output");
+
+  check_cuda(cudaMemcpy(d_a, input, total_elements * sizeof(double),
+                        cudaMemcpyHostToDevice),
+             "cudaMemcpy softmax host-to-device");
+  if (axis) {
+    if (outer_stride > (1e16 - 1))
+      LOG(ERROR) << "Kernel capasity exceeded!";
+    power_of_2 =
+        vector_length > 1 ? 1u << (30 - __builtin_clz(vector_length)) : 1;
+    block.y = fmin(power_of_2, 1024);
+    block.x = 1024 / block.y;
+    grid.x = (inner_stride + block.x - 1) / block.x;
+    grid.z = outer_stride;
+    gpu_kernel::tensorReduceSumOffAxis<<<grid, block,
+                                         req_shared_mem * sizeof(double)>>>(
+        d_a, d_c, vector_length, inner_stride, outer_stride);
+    check_cuda(cudaGetLastError(), "tensorSoftmaxOffAxis launch");
+  } else {
+    power_of_2 =
+        vector_length > 1 ? 1u << (30 - __builtin_clz(vector_length)) : 1;
+    block.x = fmin(power_of_2, 1024);
+    block.y = 1024 / block.x;
+    grid.y = (num_vector + block.y - 1) / block.y;
+    gpu_kernel::
+        tensorReduceSum<<<grid, block, req_shared_mem * sizeof(double)>>>(
+            d_a, d_c, vector_length, num_vector);
+    check_cuda(cudaGetLastError(), "tensorSoftmax launch");
+  }
+  check_cuda(cudaDeviceSynchronize(), "softmax kernel execution");
+  check_cuda(cudaMemcpy(output, d_c, total_elements * sizeof(double),
+                        cudaMemcpyDeviceToHost),
+             "cudaMemcpy softmax device-to-host");
+  cudaFree(d_a);
+  cudaFree(d_c);
 }
 
 void gpu::gpu_mat_relu_f64(double **ptr, const unsigned nDim,

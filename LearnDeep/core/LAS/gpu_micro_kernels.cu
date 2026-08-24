@@ -3,6 +3,7 @@
 #include <stdio.h>
 
 #define TILE_SIZE_DOUBLE 16
+extern __shared__ double global_shared_mem_d[];
 
 __global__ void gpu_kernel::printData(double *a, unsigned x, unsigned y,
                                       unsigned z) {
@@ -498,6 +499,120 @@ __global__ void gpu_kernel::matrixRollingSum(double *input, double *output,
     }
     output[out_lin] = val;
   }
+}
+
+__global__ void gpu_kernel::tensorReduceSum(double *const input,
+                                            double *const output,
+                                            unsigned const vector_length,
+                                            unsigned const num_vector) {
+  unsigned idx_x, idx_y, lin_idx, shared_idx, shared_base;
+  idx_x = threadIdx.x;
+  idx_y = threadIdx.y + blockIdx.y + blockDim.y;
+
+  lin_idx = idx_x + (idx_y * vector_length);
+  shared_idx = threadIdx.x + threadIdx.y * blockDim.x;
+  shared_base = threadIdx.y * blockDim.x;
+
+  unsigned grouped_length = (vector_length / blockDim.x) * blockDim.x;
+  unsigned remain = vector_length - grouped_length;
+
+  // find rolling sum
+  // reduction for elements out of range of powercle
+  if (idx_y < num_vector) {
+    global_shared_mem_d[shared_idx] = input[lin_idx];
+    output[lin_idx] = global_shared_mem_d[shared_idx];
+    if (idx_x < remain) {
+      double sum = input[lin_idx + grouped_length];
+      global_shared_mem_d[shared_idx] += sum;
+      output[lin_idx + grouped_length] = sum;
+    }
+  }
+  __syncthreads();
+
+  // group reduction to get everything into shared memory
+  if (idx_y < num_vector)
+    for (unsigned i = blockDim.x; i < grouped_length; i += blockDim.x) {
+      double sum = input[lin_idx + i];
+      global_shared_mem_d[shared_idx] += sum;
+      output[lin_idx + i] = sum;
+    }
+  __syncthreads();
+
+  // rolling sum
+  for (unsigned i = blockDim.x >> 1; i > 0; i >>= 1) {
+    if (threadIdx.x < i && idx_y < num_vector)
+      global_shared_mem_d[shared_idx] += global_shared_mem_d[shared_idx + i];
+    __syncthreads();
+  }
+
+  // putting the result back to where it belong
+  if (idx_y < num_vector) {
+    output[lin_idx] = global_shared_mem_d[shared_base];
+    if (idx_x < remain)
+      output[lin_idx + grouped_length] /= global_shared_mem_d[shared_base];
+
+    // group reduction to get everything into shared memory
+    for (unsigned i = blockDim.x; i < grouped_length; i += blockDim.x)
+      output[lin_idx + i] /= global_shared_mem_d[shared_base];
+  }
+}
+
+__global__ void gpu_kernel::tensorReduceSumOffAxis(
+    double *const input, double *const output, unsigned const vector_length,
+    unsigned const inner_stride, unsigned const outer_stride) {
+  unsigned idx_x = threadIdx.x + blockIdx.x * blockDim.x;
+  unsigned idx_y = threadIdx.y;
+  unsigned idx_z = blockIdx.z;
+
+  unsigned base_idx =
+      idx_x + idx_y * inner_stride + idx_z * inner_stride * vector_length;
+  unsigned shared_idx = threadIdx.x + threadIdx.y * blockDim.x;
+  unsigned shared_base = threadIdx.x;
+
+  unsigned grouped_length = (vector_length / blockDim.y) * blockDim.y;
+  unsigned remain = vector_length - grouped_length;
+
+  // find rolling sum
+  // reduction for elements out of range of powercle
+  if (idx_x < inner_stride) {
+    global_shared_mem_d[shared_idx] = input[base_idx];
+    output[base_idx] = global_shared_mem_d[shared_idx];
+    if (idx_y < remain) {
+      double sum = input[base_idx + grouped_length * inner_stride];
+      global_shared_mem_d[shared_idx] += sum;
+      output[base_idx + grouped_length * inner_stride] = sum;
+    }
+  }
+  __syncthreads();
+
+  // group reduction to get everything into shared memory
+  if (idx_x < inner_stride)
+    for (unsigned i = blockDim.y; i < grouped_length; i += blockDim.y) {
+      double sum = input[base_idx + i * inner_stride];
+      global_shared_mem_d[shared_idx] += sum;
+      output[base_idx + i * inner_stride] = sum;
+    }
+  __syncthreads();
+
+  // rolling sum on shared memory
+  for (unsigned i = blockDim.y >> 1; i > 0; i >>= 1) {
+    if (threadIdx.y < i && idx_x < inner_stride)
+      global_shared_mem_d[shared_idx] +=
+          global_shared_mem_d[shared_idx + i * blockDim.x];
+    __syncthreads();
+  } // end of finding rolling sum
+
+  // putting the result back to where it belong
+  if (idx_x < inner_stride) {
+    output[base_idx] /= global_shared_mem_d[shared_base];
+    if (idx_y < remain)
+      output[base_idx + grouped_length * inner_stride] /=
+          global_shared_mem_d[shared_base];
+
+    // group reduction to get everything into shared memory
+    for (unsigned i = blockDim.y; i < grouped_length; i += blockDim.y)
+      output[base_idx + i * inner_stride] /= global_shared_mem_d[shared_base];
+  } // end of write
 }
 
 __global__ void gpu_kernel::matrixRelu(double *input_A, double *output, int x,
