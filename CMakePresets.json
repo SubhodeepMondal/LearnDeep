@@ -26,7 +26,7 @@
             "cacheVariables": {
                 "BUILD_TESTING": "ON",
                 "CMAKE_BUILD_TYPE": "Release",
-                "CUDA_ENABLED": "OFF",
+                "ENABLE_CUDA": "OFF",
                 "USE_SYSTEM_GTEST": "OFF",
                 "USE_SYSTEM_BENCHMARK ": "OFF"
             }
