@@ -1,4 +1,4 @@
-#ifdef CUDA_ENABLED
+#ifdef ENABLE_CUDA
 #include <core/LAS/gpu_interface.cuh>
 #endif
 
@@ -207,7 +207,7 @@ void Opssoftmax::kernel_dispatch(std::float64_t *const *const ptr,
                                  unsigned const inner_stride,
                                  unsigned const outer_stride) {
   KernelType kernel = get_global_kernel();
-#ifdef CUDA_ENABLED
+#ifdef ENABLE_CUDA
   switch (kernel) {
   case KernelType::GPU: {
     double *d_arr[2];

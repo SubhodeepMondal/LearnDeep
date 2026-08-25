@@ -1,5 +1,5 @@
 #include <iterator>
-#ifdef CUDA_ENABLED
+#ifdef ENABLE_CUDA
 #include <core/LAS/gpu_interface.cuh>
 #endif
 
@@ -188,7 +188,7 @@ void Opsmul::kernel_dispatch(std::float64_t **ptr, const unsigned nDimA,
                              const unsigned *dimB, const bool isBroadCast) {
 
   KernelType kernel = get_global_kernel();
-#ifdef CUDA_ENABLED
+#ifdef ENABLE_CUDA
   bool gpu_available = true;
 #else
   bool gpu_available = false;
@@ -197,7 +197,7 @@ void Opsmul::kernel_dispatch(std::float64_t **ptr, const unsigned nDimA,
   switch (kernel) {
 
   case KernelType::GPU:
-#ifdef CUDA_ENABLED
+#ifdef ENABLE_CUDA
   {
     double *d_arr[3];
     d_arr[0] = reinterpret_cast<double *>(ptr[0]);
@@ -225,7 +225,7 @@ void Opsmul::kernel_dispatch(std::float64_t **ptr, const unsigned nDimA,
 
   case KernelType::AUTO:
   default:
-#ifdef CUDA_ENABLED
+#ifdef ENABLE_CUDA
   {
     double *d_arr[3];
     d_arr[0] = reinterpret_cast<double *>(ptr[0]);

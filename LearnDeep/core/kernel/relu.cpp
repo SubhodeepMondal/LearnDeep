@@ -1,4 +1,4 @@
-#ifdef CUDA_ENABLED
+#ifdef ENABLE_CUDA
 #include <core/LAS/gpu_interface.cuh>
 #endif
 
@@ -145,7 +145,7 @@ void Opsrelu::kernel_dispatch(std::float64_t **ptr, const unsigned nDim,
                               unsigned const *arr) {
 
   KernelType kernel = get_global_kernel();
-#ifdef CUDA_ENABLED
+#ifdef ENABLE_CUDA
   bool gpu_available = true;
 #else
   bool gpu_available = false;
@@ -154,7 +154,7 @@ void Opsrelu::kernel_dispatch(std::float64_t **ptr, const unsigned nDim,
   switch (kernel) {
 
   case KernelType::GPU:
-#ifdef CUDA_ENABLED
+#ifdef ENABLE_CUDA
   {
     double *d_arr[2];
     d_arr[0] = reinterpret_cast<double *>(ptr[0]);
@@ -180,7 +180,7 @@ void Opsrelu::kernel_dispatch(std::float64_t **ptr, const unsigned nDim,
 
   case KernelType::AUTO:
   default:
-#ifdef CUDA_ENABLED
+#ifdef ENABLE_CUDA
   {
     double *d_arr[2];
     d_arr[0] = reinterpret_cast<double *>(ptr[0]);

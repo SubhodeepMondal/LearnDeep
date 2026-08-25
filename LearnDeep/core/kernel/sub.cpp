@@ -1,4 +1,4 @@
-#ifdef CUDA_ENABLED
+#ifdef ENABLE_CUDA
 #include <core/LAS/gpu_interface.cuh>
 #endif
 
@@ -221,7 +221,7 @@ void Opssub::kernel_dispatch(std::float64_t **ptr, const unsigned nDimA,
                              const unsigned *dimA, const unsigned nDimB,
                              const unsigned *dimB, const bool isBroadCast) {
   KernelType kernel = get_global_kernel();
-#ifdef CUDA_ENABLED
+#ifdef ENABLE_CUDA
   switch (kernel) {
   case KernelType::GPU: {
     double *d_arr[3];

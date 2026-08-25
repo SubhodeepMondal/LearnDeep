@@ -1,5 +1,5 @@
 #include "opskernel.h"
-#ifdef CUDA_ENABLED
+#ifdef ENABLE_CUDA
 #include <core/LAS/gpu_interface.cuh>
 #endif
 
@@ -212,7 +212,7 @@ Tensor<std::float64_t> *Opsreducesum::getOutgoingGradientTensor(
 
 void Opsreducesum::kernel_dispatch(std::float64_t **ptr, unsigned *arr) {
   KernelType kernel = get_global_kernel();
-#ifdef CUDA_ENABLED
+#ifdef ENABLE_CUDA
   bool gpu_available = true;
 #else
   bool gpu_available = false;
@@ -221,7 +221,7 @@ void Opsreducesum::kernel_dispatch(std::float64_t **ptr, unsigned *arr) {
   switch (kernel) {
 
   case KernelType::GPU:
-#ifdef CUDA_ENABLED
+#ifdef ENABLE_CUDA
   {
     double *d_arr[2];
     d_arr[0] = reinterpret_cast<double *>(ptr[0]);
@@ -247,7 +247,7 @@ void Opsreducesum::kernel_dispatch(std::float64_t **ptr, unsigned *arr) {
 
   case KernelType::AUTO:
   default:
-#ifdef CUDA_ENABLED
+#ifdef ENABLE_CUDA
   {
     double *d_arr[2];
     d_arr[0] = reinterpret_cast<double *>(ptr[0]);

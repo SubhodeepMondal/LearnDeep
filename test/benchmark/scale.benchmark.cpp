@@ -27,7 +27,7 @@ static void mat_scale_graph_tensor(benchmark::State &state) {
 // Register this benchmark with different input sizes
 
 // Register this benchmark with different input sizes
-#ifdef CUDA_ENABLED
+#ifdef ENABLE_CUDA
 BENCHMARK(mat_scale_graph_tensor)
     ->Arg(1 << 8)   // 256 elements
     ->Arg(1 << 9)   // 512 elements
