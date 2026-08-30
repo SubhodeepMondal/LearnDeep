@@ -421,11 +421,13 @@ tf::tensor tf::tensor::mul(tensor &input_b, bool graph_flag) {
   return output;
 }
 
-tf::tensor tf::tensor::getReduction(std::vector<unsigned> reduction_dims) {
+tf::tensor tf::tensor::reducesum(std::vector<unsigned> axis, bool keep_dims,
+                                 bool graph_flag) const {
   tensor output;
   switch (dt_type) {
   case tf_float64:
-    output = tensor(this->dt_type, this->ptr->reducesum(reduction_dims));
+    output = tensor(this->dt_type,
+                    this->ptr->reducesum(axis, keep_dims, graph_flag));
     break;
 
   default:

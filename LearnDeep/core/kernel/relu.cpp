@@ -175,7 +175,7 @@ void Opsrelu::kernel_dispatch(std::float64_t **ptr, const unsigned nDim,
     break;
 
   case KernelType::CPU_SCALAR:
-    cpu::__mrelu(ptr, arr);
+    cpu::__mrelu(ptr, nDim, arr);
     break;
 
   case KernelType::AUTO:
@@ -191,7 +191,7 @@ void Opsrelu::kernel_dispatch(std::float64_t **ptr, const unsigned nDim,
     if (__builtin_cpu_supports("avx2")) {
       avx2::avx2_relu_f64(ptr, nDim, arr);
     } else {
-      cpu::__mrelu(ptr, arr);
+      cpu::__mrelu(ptr, nDim, arr);
     }
 #endif
   break;

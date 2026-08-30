@@ -24,7 +24,7 @@ typedef enum function_names {
 } function_names;
 
 class Ops {
-  protected:
+protected:
   bool warning_handled = false;
 
 public:
@@ -273,6 +273,7 @@ public:
 
 class Opsreducesum : public Ops {
   bool first_init = true;
+  bool keep_dims = false;
   unsigned no_of_reduction_dim;
   bool isFirstRun = true;
   unsigned *arr{nullptr};
@@ -286,6 +287,7 @@ class Opsreducesum : public Ops {
 
 public:
   Opsreducesum() = default;
+  Opsreducesum(bool keep_dims);
   ~Opsreducesum();
   void compute();
 

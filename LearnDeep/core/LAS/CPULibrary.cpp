@@ -781,19 +781,26 @@ void cpu::__mreducesum(std::float64_t *const *const ptr,
   }
 }
 
-void cpu::__mrelu(std::float64_t **ptr, unsigned const *arr) {
-  std::float64_t *A, *C;
-  unsigned x, y;
+void cpu::__mrelu(std::float64_t **ptr, unsigned const nDim,
+                  unsigned const *arr) {
+  std::float64_t *a, *c;
+  unsigned i, m_size, n_size, total_plane, n_elements;
+  a = ptr[0];
+  c = ptr[1];
 
-  A = ptr[0];
-  C = ptr[1];
+  m_size = arr[0];
+  n_size = arr[1];
 
-  x = arr[0];
-  y = arr[1];
+  total_plane = 1;
+  if (nDim > 2)
+    for (unsigned i = 2; i < nDim; i++)
+      total_plane *= arr[i];
+
+  n_elements = m_size * n_size * total_plane;
+
 #pragma omp parallel for
-  for (unsigned j = 0; j < y; j++)
-    for (unsigned i = 0; i < x; i++)
-      C[i + j * x] = (A[i + j * x] > 0) ? A[i + j * x] : 0;
+  for (i = 0; i < n_elements; i++)
+    c[i] = (a[i] > 0) * a[i];
 }
 
 void cpu::__msigmoid(std::float64_t **ptr, unsigned *arr) {

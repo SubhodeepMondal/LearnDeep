@@ -53,7 +53,7 @@ TEST_F(MathTest, MatrixMean_Test_3) {
   tf::tensor A, B, C, D;
   A.tf_create(tf_float64, 4, 3);
   B.tf_create(tf_float64, 4);
-  C.tf_create(tf_float64, 4, 3);
+  C.tf_create(tf_float64, 4);
   D.tf_create(tf_float64, 4);
 
   A.tensor_of(a);

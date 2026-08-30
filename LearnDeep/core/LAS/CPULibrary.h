@@ -57,7 +57,7 @@ void __msqrt(std::float64_t **, unsigned *);
  */
 void __mreducesum(std::float64_t *const *const, unsigned const *const);
 
-void __mrelu(std::float64_t **, unsigned const *);
+void __mrelu(std::float64_t **ptr, unsigned const nDim, unsigned const *arr);
 
 void __msigmoid(std::float64_t **, unsigned *);
 

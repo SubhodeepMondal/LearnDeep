@@ -90,7 +90,7 @@ void Opssoftmax::addGradGraph(Graph *gradient_graph) {
   gradient_graph->addGradientEdge(ops_mul, mul_output);
 
   // reduce sum
-  Ops *ops_reduce_sum = new Opsreducesum;
+  Ops *ops_reduce_sum = new Opsreducesum(true);
   Tensor<std::float64_t> *reduce_output = new Tensor(*this->inputs[0]);
 
   ops_reduce_sum->initializeinputs(&mul_output);

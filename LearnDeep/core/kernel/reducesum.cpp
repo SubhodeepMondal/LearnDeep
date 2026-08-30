@@ -16,6 +16,8 @@
 // standard Libery
 #include <algorithm>
 
+Opsreducesum::Opsreducesum(bool keep_dims) : keep_dims(keep_dims) {}
+
 Opsreducesum::~Opsreducesum() {
   if (this->arr)
     delete[] arr;
@@ -161,28 +163,21 @@ void Opsreducesum::initializeReductionDims(const unsigned n,
 }
 
 void Opsreducesum::initializeoutput(Tensor<std::float64_t> *output) {
-  unsigned no_of_resultent_dims;
   std::vector<unsigned> resultent_dims;
   this->output = output;
-
-  no_of_resultent_dims =
-      inputs[0]->getNoOfDimensions() - no_of_reduction_dim < 0
-          ? 0
-          : inputs[0]->getNoOfDimensions() - no_of_reduction_dim;
 
   unsigned j = 0;
   for (unsigned i = 0; i < inputs[0]->getNoOfDimensions(); i++) {
     if (i != this->reduction_dims[j]) {
       resultent_dims.push_back(inputs[0]->getDimensions()[i]);
-    } else if (i == reduction_dims[j] && i == 0 && no_of_resultent_dims == 0) {
+    } else if (this->keep_dims) {
       resultent_dims.push_back(1);
-      no_of_resultent_dims++;
       j++;
     } else {
       j++;
     }
   }
-  this->output->reshape(no_of_resultent_dims, resultent_dims.data());
+  this->output->reshape(resultent_dims.size(), resultent_dims.data());
 }
 
 void Opsreducesum::printinputs() {

@@ -135,28 +135,10 @@ public:
 
   tensor transpose(bool graph_flag = true);
 
-  tensor getReduction(std::vector<unsigned> reduction_dims);
-
   void gradient_required(bool is_grad_required);
 
-  template <typename... Args> tensor reducesum(Args... args) {
-    std::vector<unsigned> dimensions;
-    bool flag = true;
-
-    // -------- end of eager operations ---------
-
-    // Add dimensions to the vector
-    addDimensions(dimensions, args...);
-
-    unsigned *reduction_dims = new unsigned[dimensions.size()];
-    for (int i = 0; i < dimensions.size(); i++) {
-      reduction_dims[i] = dimensions[i];
-    }
-
-    delete[] reduction_dims;
-
-    return getReduction(dimensions);
-  }
+  tensor reducesum(std::vector<unsigned> axis, bool keep_dims = false,
+                   bool graph_flag = true) const;
 
   Tensor<std::float64_t> *getPtr() const;
 

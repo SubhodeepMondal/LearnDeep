@@ -13,7 +13,7 @@ static void mat_reducesum_graph_tensor(benchmark::State &state) {
   {
     tf::graph_context ctx;
 
-    C = A.reducesum(0);
+    C = A.reducesum({0});
 
     for (auto _ : state) {
       ctx.run();                   // Perform matrix reducesum
