@@ -20,6 +20,8 @@ enum class Functions {
   release_resource,
   reverse_mode_autodiff
 };
+
+enum class Gradient_Injection_Method { automatic, forced };
 std::string functionsToString(Functions func);
 
 template <typename T> class Tensor;
@@ -33,6 +35,7 @@ class Graph {
   std::unordered_set<Ops *> grad_ops_nodes;
   std::unordered_map<unsigned long, node *> graph;
   std::unordered_map<unsigned long, node *> auto_diff_graph;
+  std::unordered_map<unsigned long, Tensor<std::float64_t> *> inject_gradient;
   std::stack<node *> ops_stack;
   bool is_valid_graph;
   bool release_graph_resource;
@@ -90,6 +93,9 @@ public:
 
   Tensor<std::float64_t> *
   getGradientTensor(Tensor<std::float64_t> *input_tensor);
+
+  void injectGradient(Tensor<std::float64_t> *gradient_for,
+                      Tensor<std::float64_t> *injection_gradient);
 
   void setTensorToBeSpared(
       const std::unordered_set<Tensor<std::float64_t> *> &tensors_to_be_spared);

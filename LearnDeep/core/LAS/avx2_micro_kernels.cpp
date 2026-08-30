@@ -1,4 +1,4 @@
-#ifdef CUDA_ENABLED
+#ifdef ENABLE_CUDA
 #include <core/LAS/gpu_interface.cuh>
 #endif
 
@@ -634,8 +634,6 @@ void avx2::avx2_relu_f64(std::float64_t **ptr, unsigned const nDim,
     c[i] = std::fmax(a[i], 0.0);
 }
 
-// #include <immintrin.h>
-
 // scale "a" by 2^k, where k is a double vector (integer values stored as
 // double)
 static inline __m256d mul_pow2_pd(__m256d a, __m256d k_real) {
@@ -732,33 +730,46 @@ void avx2::avx2_sigmoid_f64(std::float64_t **ptr, unsigned *arr) {
     c[i] = 1 / (1 + std::exp(-a[i]));
 }
 
-void avx2::avx2_softmax_f64(std::float64_t **ptr, unsigned *arr) {
-  std::float64_t *a, *c;
-  unsigned i, m_size, n_size, n_elements;
-  a = ptr[0];
-  c = ptr[1];
+/**
+ * @brief AVX2 Micro Kernel: Softmax on tensor
+ * @param ptr double pointer to input and output tensor index respectively
+ * @param arr encoded unsigned array
+ *            arr[0]: softmax axis
+ *            arr[1]: no of dimensions for the tensors
+ *            arr[2-n]: dimensions
+ */
+void avx2::avx2_softmax_f64(std::float64_t *const *const ptr,
+                            unsigned const axis, unsigned const vector_length,
+                            unsigned const inner_stride,
+                            unsigned const outer_stride) {
+  std::float64_t *A = ptr[0];
+  std::float64_t *C = ptr[1];
 
-  m_size = arr[0];
-  n_size = arr[1];
+  unsigned no_of_lines = outer_stride * inner_stride;
 
-  n_elements = m_size * n_size;
-  unsigned vec_end = (n_elements / 4) * 4;
-  omp_set_num_threads(std::thread::hardware_concurrency());
-
-  LOG(INFO) << "avx256 kernel for softmax is running....\n";
 #pragma omp parallel for
-  for (i = 0; i < vec_end; i += 4) {
-    __m256d one = _mm256_set1_pd(1.0);
-    __m256d x = _mm256_loadu_pd(reinterpret_cast<const double *>(a + i));
-    __m256d exp_val = exp256_pd(x);
-    __m256d denom = _mm256_hadd_pd(exp_val, exp_val);
-    denom = _mm256_hadd_pd(denom, denom);
-    __m256d c_arr = _mm256_div_pd(exp_val, denom);
-    _mm256_storeu_pd(reinterpret_cast<double *>(c + i), c_arr);
+  for (unsigned line = 0; line < no_of_lines; line++) {
+    unsigned outer = line / inner_stride;
+    unsigned inner = line % inner_stride;
+    unsigned base = outer * vector_length * inner_stride + inner;
+
+    std::float64_t max = A[base];
+    for (unsigned i = 1; i < vector_length; i++) {
+      std::float64_t value = A[base + i * inner_stride];
+      if (max < value)
+        max = value;
+    }
+
+    std::float64_t sum = 0.0;
+    for (unsigned i = 0; i < vector_length; i++) {
+      std::float64_t value = std::exp(A[base + i * inner_stride] - max);
+      C[base + i * inner_stride] = value;
+      sum += value;
+    }
+
+    for (unsigned i = 0; i < vector_length; i++)
+      C[base + i * inner_stride] /= sum;
   }
-  for (i = n_elements - (n_elements % 4); i < n_elements; i++)
-    c[i] = std::exp(a[i]) / (std::exp(a[i]) + std::exp(a[i - 1]) +
-                             std::exp(a[i - 2]) + std::exp(a[i - 3]));
 }
 
 void avx2::avx2_greater_than_zero_f64(std::float64_t *const *const ptr,

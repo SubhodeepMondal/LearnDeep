@@ -62,7 +62,7 @@ if(ENABLE_CUDA AND CMAKE_CUDA_COMPILER)
     message(STATUS "CUDA found: enabling CUDA support")
     enable_language(CUDA)
     set(CMAKE_CUDA_COMPILER "/usr/local/cuda/bin/nvcc")
-    add_compile_definitions(-DCUDA_ENABLED)
+    add_compile_definitions(-DENABLE_CUDA)
 
     add_library(gpu SHARED
         LAS/gpu_interface.cuh
@@ -101,7 +101,7 @@ if(ENABLE_CUDA AND CMAKE_CUDA_COMPILER)
         absl::flags_parse
         )
 
-    target_compile_definitions(core PUBLIC CUDA_ENABLED)
+    target_compile_definitions(core PUBLIC ENABLE_CUDA)
 
 else()
     message(STATUS "CUDA not found: building CPU-only fallback")

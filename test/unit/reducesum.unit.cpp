@@ -11,7 +11,7 @@ TEST_F(MathTest, MatrixReductionSum_Test_1) {
                   .data());
 
   // In numpy this concept reverses index stared from right to left
-  C = A.reducesum(1);
+  C = A.reducesum({1});
 
   std::vector<std::float64_t> output =
       load_bin("test/data/MatrixReductionSum_Test_1_output.bin", 33);
@@ -34,7 +34,7 @@ TEST_F(MathTest, MatrixReductionSum_Test_2) {
   {
     tf::graph_context ctx;
 
-    C = A.reducesum(0, 2);
+    C = A.reducesum({0, 2});
 
     ctx.run();
     std::vector<std::float64_t> output =
@@ -66,8 +66,8 @@ TEST_F(MathTest, MatrixReductionSum_Test_3) {
   {
     tf::graph_context ctx;
 
-    B = A.reducesum(0);
-    C = B.mul(D);
+    B = A.reducesum({0});
+    C = D.mul(B);
 
     ctx.run();
 

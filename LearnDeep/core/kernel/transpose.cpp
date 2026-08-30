@@ -1,4 +1,4 @@
-#ifdef CUDA_ENABLED
+#ifdef ENABLE_CUDA
 #include <core/LAS/gpu_interface.cuh>
 #endif
 
@@ -130,7 +130,7 @@ Tensor<std::float64_t> *Opstranspose::getOutgoingGradientTensor(
 
 void Opstranspose::kernel_dispatch(std::float64_t **ptr, unsigned *arr) {
   KernelType kernel = get_global_kernel();
-#ifdef CUDA_ENABLED
+#ifdef ENABLE_CUDA
   switch (kernel) {
   case KernelType::GPU: {
     double *d_arr[2];

@@ -19,7 +19,7 @@ TEST_F(MathTest, Relu_Test_1) {
   }
 }
 
-TEST_F(MathTest, DISABLED_Relu_Test_2) {
+TEST_F(MathTest, Relu_Test_2) {
 
   tf::tensor A, C;
   A.tf_create(tf_float64, 51, 48, 36, 72);

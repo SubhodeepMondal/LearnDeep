@@ -5,6 +5,7 @@
 #include <iostream>
 #include <omp.h>
 #include <stdexcept>
+#include <vector>
 
 #define TILE_DOUBLE_X 8
 #define TILE_DOUBLE_Y 16
@@ -780,19 +781,26 @@ void cpu::__mreducesum(std::float64_t *const *const ptr,
   }
 }
 
-void cpu::__mrelu(std::float64_t **ptr, unsigned const *arr) {
-  std::float64_t *A, *C;
-  unsigned x, y;
+void cpu::__mrelu(std::float64_t **ptr, unsigned const nDim,
+                  unsigned const *arr) {
+  std::float64_t *a, *c;
+  unsigned i, m_size, n_size, total_plane, n_elements;
+  a = ptr[0];
+  c = ptr[1];
 
-  A = ptr[0];
-  C = ptr[1];
+  m_size = arr[0];
+  n_size = arr[1];
 
-  x = arr[0];
-  y = arr[1];
+  total_plane = 1;
+  if (nDim > 2)
+    for (unsigned i = 2; i < nDim; i++)
+      total_plane *= arr[i];
+
+  n_elements = m_size * n_size * total_plane;
+
 #pragma omp parallel for
-  for (unsigned j = 0; j < y; j++)
-    for (unsigned i = 0; i < x; i++)
-      C[i + j * x] = (A[i + j * x] > 0) ? A[i + j * x] : 0;
+  for (i = 0; i < n_elements; i++)
+    c[i] = (a[i] > 0) * a[i];
 }
 
 void cpu::__msigmoid(std::float64_t **ptr, unsigned *arr) {
@@ -810,24 +818,89 @@ void cpu::__msigmoid(std::float64_t **ptr, unsigned *arr) {
       C[i + j * x] = 1 / (1 + std::exp(-A[i + j * x]));
 }
 
-void cpu::__msoftmax(std::float64_t **ptr, unsigned *arr) {
-  std::float64_t *A, *C;
-  unsigned x, y;
+inline std::float64_t findMax(std::float64_t *const ptr, unsigned const n) {
+  std::float64_t max = ptr[0];
+  for (unsigned i = 1; i < n; i++)
+    if (max < ptr[i])
+      max = ptr[i];
+  return max;
+}
 
-  A = ptr[0];
-  C = ptr[1];
+inline std::float64_t expAndReduce(std::float64_t *const ptr_A,
+                                   std::float64_t *const ptr_B,
+                                   unsigned const n, std::float64_t const max) {
+  std::float64_t sum = 0;
+  for (unsigned i = 0; i < n; i++) {
+    std::float64_t value = std::exp(ptr_A[i] - max);
+    ptr_B[i] = value;
+    sum += ptr_B[i];
+  }
+  return sum;
+}
 
-  x = arr[0];
-  y = arr[1];
+/**
+ * @brief Micro Kernel: Softmax on tensor
+ * @param ptr double pointer to input and output tensor index respectively
+ * @param arr encoded unsigned array
+ *            arr[0]: softmax axis
+ *            arr[1]: no of dimensions for the tensors
+ *            arr[2-n]: dimensions
+ */
+void cpu::__msoftmax(std::float64_t *const *const ptr, unsigned const axis,
+                     unsigned const vector_length, unsigned const inner_stride,
+                     unsigned const outer_stride) {
+  std::float64_t *A = ptr[0];
+  std::float64_t *C = ptr[1];
+
+  unsigned no_of_lines = outer_stride * inner_stride;
+
+  if (!axis) {
 #pragma omp parallel for
-  for (unsigned j = 0; j < y; j++) {
-    std::float64_t sum = 0;
-    for (unsigned i = 0; i < x; i++) {
-      C[i + j * x] = std::exp(A[i + j * x]);
-      sum += C[i + j * x];
+    for (unsigned line = 0; line < no_of_lines; line++) {
+      unsigned base_address = vector_length * line;
+
+      std::float64_t max = findMax(A + base_address, vector_length);
+
+      std::float64_t sum =
+          expAndReduce(A + base_address, C + base_address, vector_length, max);
+
+      for (unsigned i = 0; i < vector_length; i++)
+        C[base_address + i] /= sum;
     }
-    for (unsigned i = 0; i < x; i++)
-      C[i + j * x] = C[i + j * x] / sum;
+  } else {
+    // clang-format off`
+#pragma omp parallel
+    {
+      // clang-format on
+      thread_local std::vector<std::float64_t> line_vector;
+      if (line_vector.capacity() < vector_length)
+        line_vector.reserve(vector_length);
+
+      line_vector.resize(vector_length);
+#pragma omp for
+      for (unsigned line = 0; line < no_of_lines; line++) {
+        /*
+          lets imagine each line is arranged in a 2d (inner_stride x
+          outer_stride) grid and the softmax axis is on z-axis, then inner
+          dimension is idx_x which is  and other one is idx_y;
+        */
+        unsigned idx_x = line / inner_stride;
+        unsigned idx_y = line % inner_stride;
+        unsigned base_address = idx_x * vector_length * inner_stride + idx_y;
+
+        // accumulate the data first
+        for (unsigned i = 0; i < vector_length; i++)
+          line_vector[i] = A[base_address + i * inner_stride];
+
+        std::float64_t max = findMax(line_vector.data(), vector_length);
+
+        std::float64_t sum = expAndReduce(
+            line_vector.data(), line_vector.data(), vector_length, max);
+
+        for (unsigned i = 0; i < vector_length; i++)
+          C[base_address + i * inner_stride] = line_vector[i] / sum;
+      }
+    }
   }
 }
 

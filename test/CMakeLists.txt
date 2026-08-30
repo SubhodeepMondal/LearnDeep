@@ -17,6 +17,7 @@ add_executable(unit_test
     unit/relu.unit.cpp
     unit/scale.unit.cpp
     unit/sigmoid.unit.cpp
+    unit/softmax.unit.cpp
     unit/sqrt.unit.cpp
     unit/sub.unit.cpp
     unit/tensor.unit.cpp

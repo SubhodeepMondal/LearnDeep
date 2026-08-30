@@ -60,7 +60,8 @@ public:
 
   Tensor<T> vectoradd(const Tensor<T>);
 
-  Tensor<T> *reducesum(std::vector<unsigned> n, bool graph_flag = true);
+  Tensor<T> *reducesum(std::vector<unsigned> axis, bool keep_dims = true,
+                       bool graph_flag = true);
 
   Tensor<T> *scale(const std::float64_t scaleFactor, bool graph_flag = true);
 
@@ -74,7 +75,7 @@ public:
 
   Tensor<T> *sigmoid(bool flag = true);
 
-  Tensor<T> *softmax(const unsigned axis, bool graph_flag = true);
+  Tensor<T> *softmax(const unsigned axis = 0, bool graph_flag = true);
 
   Tensor<T> *mean(const unsigned dim, bool graph_flag = true);
 

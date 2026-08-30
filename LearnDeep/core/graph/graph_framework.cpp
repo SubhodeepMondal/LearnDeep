@@ -248,9 +248,13 @@ void Graph::createGradientGraph() {
 
 std::vector<Tensor<std::float64_t> *> Graph::getGradient(Ops *ops) {
   std::vector<Tensor<std::float64_t> *> gradient_tensors;
-  if (graph[reinterpret_cast<unsigned long>(ops)]->node_type == type::compute) {
-    this->getIncomingGradientForOpsNode(
-        graph[reinterpret_cast<unsigned long>(ops)], gradient_tensors);
+  auto graph_it = graph.find(reinterpret_cast<unsigned long>(ops));
+  if (graph_it == graph.end() || !graph_it->second) {
+    throw std::runtime_error("Graph::getGradient: op is not in forward graph");
+  }
+
+  if (graph_it->second->node_type == type::compute) {
+    this->getIncomingGradientForOpsNode(graph_it->second, gradient_tensors);
   } else {
     LOG(FATAL) << "Fatal! Not a compute node to get a gradient tensor.\n";
   }
@@ -267,11 +271,20 @@ void Graph::getIncomingGradientForOpsNode(
   node *output_node_for_ops =
       ops_node->output_nodes[0]; // As ops node has only one output node
 
-  if (output_node_for_ops->output_nodes.size())
-    for (node *output : output_node_for_ops->output_nodes)
-      if (output->node_type == type::compute)
-        gradient_tensors.push_back(output->ops->getOutgoingGradientTensor(
-            output_node_for_ops->tensor));
+  auto node_output_tensor_long =
+      reinterpret_cast<unsigned long>(output_node_for_ops->tensor);
+
+  if (inject_gradient.find(node_output_tensor_long) != inject_gradient.end()) {
+    gradient_tensors.push_back(inject_gradient[node_output_tensor_long]);
+  } else {
+
+    if (output_node_for_ops->output_nodes.size()) {
+      for (node *output : output_node_for_ops->output_nodes)
+        if (output->node_type == type::compute)
+          gradient_tensors.push_back(output->ops->getOutgoingGradientTensor(
+              output_node_for_ops->tensor));
+    }
+  }
 }
 
 Tensor<std::float64_t> *
@@ -292,6 +305,18 @@ Graph::getGradientTensor(Tensor<std::float64_t> *input_tensor) {
   } else {
     node *ops_node = input_node->input_nodes[0];
     return ops_node->ops->getIncomingGradientTensor(input_tensor);
+  }
+}
+
+void Graph::injectGradient(Tensor<std::float64_t> *gradient_for,
+                           Tensor<std::float64_t> *injection_gradient) {
+  auto find_data_node = data_nodes.find(gradient_for);
+  if (find_data_node != data_nodes.end()) {
+    this->inject_gradient[reinterpret_cast<unsigned long>(gradient_for)] =
+        injection_gradient;
+  } else {
+    std::cout
+        << "Data node not found, gradient will be processed automatically.\n";
   }
 }
 

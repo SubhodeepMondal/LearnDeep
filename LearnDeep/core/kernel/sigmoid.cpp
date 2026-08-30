@@ -1,4 +1,4 @@
-#ifdef CUDA_ENABLED
+#ifdef ENABLE_CUDA
 #include <core/LAS/gpu_interface.cuh>
 #endif
 
@@ -92,7 +92,7 @@ void Opssigmoid::printoutput() {
 }
 
 void Opssigmoid::kernel_dispatch(std::float64_t **ptr, unsigned *arr) {
-#ifdef CUDA_ENABLED
+#ifdef ENABLE_CUDA
   double *d_arr[3];
   d_arr[0] = reinterpret_cast<double *>(ptr[0]);
   d_arr[1] = reinterpret_cast<double *>(ptr[1]);

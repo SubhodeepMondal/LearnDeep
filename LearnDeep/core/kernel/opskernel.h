@@ -24,7 +24,7 @@ typedef enum function_names {
 } function_names;
 
 class Ops {
-  protected:
+protected:
   bool warning_handled = false;
 
 public:
@@ -272,6 +272,8 @@ public:
 };
 
 class Opsreducesum : public Ops {
+  bool first_init = true;
+  bool keep_dims = false;
   unsigned no_of_reduction_dim;
   bool isFirstRun = true;
   unsigned *arr{nullptr};
@@ -285,6 +287,7 @@ class Opsreducesum : public Ops {
 
 public:
   Opsreducesum() = default;
+  Opsreducesum(bool keep_dims);
   ~Opsreducesum();
   void compute();
 
@@ -499,31 +502,32 @@ public:
 
 class Opssoftmax : public Ops {
   std::vector<Tensor<std::float64_t> *> inputs;
-  int axis;
+  unsigned axis;
+  unsigned *arr;
   Tensor<std::float64_t> *output;
-  Tensor<std::float64_t> *outgoing_gradient;
-  void recursive_iterator(unsigned index, unsigned *dimension_arr,
-                          std::string function_name, unsigned *ui_arr,
-                          std::float64_t *dl_arr,
-                          Tensor<std::float64_t> *misc_arr);
+  Tensor<std::float64_t> *incoming_gradient;
+  std::vector<Tensor<std::float64_t> *> outgoing_gradients;
 
-  void kernel_dispatch(std::float64_t **, unsigned *);
+  void kernel_dispatch(std::float64_t *const *const ptr, unsigned const axis,
+                       unsigned const axis_len, unsigned const inner_stride,
+                       unsigned const outer_stride);
 
 public:
   Opssoftmax() = default;
   ~Opssoftmax() {}
   void compute();
-  void addGradGraph(Graph *gradient_graph) {}
-  Tensor<std::float64_t> *getOutgoingGradientTensor() {
-    return outgoing_gradient;
-  }
+  void addGradGraph(Graph *gradient_graph);
+  Tensor<std::float64_t> *
+  getIncomingGradientTensor(Tensor<std::float64_t> *gradient_input);
+  Tensor<std::float64_t> *
+  getOutgoingGradientTensor(Tensor<std::float64_t> *gradient_input);
 
   std::vector<Tensor<std::float64_t> *> getAllOutgoingGradientTensors() {
     std::vector<Tensor<std::float64_t> *> grads;
     return grads;
   }
   void initializeinputs(Tensor<std::float64_t> **inputs);
-  void initializeAxis(const unsigned axis) { this->axis = axis; }
+  void initializeAxis(const unsigned axis = 0) { this->axis = axis; }
   void initializeoutput(Tensor<std::float64_t> *output);
   std::vector<Tensor<std::float64_t> *> getinputs() { return inputs; }
   Tensor<std::float64_t> *getoutput() { return output; }

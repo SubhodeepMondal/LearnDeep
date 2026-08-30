@@ -73,8 +73,9 @@ template <typename T> Tensor<T> Tensor<T>::operator-(const Tensor<T> input) {
 
     return output;
   } else {
-    std::cout << "Two metrix requires same shape to perform matrix addition, "
-                 "here matrix A ";
+    std::cout
+        << "Two metrix requires same shape to perform matrix subtraction, "
+           "here matrix A ";
     Tensor<T>::printDimensions();
     std::cout << " and matrix B ";
     input.printDimensions();
@@ -123,7 +124,8 @@ template <typename T> Tensor<T> *Tensor<T>::operator*(Tensor<T> &input) {
       delete ops;
     }
   } else {
-    std::cout << "Two metrix requires same shape to perform matrix addition, "
+    std::cout << "Two metrix requires same shape to perform element wise "
+                 "multiplication, "
                  "here matrix A ";
     Tensor<T>::printDimensions();
     std::cout << " and matrix B ";
@@ -264,12 +266,6 @@ Tensor<T> *Tensor<T>::mul(Tensor<T> &input, bool graph_flag) {
   unsigned flag = 1;
 
   // no_of_dimensions = Tensor<T>::getNoOfDimensions();
-
-  for (int i = 0; i < this->getNoOfDimensions(); i++)
-    if (this->getDimensions()[i] != input.getDimensions()[i]) {
-      flag = 0;
-      break;
-    }
   if (flag) {
     Ops *opsmul = new Opsmul();
     output =
@@ -297,7 +293,8 @@ Tensor<T> *Tensor<T>::mul(Tensor<T> &input, bool graph_flag) {
     }
 
   } else {
-    std::cout << "Two metrix requires same shape to perform matrix addition, "
+    std::cout << "Two metrix requires same shape to perform elemenet-wise "
+                 "multiplication, "
                  "here matrix A ";
     Tensor<T>::printDimensions();
     std::cout << " and matrix B ";
@@ -350,17 +347,18 @@ template <typename T> Tensor<T> Tensor<T>::vectoradd(const Tensor<T> input) {
   }
 }
 template <typename T>
-Tensor<T> *Tensor<T>::reducesum(std::vector<unsigned> n, bool graph_flag) {
+Tensor<T> *Tensor<T>::reducesum(std::vector<unsigned> axis, bool keep_dims,
+                                bool graph_flag) {
   Tensor<T> *output;
   unsigned i, no_of_dimensions, count = 0;
   bool flag;
 
-  std::sort(n.begin(), n.end());
+  std::sort(axis.begin(), axis.end());
 
   no_of_dimensions = this->getNoOfDimensions();
 
-  for (i = 0; i < n.size(); i++) {
-    if (n[i] >= no_of_dimensions) {
+  for (i = 0; i < axis.size(); i++) {
+    if (axis[i] >= no_of_dimensions) {
       flag = false;
       std::cout
           << "Fatal error! reduction axis does not belong for the Tensor\n";
@@ -372,11 +370,11 @@ Tensor<T> *Tensor<T>::reducesum(std::vector<unsigned> n, bool graph_flag) {
   if (count > 0) {
     output = new Tensor<T>(this->getNoOfDimensions() - count,
                            this->getDimensions(), this->getType());
-    Ops *opsreducesum = new Opsreducesum();
+    Ops *opsreducesum = new Opsreducesum(keep_dims);
     Tensor<T> *inputs[1];
     inputs[0] = this;
     opsreducesum->initializeinputs(inputs);
-    opsreducesum->initializeReductionDims(n.size(), n.data());
+    opsreducesum->initializeReductionDims(axis.size(), axis.data());
     opsreducesum->initializeoutput(output);
 
     Graph *g = GraphManager::instance().getCurrentGraph();
@@ -594,6 +592,7 @@ Tensor<T> *Tensor<T>::softmax(const unsigned axis, bool graph_flag) {
   Tensor<T> *inputs[1];
   inputs[0] = this;
   ops->initializeinputs(inputs);
+  ops->initializeAxis(axis);
   ops->initializeoutput(output);
 
   Graph *g = GraphManager::instance().getCurrentGraph();
@@ -617,7 +616,7 @@ Tensor<T> *Tensor<T>::mean(const unsigned dim, bool graph_flag) {
   Tensor<T> *output;
   Tensor<T> *temp_reducesum;
   DataType d_type = tf_float64;
-  Ops *opsreducesum = new Opsreducesum();
+  Ops *opsreducesum = new Opsreducesum(true);
   Ops *opsscale = new Opsscale();
 
   // first perform reducesum operation along the specified dimension

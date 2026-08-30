@@ -13,7 +13,7 @@ static void mat_reducesum_graph_tensor(benchmark::State &state) {
   {
     tf::graph_context ctx;
 
-    C = A.reducesum(0);
+    C = A.reducesum({0});
 
     for (auto _ : state) {
       ctx.run();                   // Perform matrix reducesum
@@ -27,7 +27,7 @@ static void mat_reducesum_graph_tensor(benchmark::State &state) {
 // Register this benchmark with different input sizes
 
 // Register this benchmark with different input sizes
-#ifdef CUDA_ENABLED
+#ifdef ENABLE_CUDA
 BENCHMARK(mat_reducesum_graph_tensor)
     ->Arg(1 << 8)   // 256 elements
     ->Arg(1 << 9)   // 512 elements

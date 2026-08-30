@@ -1,4 +1,4 @@
-#ifdef CUDA_ENABLED
+#ifdef ENABLE_CUDA
 #include <core/LAS/gpu_interface.cuh>
 #endif
 
@@ -176,7 +176,7 @@ void Opsgreaterthanzero::kernel_dispatch(std::float64_t **ptr,
                                          unsigned const *dims) {
 
   KernelType kernel = get_global_kernel();
-#ifdef CUDA_ENABLED
+#ifdef ENABLE_CUDA
   bool gpu_available = true;
 #else
   bool gpu_available = false;
@@ -185,15 +185,14 @@ void Opsgreaterthanzero::kernel_dispatch(std::float64_t **ptr,
   switch (kernel) {
 
   case KernelType::GPU:
-  if(!this->warning_handled){
-    std::cerr <<
-        "GPU kernel requested but greater_than_zero has no GPU implementation, falling back to AVX2 kernel\n";
-    this->warning_handled = true;
-  }
+    if (!this->warning_handled) {
+      std::cerr << "GPU kernel requested but greater_than_zero has no GPU "
+                   "implementation, falling back to AVX2 kernel\n";
+      this->warning_handled = true;
+    }
   case KernelType::AVX2:
     if (__builtin_cpu_supports("avx2")) {
-      avx2::avx2_greater_than_zero_f64(ptr, const_cast<unsigned *>(dims),
-                                       nDim);
+      avx2::avx2_greater_than_zero_f64(ptr, const_cast<unsigned *>(dims), nDim);
     } else {
       throw std::runtime_error("AVX2 not supported on this CPU");
     }
@@ -205,11 +204,10 @@ void Opsgreaterthanzero::kernel_dispatch(std::float64_t **ptr,
   case KernelType::AUTO:
   default:
     if (__builtin_cpu_supports("avx2")) {
-      avx2::avx2_greater_than_zero_f64(ptr, const_cast<unsigned *>(dims),
-                                       nDim);
+      avx2::avx2_greater_than_zero_f64(ptr, const_cast<unsigned *>(dims), nDim);
     } else {
       cpu::__mgreaterthanzero(ptr, dims, nDim);
     }
-  break;
+    break;
   }
 }

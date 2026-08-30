@@ -1,72 +1,166 @@
-#ifdef CUDA_ENABLED
+#ifdef ENABLE_CUDA
 #include <core/LAS/gpu_interface.cuh>
 #endif
 
 // Library Headers
+#include "kernelmanager.h"
 #include "opskernel.h"
 #include <core/LAS/CPULibrary.h>
 #include <core/LAS/avx2_micro_kernels.h>
 #include <core/framework/MathLibrary.h>
 
-void Opssoftmax::recursive_iterator(unsigned index, unsigned *dimension_arr,
-                                    std::string function_name, unsigned *ui_arr,
-                                    std::float64_t *dl_arr,
-                                    Tensor<std::float64_t> *misc_arr) {
-  if (index < 2) {
-    unsigned i, inpA_x, inpA_y, inpB_x, inpB_y, out_x, out_y;
-    unsigned a_plane_size, b_plane_size, c_plane_size, a_index, b_index,
-        c_index;
+void Opssoftmax::addGradGraph(Graph *gradient_graph) {
+  if (!gradient_graph)
+    throw std::runtime_error("Opssoftmax::addGradGraph received null graph");
+  if (this->inputs.empty() || !this->inputs[0] || !this->output)
+    throw std::runtime_error(
+        "Opssoftmax::addGradGraph called before inputs/output initialization");
 
-    inpA_x = (inputs[0]->getNoOfDimensions() > 0)
-                 ? inputs[0]->getDimensions()[0]
-                 : 1;
-    inpA_y = (inputs[0]->getNoOfDimensions() > 1)
-                 ? inputs[0]->getDimensions()[1]
-                 : 1;
+  // .......... reverse mode autodiff graph .........
+  //        [softmax]  *  [[incoming_gradients]...]
+  //                   |[T1]
+  //                 reduce_sum(T1, axis)
+  //                   |[T2]
+  //                 broadcast_sub(incoming_grads, T2)
+  //                   |[T3]
+  //                 mul(T3 * softmax);
+  // ........................ End .....................
 
-    out_x = (output->getNoOfDimensions() > 0) ? output->getDimensions()[0] : 1;
-    out_y = (output->getNoOfDimensions() > 1) ? output->getDimensions()[1] : 1;
+  Tensor<std::float64_t> *tensor_ptr[2];
+  std::vector<Tensor<std::float64_t> *> incoming_gradients =
+      gradient_graph->getGradient(this);
 
-    a_plane_size = inpA_x * inpA_y;
-    c_plane_size = out_x * out_y;
+  // graph setup for accumulating incoming gradients y' = sum ( z' )
+  if (incoming_gradients.size()) {
 
-    a_index = b_index = c_index = 0;
-    if (inputs[0]->getNoOfDimensions() > 2)
-      for (i = 2; i < inputs[0]->getNoOfDimensions(); i++) {
-        a_index += a_plane_size * dimension_arr[i];
-        c_index += c_plane_size * dimension_arr[i];
+    // graph setup for  x' = sum ( z' * d/dx )
+    Tensor<std::float64_t> *intermediate_gradient_sum;
+    intermediate_gradient_sum = new Tensor<std::float64_t>(*this->output);
+    intermediate_gradient_sum->initData(0.0);
 
-        a_plane_size *= inputs[0]->getDimensions()[i];
-        c_plane_size *= output->getDimensions()[i];
-      }
-    unsigned a[2];
-    std::float64_t *ptr[3];
+    for (Tensor<std::float64_t> *inc_grad_tensor : incoming_gradients) {
 
-    a[0] = inpA_x;
-    a[1] = inpA_y;
+      // input initialization
+      tensor_ptr[0] = intermediate_gradient_sum;
+      tensor_ptr[1] = inc_grad_tensor;
 
-    ptr[0] = inputs[0]->getData() + a_index;
-    ptr[1] = dl_arr;
-    ptr[2] = output->getData() + c_index;
+      Ops *ops_add = new Opsadd;
+      ops_add->initializeinputs(tensor_ptr);
 
-    kernel_dispatch(ptr, a);
-  } else {
-    for (unsigned i = 0; i < inputs[0]->getDimensions()[index]; i++) {
-      dimension_arr[index] = i;
-      recursive_iterator(index - 1, dimension_arr, function_name, ui_arr,
-                         dl_arr, misc_arr);
+      gradient_graph->addGradientNode(ops_add);
+      gradient_graph->addGradientNode(tensor_ptr[0]);
+      gradient_graph->addGradientNode(tensor_ptr[1]);
+      gradient_graph->addGradientEdge(tensor_ptr[0], ops_add);
+      gradient_graph->addGradientEdge(tensor_ptr[1], ops_add);
+
+      // output initialization
+      intermediate_gradient_sum = new Tensor<std::float64_t>(*this->output);
+      intermediate_gradient_sum->initData(0.0);
+
+      ops_add->initializeoutput(intermediate_gradient_sum);
+      gradient_graph->addGradientNode(intermediate_gradient_sum);
+      gradient_graph->addGradientEdge(ops_add, intermediate_gradient_sum);
     }
+    this->incoming_gradient = intermediate_gradient_sum;
+  } else {
+    this->incoming_gradient = new Tensor<std::float64_t>(*this->output);
+    this->incoming_gradient->initData(1.0);
   }
-};
+
+  Tensor<std::float64_t> *temp_grad_tensors[2];
+
+  // initializing temp variables for grad calculation
+  temp_grad_tensors[0] = this->output;
+  temp_grad_tensors[1] = this->incoming_gradient;
+  Tensor<std::float64_t> *mul_output =
+      new Tensor<std::float64_t>(*this->inputs[0]);
+
+  // multiplication
+  Ops *ops_mul = new Opsmul;
+  ops_mul->initializeinputs(temp_grad_tensors);
+  ops_mul->initializeoutput(mul_output);
+
+  gradient_graph->addGradientNode(temp_grad_tensors[0]);
+  gradient_graph->addGradientNode(temp_grad_tensors[1]);
+  gradient_graph->addGradientNode(mul_output);
+  gradient_graph->addGradientNode(ops_mul);
+
+  gradient_graph->addGradientEdge(temp_grad_tensors[0], ops_mul);
+  gradient_graph->addGradientEdge(temp_grad_tensors[1], ops_mul);
+  gradient_graph->addGradientEdge(ops_mul, mul_output);
+
+  // reduce sum
+  Ops *ops_reduce_sum = new Opsreducesum(true);
+  Tensor<std::float64_t> *reduce_output = new Tensor(*this->inputs[0]);
+
+  ops_reduce_sum->initializeinputs(&mul_output);
+  ops_reduce_sum->initializeReductionDims(1, &this->axis);
+  ops_reduce_sum->initializeoutput(reduce_output);
+
+  gradient_graph->addGradientNode(mul_output);
+  gradient_graph->addGradientNode(reduce_output);
+  gradient_graph->addGradientNode(ops_reduce_sum);
+
+  gradient_graph->addGradientEdge(mul_output, ops_reduce_sum);
+  gradient_graph->addGradientEdge(ops_reduce_sum, reduce_output);
+
+  // broadcast substraction
+  Ops *ops_sub = new Opssub;
+  tensor_ptr[0] = this->incoming_gradient;
+  tensor_ptr[1] = reduce_output;
+
+  ops_sub->initializeinputs(tensor_ptr);
+  gradient_graph->addGradientNode(ops_sub);
+  gradient_graph->addGradientNode(tensor_ptr[0]);
+  gradient_graph->addGradientNode(tensor_ptr[1]);
+  gradient_graph->addGradientEdge(tensor_ptr[0], ops_sub);
+  gradient_graph->addGradientEdge(tensor_ptr[1], ops_sub);
+
+  Tensor<std::float64_t> *sub_output =
+      new Tensor<std::float64_t>(*this->inputs[0]);
+  ops_sub->initializeoutput(sub_output);
+  gradient_graph->addGradientNode(sub_output);
+  gradient_graph->addGradientEdge(ops_sub, sub_output);
+
+  // multiplication
+  Ops *ops_mul_2 = new Opsmul;
+  tensor_ptr[0] = this->output;
+  tensor_ptr[1] = sub_output;
+
+  // input initialization
+  ops_mul_2->initializeinputs(tensor_ptr);
+  gradient_graph->addGradientNode(ops_mul_2);
+  gradient_graph->addGradientNode(tensor_ptr[0]);
+  gradient_graph->addGradientNode(tensor_ptr[1]);
+  gradient_graph->addGradientEdge(tensor_ptr[0], ops_mul_2);
+  gradient_graph->addGradientEdge(tensor_ptr[1], ops_mul_2);
+
+  // output initialization
+  Tensor<std::float64_t> *temp_out_grad =
+      new Tensor<std::float64_t>(*this->inputs[0]);
+  ops_mul_2->initializeoutput(temp_out_grad);
+  gradient_graph->addGradientNode(temp_out_grad);
+  gradient_graph->addGradientEdge(ops_mul_2, temp_out_grad);
+  this->outgoing_gradients.push_back(temp_out_grad);
+  // End of d/dx[i] * z'
+}
 
 void Opssoftmax::compute() {
-  unsigned *arr;
+  unsigned inner_stride = 1;
+  for (unsigned i = 0; i < this->axis; i++)
+    inner_stride *= this->inputs[0]->getDimensions()[i];
 
-  arr = new unsigned[inputs[0]->getNoOfDimensions()];
+  unsigned softmax_axis_len = this->inputs[0]->getDimensions()[this->axis];
+  unsigned outer_stride = 1;
+  for (unsigned i = this->axis + 1; i < this->inputs[0]->getNoOfDimensions();
+       i++)
+    outer_stride *= this->inputs[0]->getDimensions()[i];
 
-  recursive_iterator(inputs[0]->getNoOfDimensions() - 1, arr,
-                     "matrix_scaler_multiplication", NULL, NULL, NULL);
-  delete[] arr;
+  std::float64_t *ptr[2];
+  ptr[0] = this->inputs[0]->getData();
+  ptr[1] = this->output->getData();
+  kernel_dispatch(ptr, this->axis, softmax_axis_len, inner_stride,
+                  outer_stride);
 }
 
 void Opssoftmax::initializeinputs(Tensor<std::float64_t> **inputs) {
@@ -92,19 +186,77 @@ void Opssoftmax::printoutput() {
   std::cout << "\n";
 }
 
-void Opssoftmax::kernel_dispatch(std::float64_t **ptr, unsigned *arr) {
-#ifdef CUDA_ENABLED
-  double *d_arr[3];
-  d_arr[0] = reinterpret_cast<double *>(ptr[0]);
-  d_arr[1] = reinterpret_cast<double *>(ptr[1]);
-  d_arr[2] = reinterpret_cast<double *>(ptr[2]);
+Tensor<std::float64_t> *
+Opssoftmax::getOutgoingGradientTensor(Tensor<std::float64_t> *gradient_input) {
+  auto it = std::find(inputs.begin(), inputs.end(), gradient_input);
+  Tensor<std::float64_t> *ptr = nullptr;
+  if (inputs.end() != it) {
+    int idx = std::distance(inputs.begin(), it);
+    ptr = outgoing_gradients[idx];
+  }
+  return ptr;
+}
 
-  gpu::gpu_mat_softmax_f64(d_arr, arr);
+Tensor<std::float64_t> *
+Opssoftmax::getIncomingGradientTensor(Tensor<std::float64_t> *tensor) {
+  return incoming_gradient;
+}
+
+void Opssoftmax::kernel_dispatch(std::float64_t *const *const ptr,
+                                 unsigned const axis, unsigned const axis_len,
+                                 unsigned const inner_stride,
+                                 unsigned const outer_stride) {
+  KernelType kernel = get_global_kernel();
+#ifdef ENABLE_CUDA
+  switch (kernel) {
+  case KernelType::GPU: {
+    double *d_arr[2];
+    d_arr[0] = reinterpret_cast<double *>(ptr[0]);
+    d_arr[1] = reinterpret_cast<double *>(ptr[1]);
+    gpu::gpu_mat_softmax_f64(d_arr, axis, axis_len, inner_stride, outer_stride);
+    break;
+  }
+  case KernelType::AVX2:
+    if (__builtin_cpu_supports("avx2")) {
+      avx2::avx2_softmax_f64(ptr, axis, axis_len, inner_stride, outer_stride);
+    } else {
+      throw std::runtime_error("AVX2 not supported on this CPU");
+    }
+    break;
+  case KernelType::CPU_SCALAR:
+    cpu::__msoftmax(ptr, axis, axis_len, inner_stride, outer_stride);
+    break;
+  case KernelType::AUTO:
+  default: {
+    double *d_arr[2];
+    d_arr[0] = reinterpret_cast<double *>(ptr[0]);
+    d_arr[1] = reinterpret_cast<double *>(ptr[1]);
+    gpu::gpu_mat_softmax_f64(d_arr, axis, axis_len, inner_stride, outer_stride);
+    break;
+  }
+  }
 #else
-  if (__builtin_cpu_supports("avx2")) {
-    avx2::avx2_softmax_f64(ptr, arr);
-  } else {
-    cpu::__msoftmax(ptr, arr);
+  switch (kernel) {
+  case KernelType::GPU:
+    throw std::runtime_error("GPU kernel requested but CUDA not enabled");
+  case KernelType::AVX2:
+    if (__builtin_cpu_supports("avx2")) {
+      avx2::avx2_softmax_f64(ptr, axis, axis_len, inner_stride, outer_stride);
+    } else {
+      throw std::runtime_error("AVX2 not supported on this CPU");
+    }
+    break;
+  case KernelType::CPU_SCALAR:
+    cpu::__msoftmax(ptr, axis, axis_len, inner_stride, outer_stride);
+    break;
+  case KernelType::AUTO:
+  default:
+    if (__builtin_cpu_supports("avx2")) {
+      avx2::avx2_softmax_f64(ptr, axis, axis_len, inner_stride, outer_stride);
+    } else {
+      cpu::__msoftmax(ptr, axis, axis_len, inner_stride, outer_stride);
+    }
+    break;
   }
 #endif
 }
