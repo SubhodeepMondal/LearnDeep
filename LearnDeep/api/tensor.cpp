@@ -228,6 +228,23 @@ tf::tensor tf::tensor::add(tensor &input_b, bool graph_flag) {
   return output;
 }
 
+tf::tensor tf::tensor::div(tensor &input_b, bool graph_flag) {
+  tensor output;
+
+  if (this->dt_type == input_b.dt_type) {
+    switch (dt_type) {
+      case tf_float64: {
+        output = tensor(this->dt_type,
+                        this->ptr->div(*(input_b.getPtr()), graph_flag));
+        break;
+      }
+      default:
+        LOG(ERROR) << "Invalid data type!";
+    }
+  }
+  return output;
+}
+
 tf::tensor tf::tensor::greater_than_zero(bool graph_flag) {
   tensor output;
 

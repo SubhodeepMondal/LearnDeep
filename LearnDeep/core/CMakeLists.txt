@@ -4,6 +4,7 @@
 
 set(COMBINED_RESORCES
     ops/add.cpp
+    ops/div.cpp
     ops/matmul.cpp
     ops/mul.cpp
     ops/opskernel.cpp

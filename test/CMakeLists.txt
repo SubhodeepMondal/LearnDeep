@@ -23,6 +23,7 @@ add_executable(unit_test
     unit/tensor.unit.cpp
     unit/transpose.unit.cpp
     unit/dense_layer.unit.cpp
+    unit/div.unit.cpp
 )
 
 target_include_directories(unit_test PRIVATE ${CMAKE_SOURCE_DIR}/api)

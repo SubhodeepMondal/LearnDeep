@@ -175,6 +175,58 @@ public:
   void printoutput();
 };
 
+class Opsdiv : public Ops{
+  bool isPreInitializationDone;
+  bool isBroadCast;
+  std::vector<unsigned> broadCastAxies;
+  std::vector<unsigned> broadCastDimensionSizes;
+
+  std::vector<Tensor<std::float64_t> *> inputs;
+  Tensor<std::float64_t> *output;
+  Tensor<std::float64_t> *incoming_gradient;
+  Tensor<std::float64_t> *outgoing_gradients[2];
+  // void recursive_iterator(unsigned index, unsigned *dimension_arr,
+  //                         std::string function_name, unsigned *ui_arr,
+  //                         std::float64_t *dl_arr,
+  //                         Tensor<std::float64_t> *misc_arr);
+
+  void kernel_dispatch(std::float64_t **ptr, const unsigned nDimA,
+                       const unsigned *dimA, const unsigned nDimB,
+                       const unsigned *dimB, const bool isBroadCast);
+
+ public:
+  Opsdiv() : isPreInitializationDone(false), isBroadCast(false) {}
+  ~Opsdiv() {}
+  void compute();
+
+  void addGradGraph(Graph *gradient_graph);
+
+  Tensor<std::float64_t> *getIncomingGradientTensor(
+      Tensor<std::float64_t> *tensor) override {
+    return incoming_gradient;
+  }
+
+  Tensor<std::float64_t> *getOutgoingGradientTensor(
+      Tensor<std::float64_t> *gradient_input);
+
+  std::vector<Tensor<std::float64_t> *> getAllOutgoingGradientTensors() {
+    std::vector<Tensor<std::float64_t> *> grads;
+    return grads;
+  }
+
+  void initializeinputs(Tensor<std::float64_t> **inputs);
+
+  void initializeoutput(Tensor<std::float64_t> *output);
+
+  std::vector<Tensor<std::float64_t> *> getinputs() { return inputs; }
+
+  Tensor<std::float64_t> *getoutput() { return output; }
+
+  void printinputs();
+
+  void printoutput();
+};
+
 class Opsmatmul : public Ops {
   unsigned no_of_inputs;
 
