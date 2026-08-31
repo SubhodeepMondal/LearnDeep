@@ -50,6 +50,10 @@ void gpu_mat_add_broadcast_f64(double *const *const ptr, const unsigned nDimA,
                                const unsigned *dimA, const unsigned nDimB,
                                const unsigned *dimB, const bool isBoradCast);
 
+void gpu_div_broadcast_f64(
+    double *const *const ptr, const unsigned nDimA, const unsigned *dimA,
+    const unsigned nDimB, const unsigned *dimB, const bool isBoradCast);
+
 // Function to perform element-wise multiplication of two matrices
 // This function multiplies two matrices of type double element-wise and stores
 // the result in a third matrix. The matrices are represented as pointers to

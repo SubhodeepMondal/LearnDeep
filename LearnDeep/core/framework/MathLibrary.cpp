@@ -167,6 +167,52 @@ Tensor<T> *Tensor<T>::add(Tensor<T> &input, bool graph_flag) {
   return output;
 }
 
+template <typename T>
+Tensor<T> *Tensor<T>::div(Tensor<T> &input, bool graph_flag) {
+  Tensor<T> *output;
+  DataType d_type = tf_float64;
+
+  unsigned flag = 1;
+
+  // no_of_dimensions = Tensor<T>::getNoOfDimensions();
+  if (flag) {
+    Ops *opsdiv = new Opsdiv();
+    output =
+        new Tensor<T>(this->getNoOfDimensions(), this->getDimensions(), d_type);
+    Tensor<T> *inputs[2];
+    inputs[0] = this;
+    inputs[1] = &input;
+    opsdiv->initializeinputs(inputs);
+    opsdiv->initializeoutput(output);
+
+    Graph *g = GraphManager::instance().getCurrentGraph();
+    if (g) {
+      g->addNode(this);
+      g->addNode(&input);
+      g->addNode(opsdiv);
+
+      g->addEdge(this, opsdiv);
+      g->addEdge(&input, opsdiv);
+
+      g->addNode(output);
+      g->addEdge(opsdiv, output);
+    } else {
+      opsdiv->compute();
+      delete opsdiv;
+    }
+
+  } else {
+    std::cout << "Two metrix requires same shape to perform elemenet-wise "
+                 "multiplication, "
+                 "here matrix A ";
+    Tensor<T>::printDimensions();
+    std::cout << " and matrix B ";
+    input.printDimensions();
+    std::cout << " are of differenct shape.\n";
+  }
+  return output;
+}
+
 template <typename T> Tensor<T> *Tensor<T>::greaterThanZero(bool graph_flag) {
   Tensor<T> *output;
   DataType d_type = tf_float64;

@@ -143,6 +143,99 @@ void gpu::gpu_mat_add_broadcast_f64(double *const *const ptr,
   }
 };
 
+
+void gpu::gpu_div_broadcast_f64(
+    double *const *const ptr, const unsigned nDimA, const unsigned *dimA,
+    const unsigned nDimB, const unsigned *dimB, const bool isBoradCast) {
+
+  double *a = ptr[0];
+  double *b = ptr[1];
+  double *c = ptr[2];
+
+  size_t dim_x_axis = 1;
+  size_t dim_y_axis = 1;
+  size_t total_plane = 1;
+  size_t total_plane_b = 1;
+  size_t nElemA = 1;
+  size_t nElemB = 1;
+
+  dim3 block;
+  dim3 grid;
+
+  if (nDimA > 2) {
+    dim_x_axis = dimA[0];
+    dim_y_axis = dimA[1];
+
+    for (unsigned i = 2; i < nDimA; i++)
+      total_plane *= dimA[i];
+    nElemA = dimA[0] * dimA[1] * total_plane;
+
+    for (unsigned i = 2; i < nDimB; i++)
+      total_plane_b *= dimB[i];
+    nElemB = dimB[0] * dimB[1] * total_plane_b;
+
+    block.x = (32 > dimA[0]) ? dimA[0] : 32;
+    block.y = (32 > dimA[1]) ? dimA[1] : 32;
+    grid.x = (dimA[0] + block.x - 1) / block.x;
+    grid.y = (dimA[1] + block.y - 1) / block.y;
+    grid.z = total_plane;
+  } else if (nDimA > 1) {
+    dim_x_axis = dimA[0];
+    dim_y_axis = dimA[1];
+
+    nElemA = dimA[0] * dimA[1];
+    nElemB = dimB[0] * dimB[1];
+
+    block.x = (32 > dimA[0]) ? dimA[0] : 32;
+    block.y = (32 > dimA[1]) ? dimA[1] : 32;
+    grid.x = (dimA[0] + block.x - 1) / block.x;
+    grid.y = (dimA[1] + block.y - 1) / block.y;
+  } else {
+    dim_x_axis = dimA[0];
+    nElemA = dimA[0];
+    nElemB = dimB[0];
+    block.x = (32 > dimA[0]) ? dimA[0] : 32;
+    grid.x = (dimA[0] + block.x - 1) / block.x;
+  }
+  LOG(INFO) << "GPU kernel for matrix addition is running...";
+
+  double *d_a, *d_b, *d_c;
+
+  cudaMalloc((void **)&d_a, nElemA * sizeof(double));
+  cudaMalloc((void **)&d_b, nElemB * sizeof(double));
+  cudaMalloc((void **)&d_c, nElemA * sizeof(double));
+
+  cudaMemcpy(d_a, a, nElemA * sizeof(double), cudaMemcpyHostToDevice);
+  cudaMemcpy(d_b, b, nElemB * sizeof(double), cudaMemcpyHostToDevice);
+  cudaError_t err;
+  if (!isBoradCast)
+    gpu_kernel::cudaDiv<<<grid, block>>>(d_a, d_b, d_c, dim_x_axis,
+                                                   dim_y_axis, total_plane);
+  else {
+    unsigned *dimA_device, *dimB_device;
+    cudaMalloc((void **)&dimA_device, nDimA * sizeof(double));
+    cudaMalloc((void **)&dimB_device, nDimB * sizeof(double));
+    cudaMemcpy(dimA_device, dimA, nDimA * sizeof(unsigned),
+               cudaMemcpyHostToDevice);
+    cudaMemcpy(dimB_device, dimB, nDimB * sizeof(unsigned),
+               cudaMemcpyHostToDevice);
+    gpu_kernel::cudaDivBroadCast<<<grid, block>>>(
+        d_a, d_b, d_c, nDimA, dimA_device, nDimB, dimB_device, total_plane,
+        total_plane_b);
+    cudaFree(dimA_device);
+    cudaFree(dimB_device);
+  }
+  cudaMemcpy(c, d_c, nElemA * sizeof(double), cudaMemcpyDeviceToHost);
+  cudaFree(d_a);
+  cudaFree(d_b);
+  cudaFree(d_c);
+  err = cudaGetLastError();
+  if (err != cudaSuccess) {
+    LOG(ERROR) << "CUDA error: " << cudaGetErrorString(err);
+  }
+};
+
+
 void gpu::gpu_mat_hadamard_mul_f64(double **ptr, const unsigned *dimA,
                                    unsigned nDimA) {
 
