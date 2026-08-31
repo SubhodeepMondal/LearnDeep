@@ -3,23 +3,23 @@
 #creating library for kernel operations
 
 set(COMBINED_RESORCES
-    kernel/add.cpp
-    kernel/matmul.cpp
-    kernel/mul.cpp
-    kernel/opskernel.cpp
-    kernel/opskernel.h
-    kernel/greaterthanzero.cpp
-    kernel/power.cpp
-    kernel/reducesum.cpp
-    kernel/relu.cpp
-    kernel/scale.cpp
-    kernel/softmax.cpp
-    kernel/sigmoid.cpp
-    kernel/sub.cpp
-    kernel/sqrt.cpp
-    kernel/transpose.cpp
-    kernel/kernelmanager.cpp
-    kernel/kernelmanager.h
+    ops/add.cpp
+    ops/matmul.cpp
+    ops/mul.cpp
+    ops/opskernel.cpp
+    ops/opskernel.h
+    ops/greaterthanzero.cpp
+    ops/power.cpp
+    ops/reducesum.cpp
+    ops/relu.cpp
+    ops/scale.cpp
+    ops/softmax.cpp
+    ops/sigmoid.cpp
+    ops/sub.cpp
+    ops/sqrt.cpp
+    ops/transpose.cpp
+    ops/kernelmanager.cpp
+    ops/kernelmanager.h
 
     graph/graph_context.hpp
     graph/graph_framework.hpp

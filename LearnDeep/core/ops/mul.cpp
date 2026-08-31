@@ -8,7 +8,7 @@
 #include <core/LAS/CPULibrary.h>
 #include <core/LAS/avx2_micro_kernels.h>
 #include <core/framework/MathLibrary.h>
-#include <core/kernel/opskernel.h>
+#include <core/ops/opskernel.h>
 
 void Opsmul::compute() {
 
