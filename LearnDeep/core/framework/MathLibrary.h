@@ -9,7 +9,7 @@
 
 // Library Headers
 #include "NDynamicArray.h"
-#include <core/kernel/opskernel.h>
+#include <core/ops/opskernel.h>
 
 template <typename T> class Tensor : public ndarray<T> {
 

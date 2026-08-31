@@ -8,7 +8,7 @@
 // Library Leaders
 #include <core/framework/MathLibrary.h>
 #include <core/graph/graph_framework.hpp>
-#include <core/kernel/opskernel.h>
+#include <core/ops/opskernel.h>
 #include <unordered_set>
 
 std::string functionsToString(Functions func) {

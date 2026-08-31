@@ -4,7 +4,7 @@
 // Library Headers
 #include "graph_node.hpp"
 #include <core/framework/MathLibrary.h>
-#include <core/kernel/opskernel.h>
+#include <core/ops/opskernel.h>
 
 // void node::addGradient(Graph *autodiff_graph) {
 //   if (type::compute == node_type) {

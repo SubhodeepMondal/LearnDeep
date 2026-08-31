@@ -15,7 +15,7 @@
 // Library Headers
 #include <core/framework/MathLibrary.h>
 #include <core/graph/graph_context.hpp>
-#include <core/kernel/opskernel.h>
+#include <core/ops/opskernel.h>
 #include <layers/layer_enum.hpp>
 #include <losses/loss_enum.hpp>
 #include <optimizers/optimizer_type.hpp>
