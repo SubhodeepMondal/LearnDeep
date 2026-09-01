@@ -98,6 +98,10 @@
     ],
     "testPresets": [
         {
+            "name": "default",
+            "configurePreset": "default"
+        },
+        {
             "name": "release_cpu",
             "configurePreset": "release_cpu"
         }

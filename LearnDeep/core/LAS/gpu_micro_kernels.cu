@@ -155,6 +155,13 @@ __global__ void gpu_kernel::cudaMatrixMul(double *a, double *b, double *d,
   }
 }
 
+
+__global__ void gpu_kernel::cudaNaturalLog(double *input, double *output, unsigned n_elements){
+  unsigned index = threadIdx.x + blockIdx.x * blockDim.x;
+  if(index < n_elements)
+    output[index] = log(input[index]);
+}
+
 __global__ void
 gpu_kernel::matrixSum(double *const input_1, double *const input_2,
                       double *const output, const unsigned x_axis_dim,

@@ -56,6 +56,8 @@ public:
 
   Tensor<T> *greaterThanZero(bool graph_flag = true);
 
+  Tensor<T> *log(bool graph_flag = true);
+
   Tensor<T> *matmul(Tensor<T> &input, bool graph_flag = true);
 
   Tensor<T> *mul(Tensor<T> &input, bool graph_flag = true);

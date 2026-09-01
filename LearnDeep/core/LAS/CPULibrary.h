@@ -19,6 +19,17 @@ void __mdiv_broadcast(std::float64_t *const *const ptr, const unsigned nDimA,
                       const unsigned *dimA, const unsigned nDimB,
                       const unsigned *dimB, const bool isBroadCast);
 
+/**
+ * @brief calculates natural log_e on given dataset
+ * @param ptr: double pointer to pointer
+ *              ptr[0] input
+ *              ptr[1] output
+ * @param arr: encoded integers
+ *              arr[0] number of dimensions
+ *              arr[1-n] length in each dimensions
+ */
+void __mlog(std::float64_t *const *const ptr, unsigned *const arr);
+
 void __matmul_conventional(std::float64_t **, unsigned *);
 
 void __mscalermul(std::float64_t **, unsigned *);

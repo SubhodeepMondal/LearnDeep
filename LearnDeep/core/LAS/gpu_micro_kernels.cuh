@@ -26,6 +26,8 @@ __global__ void cudaSubMul(double *a, double *b, double *d, int a_m, int a_n,
 __global__ void cudaMatrixMul(double *a, double *b, double *d, int a_m, int a_n,
                               int b_m, int b_n, int i, int j);
 
+__global__ void cudaNaturalLog(double *input, double *output, unsigned n_elements);
+
 __global__ void matrixSum(double *const input_1, double *const input_2,
                           double *const output, const unsigned x_axis_dim,
                           const unsigned y_axis_dim,
