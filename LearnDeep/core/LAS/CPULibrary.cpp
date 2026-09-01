@@ -220,17 +220,18 @@ void cpu::__mdiv_broadcast(std::float64_t *const *const ptr,
 
   if (nDimA > 1) {
     grid_x = dimA[0];
-    for (unsigned i = 1; i < nDimA; i++) total_lines *= dimA[i];
+    for (unsigned i = 1; i < nDimA; i++)
+      total_lines *= dimA[i];
     grid_y = total_lines;
 
-    for (unsigned i = 1; i < nDimB; i++) total_lines_b *= dimB[i];
+    for (unsigned i = 1; i < nDimB; i++)
+      total_lines_b *= dimB[i];
   } else if (nDimA > 0) {
     grid_x = dimA[0];
     grid_y = 1;
   } else {
-    throw std::runtime_error(
-        "Addtion is not possible with tensors without "
-        "any elements and dimensions zero.\n");
+    throw std::runtime_error("Addtion is not possible with tensors without "
+                             "any elements and dimensions zero.\n");
   }
 
   // omp_set_num_threads(1);
@@ -323,6 +324,21 @@ void cpu::__mdiv_broadcast(std::float64_t *const *const ptr,
 }
     // clang-format on
   }
+}
+
+void cpu::__mlog(std::float64_t *const *const ptr, unsigned *const arr) {
+  std::float64_t *a, *c;
+  a = ptr[0];
+  c = ptr[1];
+
+  unsigned nDim = arr[0];
+  unsigned n_elements = 1;
+  for (unsigned i = 1; i <= nDim; i++)
+    n_elements *= arr[i];
+
+#pragma omp parallel for
+  for (unsigned i = 0; i < n_elements; i++)
+    c[i] = log(a[i]);
 }
 
 void cpu::__mscalermul(std::float64_t **ptr, unsigned *arr) {

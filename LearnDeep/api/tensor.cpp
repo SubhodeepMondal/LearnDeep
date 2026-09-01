@@ -233,13 +233,13 @@ tf::tensor tf::tensor::div(tensor &input_b, bool graph_flag) {
 
   if (this->dt_type == input_b.dt_type) {
     switch (dt_type) {
-      case tf_float64: {
-        output = tensor(this->dt_type,
-                        this->ptr->div(*(input_b.getPtr()), graph_flag));
-        break;
-      }
-      default:
-        LOG(ERROR) << "Invalid data type!";
+    case tf_float64: {
+      output = tensor(this->dt_type,
+                      this->ptr->div(*(input_b.getPtr()), graph_flag));
+      break;
+    }
+    default:
+      LOG(ERROR) << "Invalid data type!";
     }
   }
   return output;
@@ -253,6 +253,20 @@ tf::tensor tf::tensor::greater_than_zero(bool graph_flag) {
     output.dt_type = this->dt_type;
     output = tensor(this->dt_type, this->ptr->greaterThanZero(graph_flag));
     break;
+  default:
+    LOG(ERROR) << "Invalid data type!";
+  }
+  return output;
+}
+
+tf::tensor tf::tensor::log(bool graph_flag) {
+  tensor output;
+
+  switch (dt_type) {
+  case tf_float64: {
+    output = tensor(this->dt_type, this->ptr->log(graph_flag));
+    break;
+  }
   default:
     LOG(ERROR) << "Invalid data type!";
   }

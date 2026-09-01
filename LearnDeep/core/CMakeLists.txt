@@ -46,7 +46,8 @@ set(COMBINED_RESORCES
     utility/initializers.cpp
 )
 
-add_library(core SHARED ${COMBINED_RESORCES})
+add_library(core SHARED ${COMBINED_RESORCES}
+    ops/log.cpp)
 target_link_libraries(core PUBLIC OpenMP::OpenMP_CXX absl::log)
 target_include_directories(core PUBLIC ${CMAKE_SOURCE_DIR}/LearnDeep)
 target_include_directories(core SYSTEM PRIVATE ${CMAKE_BINARY_DIR}/_deps/abseil-src)

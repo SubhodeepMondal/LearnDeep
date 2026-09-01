@@ -175,7 +175,7 @@ public:
   void printoutput();
 };
 
-class Opsdiv : public Ops{
+class Opsdiv : public Ops {
   bool isPreInitializationDone;
   bool isBroadCast;
   std::vector<unsigned> broadCastAxies;
@@ -194,20 +194,20 @@ class Opsdiv : public Ops{
                        const unsigned *dimA, const unsigned nDimB,
                        const unsigned *dimB, const bool isBroadCast);
 
- public:
+public:
   Opsdiv() : isPreInitializationDone(false), isBroadCast(false) {}
   ~Opsdiv() {}
   void compute();
 
   void addGradGraph(Graph *gradient_graph);
 
-  Tensor<std::float64_t> *getIncomingGradientTensor(
-      Tensor<std::float64_t> *tensor) override {
+  Tensor<std::float64_t> *
+  getIncomingGradientTensor(Tensor<std::float64_t> *tensor) override {
     return incoming_gradient;
   }
 
-  Tensor<std::float64_t> *getOutgoingGradientTensor(
-      Tensor<std::float64_t> *gradient_input);
+  Tensor<std::float64_t> *
+  getOutgoingGradientTensor(Tensor<std::float64_t> *gradient_input);
 
   std::vector<Tensor<std::float64_t> *> getAllOutgoingGradientTensors() {
     std::vector<Tensor<std::float64_t> *> grads;
@@ -224,6 +224,36 @@ class Opsdiv : public Ops{
 
   void printinputs();
 
+  void printoutput();
+};
+
+class Opslog : public Ops {
+  std::vector<Tensor<std::float64_t> *> inputs;
+  Tensor<std::float64_t> *output;
+  Tensor<std::float64_t> *outgoing_gradient;
+
+  void kernel_dispatch(std::float64_t **, unsigned *);
+
+public:
+  Opslog() = default;
+  ~Opslog(){};
+  void compute();
+
+  void addGradGraph(Graph *gradient_graph) {}
+  Tensor<std::float64_t> *getOutgoingGradientTensor() {
+    return outgoing_gradient;
+  }
+
+  std::vector<Tensor<std::float64_t> *> getAllOutgoingGradientTensors() {
+    std::vector<Tensor<std::float64_t> *> grads;
+    return grads;
+  }
+  void initializeinputs(Tensor<std::float64_t> **inputs);
+  void initializeoutput(Tensor<std::float64_t> *output);
+  std::vector<Tensor<std::float64_t> *> getinputs() { return inputs; }
+  Tensor<std::float64_t> *getoutput() { return output; }
+  unsigned getnoofinputs() { return 1; }
+  void printinputs();
   void printoutput();
 };
 

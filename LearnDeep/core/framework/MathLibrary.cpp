@@ -150,7 +150,7 @@ Tensor<T> *Tensor<T>::add(Tensor<T> &input, bool graph_flag) {
   opsadd->initializeoutput(output);
 
   Graph *g = GraphManager::instance().getCurrentGraph();
-  if (g) {
+  if (g && graph_flag) {
     g->addNode(this);
     g->addNode(&input);
     g->addNode(opsadd);
@@ -186,7 +186,7 @@ Tensor<T> *Tensor<T>::div(Tensor<T> &input, bool graph_flag) {
     opsdiv->initializeoutput(output);
 
     Graph *g = GraphManager::instance().getCurrentGraph();
-    if (g) {
+    if (g && graph_flag) {
       g->addNode(this);
       g->addNode(&input);
       g->addNode(opsdiv);
@@ -226,7 +226,7 @@ template <typename T> Tensor<T> *Tensor<T>::greaterThanZero(bool graph_flag) {
   opsgreaterthanzero->initializeoutput(output);
 
   Graph *g = GraphManager::instance().getCurrentGraph();
-  if (g) {
+  if (g && graph_flag) {
     g->addNode(this);
     g->addNode(opsgreaterthanzero);
 
@@ -237,6 +237,34 @@ template <typename T> Tensor<T> *Tensor<T>::greaterThanZero(bool graph_flag) {
   } else {
     opsgreaterthanzero->compute();
     delete opsgreaterthanzero;
+  }
+  return output;
+}
+
+template <typename T> Tensor<T> *Tensor<T>::log(bool graph_flag) {
+  Tensor<T> *output;
+  DataType d_type = tf_float64;
+  Ops *opslog = new Opslog();
+
+  output =
+      new Tensor<T>(this->getNoOfDimensions(), this->getDimensions(), d_type);
+  Tensor<T> *inputs[1];
+  inputs[0] = this;
+  opslog->initializeinputs(inputs);
+  opslog->initializeoutput(output);
+
+  Graph *g = GraphManager::instance().getCurrentGraph();
+  if (g && graph_flag) {
+    g->addNode(this);
+    g->addNode(opslog);
+
+    g->addEdge(this, opslog);
+
+    g->addNode(output);
+    g->addEdge(opslog, output);
+  } else {
+    opslog->compute();
+    delete opslog;
   }
   return output;
 }
@@ -274,7 +302,7 @@ Tensor<T> *Tensor<T>::matmul(Tensor<T> &input, bool graph_flag) {
         opsmatmul->initializeoutput(output);
 
         Graph *g = GraphManager::instance().getCurrentGraph();
-        if (g) {
+        if (g && graph_flag) {
           g->addNode(this);
           g->addNode(&input);
           g->addNode(opsmatmul);
@@ -323,7 +351,7 @@ Tensor<T> *Tensor<T>::mul(Tensor<T> &input, bool graph_flag) {
     opsmul->initializeoutput(output);
 
     Graph *g = GraphManager::instance().getCurrentGraph();
-    if (g) {
+    if (g && graph_flag) {
       g->addNode(this);
       g->addNode(&input);
       g->addNode(opsmul);
@@ -424,7 +452,7 @@ Tensor<T> *Tensor<T>::reducesum(std::vector<unsigned> axis, bool keep_dims,
     opsreducesum->initializeoutput(output);
 
     Graph *g = GraphManager::instance().getCurrentGraph();
-    if (g) {
+    if (g && graph_flag) {
       g->addNode(this);
       g->addNode(opsreducesum);
 
@@ -470,7 +498,7 @@ Tensor<T> *Tensor<T>::scale(const std::float64_t scaleFactor, bool graph_flag) {
   return output;
 }
 
-template <typename T> Tensor<T> *Tensor<T>::sqrt(bool flag) {
+template <typename T> Tensor<T> *Tensor<T>::sqrt(bool graph_flag) {
   Tensor<T> *output;
   DataType d_type = tf_float64;
   Ops *opssqrt = new Opssqrt();
@@ -483,7 +511,7 @@ template <typename T> Tensor<T> *Tensor<T>::sqrt(bool flag) {
   opssqrt->initializeoutput(output);
 
   Graph *g = GraphManager::instance().getCurrentGraph();
-  if (g) {
+  if (g && graph_flag) {
     g->addNode(this);
     g->addNode(opssqrt);
 
@@ -553,7 +581,7 @@ Tensor<T> *Tensor<T>::pow(const unsigned exponent, bool graph_flag) {
     opspow->initializeoutput(output);
 
     Graph *g = GraphManager::instance().getCurrentGraph();
-    if (g) {
+    if (g && graph_flag) {
       g->addNode(this);
       g->addNode(opspow);
 
@@ -582,7 +610,7 @@ template <typename T> Tensor<T> *Tensor<T>::relu(bool graph_flag) {
   opsrelu->initializeoutput(output);
 
   Graph *g = GraphManager::instance().getCurrentGraph();
-  if (g) {
+  if (g && graph_flag) {
     g->addNode(this);
     g->addNode(opsrelu);
 
@@ -611,7 +639,7 @@ template <typename T> Tensor<T> *Tensor<T>::sigmoid(bool graph_flag) {
   opssigmoid->initializeoutput(output);
 
   Graph *g = GraphManager::instance().getCurrentGraph();
-  if (g) {
+  if (g && graph_flag) {
     g->addNode(this);
     g->addNode(opssigmoid);
 
@@ -642,7 +670,7 @@ Tensor<T> *Tensor<T>::softmax(const unsigned axis, bool graph_flag) {
   ops->initializeoutput(output);
 
   Graph *g = GraphManager::instance().getCurrentGraph();
-  if (g) {
+  if (g && graph_flag) {
     g->addNode(this);
     g->addNode(ops);
 
@@ -738,7 +766,7 @@ template <typename T> Tensor<T> *Tensor<T>::transpose(bool graph_flag) {
   opstranspose->initializeoutput(output);
 
   Graph *g = GraphManager::instance().getCurrentGraph();
-  if (g) {
+  if (g && graph_flag) {
     g->addNode(this);
     g->addNode(opstranspose);
 
