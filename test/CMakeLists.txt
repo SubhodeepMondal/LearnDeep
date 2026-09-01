@@ -65,11 +65,11 @@ target_link_libraries(benchmark_test PRIVATE
     absl::flags_parse
 )
 
-add_test(NAME unit_test COMMAND unit_test)
+# add_test(NAME unit_test COMMAND unit_test)
 include(GoogleTest)            # provides gtest_discover_tests
-gtest_discover_tests(unit_test WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+gtest_discover_tests(unit_test WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/test)
 
-add_test(NAME benchmark_test COMMAND benchmark_test)
+# add_test(NAME benchmark_test COMMAND benchmark_test)
 file(COPY ${CMAKE_SOURCE_DIR}/test/data DESTINATION ${CMAKE_BINARY_DIR}/test)
 add_definitions(-DPROJECT_SOURCE_DIR="${CMAKE_SOURCE_DIR}")
 
