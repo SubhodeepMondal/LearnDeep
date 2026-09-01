@@ -60,40 +60,31 @@ void Opslog::kernel_dispatch(std::float64_t **ptr, unsigned *arr) {
     d_arr[0] = reinterpret_cast<double *>(ptr[0]);
     d_arr[1] = reinterpret_cast<double *>(ptr[1]);
     d_arr[2] = reinterpret_cast<double *>(ptr[2]);
-    gpu::gpu_mat_scale_f64(d_arr, arr);
+    gpu::gpu_log_f64(d_arr, arr);
     break;
   }
   case KernelType::AVX2:
-    if (__builtin_cpu_supports("avx2")) {
-      avx2::avx2_scale_f64(ptr, arr);
-    } else {
-      throw std::runtime_error("AVX2 not supported on this CPU");
+    if (!this->warning_handled) {
+      std::cerr << "AVX2 kernel requested but, log has no AVX2 "
+                   "implementation, falling back to CPU kernel\n";
+      this->warning_handled = true;
     }
-    break;
   case KernelType::CPU_SCALAR:
-    cpu::__mscalermul(ptr, arr);
-    break;
   case KernelType::AUTO:
-  default: {
-    double *d_arr[3];
-    d_arr[0] = reinterpret_cast<double *>(ptr[0]);
-    d_arr[1] = reinterpret_cast<double *>(ptr[1]);
-    d_arr[2] = reinterpret_cast<double *>(ptr[2]);
-    gpu::gpu_mat_scale_f64(d_arr, arr);
+  default:
+    cpu::__mlog(ptr, arr);
     break;
-  }
   }
 #else
   switch (kernel) {
   case KernelType::GPU:
     throw std::runtime_error("GPU kernel requested but CUDA not enabled");
   case KernelType::AVX2:
-    if (__builtin_cpu_supports("avx2")) {
-      avx2::avx2_scale_f64(ptr, arr);
-    } else {
-      throw std::runtime_error("AVX2 not supported on this CPU");
+    if (!this->warning_handled) {
+      std::cerr << "AVX2 kernel requested but, log has no AVX2 "
+                   "implementation, falling back to CPU kernel\n";
+      this->warning_handled = true;
     }
-    break;
   case KernelType::CPU_SCALAR:
     cpu::__mlog(ptr, arr);
     break;

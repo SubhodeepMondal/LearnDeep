@@ -408,6 +408,44 @@ void gpu::gpu_mat_mul_f64(double **ptr, unsigned *arr) {
   }
 }
 
+
+void gpu::gpu_log_f64(double *const *const ptr, unsigned *const arr) {
+
+  double *a = ptr[0];
+  double *c = ptr[1];
+
+  LOG(INFO) << "GPU kernel for matrix scaling is running...";
+  dim3 block;
+  dim3 grid;
+
+  unsigned nDim = arr[0];
+  unsigned n_elements = 1;
+  for (unsigned i = 1; i <= nDim; i++)
+    n_elements *= arr[i];
+
+  block.x = (n_elements > 1024) ? 1024 : n_elements;
+  grid.x = (n_elements + block.x - 1) / block.x;
+
+  double *d_a, *d_c;
+  cudaMalloc((void **)&d_a, n_elements * sizeof(double));
+  cudaMalloc((void **)&d_c, n_elements * sizeof(double));
+
+  cudaMemcpy(d_a, a, n_elements * sizeof(double), cudaMemcpyHostToDevice);
+
+  cudaError_t err;
+  gpu_kernel::cudaNaturalLog<<<grid, block>>>(d_a, d_c, n_elements);
+
+  cudaMemcpy(c, d_c, n_elements * sizeof(double), cudaMemcpyDeviceToHost);
+
+  cudaFree(d_a);
+  cudaFree(d_c);
+
+  err = cudaGetLastError();
+  if (err != cudaSuccess) {
+    LOG(ERROR) << "CUDA error: " << cudaGetErrorString(err);
+  }
+}
+
 void gpu::gpu_mat_scale_f64(double **ptr, unsigned *arr) {
 
   double *a = ptr[0];

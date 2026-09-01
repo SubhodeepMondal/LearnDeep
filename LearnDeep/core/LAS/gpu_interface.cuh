@@ -112,6 +112,8 @@ void gpu_mat_hadamard_mul_broadcast_f64(
 // arr[1] is the number of columns of the matrices.
 void gpu_mat_mul_f64(double **ptr, unsigned *arr);
 
+void gpu_log_f64(double *const *const ptr, unsigned  *const arr);
+
 // Function to perform scalar multiplication of a matrix
 // This function multiplies each element of a matrix of type double by a scalar
 // value and stores the result in a second matrix. The matrix is represented as

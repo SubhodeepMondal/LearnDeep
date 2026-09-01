@@ -28,7 +28,9 @@
                 "CMAKE_BUILD_TYPE": "Release",
                 "ENABLE_CUDA": "OFF",
                 "USE_SYSTEM_GTEST": "OFF",
-                "USE_SYSTEM_BENCHMARK ": "OFF"
+                "USE_SYSTEM_BENCHMARK ": "OFF",
+                "CMAKE_CXX_FLAGS": "-g -O2",
+                "CMAKE_C_FLAGS": "-g -O2"
             }
         },
         {
@@ -97,6 +99,10 @@
         }
     ],
     "testPresets": [
+        {
+            "name": "default",
+            "configurePreset": "default"
+        },
         {
             "name": "release_cpu",
             "configurePreset": "release_cpu"
