@@ -8,6 +8,7 @@
 #include <callback/callback.hpp>
 #include <layers/dense.hpp>
 #include <layers/relu.hpp>
+#include <layers/softmax_layer.hpp>
 #include <losses/loss.hpp>
 #include <model/model.hpp>
 #include <numeric>
@@ -621,6 +622,49 @@ std::vector<tf::tensor> tf::layer::relu::get_output_tensors() {
 Layer *tf::layer::relu::getLayerPtr() const { return this->relu_layer; }
 // --- End of Relu ---
 
+// --- Softmax ---
+
+tf::layer::softmax::softmax(unsigned axis) {
+  this->softmax_layer = new Softmax(axis);
+  global_layer_graph.addNode(this->softmax_layer);
+}
+
+tf::layer::softmax::~softmax() {
+  global_layer_graph.removeNode(this->softmax_layer);
+  delete dynamic_cast<Relu *>(this->softmax_layer);
+}
+
+std::vector<tf::tensor>
+tf::layer::softmax::operator()(const std::vector<tf::tensor> &inputs) {
+
+  std::vector<tf::tensor> layer_outputs;
+
+  const std::vector<tf::tensor *> &outputs = (*this->softmax_layer)(inputs);
+
+  for (const tf::tensor *output : outputs)
+    layer_outputs.push_back(*output);
+
+  return layer_outputs;
+}
+
+std::vector<const tf::tensor *> tf::layer::softmax::get_input_tensors() {
+  return {nullptr};
+}
+
+std::vector<tf::tensor> tf::layer::softmax::get_output_tensors() {
+  std::vector<tf::tensor> output_tensors;
+
+  std::vector<tf::tensor *> temp_output_tensors =
+      softmax_layer->getOutputTensors();
+
+  for (tf::tensor *tensor : temp_output_tensors)
+    output_tensors.push_back(*tensor);
+
+  return output_tensors;
+}
+
+Layer *tf::layer::softmax::getLayerPtr() const { return this->softmax_layer; }
+// --- End of Relu ---
 // --- End of Layers ---
 
 // --- Model ---

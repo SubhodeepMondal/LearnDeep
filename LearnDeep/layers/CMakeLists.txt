@@ -10,7 +10,9 @@ set(LAYER_RESOURCES
 )
 
 add_library(layer SHARED ${LAYER_RESOURCES}
-    relu.cpp)
+    relu.cpp
+    softmax_layer.hpp
+    softmax_layer.cpp)
 target_include_directories(layer PUBLIC ${CMAKE_SOURCE_DIR})
 
 target_link_libraries(layer PUBLIC core)
