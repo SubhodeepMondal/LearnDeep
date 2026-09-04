@@ -27,7 +27,11 @@ enum class Layer_Parameter {
   relu_input,
   relu_output,
   relu_training_input,
-  relu_training_output
+  relu_training_output,
+  softmax_input,
+  softmax_output,
+  softmax_training_input,
+  softmax_training_output
 };
 
 enum class InitializationMethod {

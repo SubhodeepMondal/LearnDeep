@@ -89,20 +89,20 @@ std::vector<tf::tensor *>
 Softmax::getLayerParameter(Layer_Parameter layer_parameter, bool print_flag) {
   std::vector<tf::tensor *> layer_parameter_tensor;
   switch (layer_parameter) {
-  case Layer_Parameter::relu_input:
-    LOG(INFO) << "Layer: Relu, input:\n";
+  case Layer_Parameter::softmax_input:
+    LOG(INFO) << "Layer: Softmax, input:\n";
     break;
-  case Layer_Parameter::relu_output:
-    LOG(INFO) << "Layer: Relu, output:\n";
+  case Layer_Parameter::softmax_output:
+    LOG(INFO) << "Layer: Softmax, output:\n";
     layer_parameter_tensor = this->layer_outputs;
     break;
-  case Layer_Parameter::relu_training_input:
-    LOG(INFO) << "Layer: Relu, training input:\n";
+  case Layer_Parameter::softmax_training_input:
+    LOG(INFO) << "Layer: Selu, training input:\n";
     layer_parameter_tensor.push_back(
         const_cast<tf::tensor *>(this->training_inputs));
     break;
-  case Layer_Parameter::relu_training_output:
-    LOG(INFO) << "Layer: Relu, training output:\n";
+  case Layer_Parameter::softmax_training_output:
+    LOG(INFO) << "Layer: Selu, training output:\n";
     for (tf::tensor *training_output_tensor : this->training_outputs)
       layer_parameter_tensor.push_back(training_output_tensor);
     break;
