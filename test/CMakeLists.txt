@@ -25,6 +25,7 @@ add_executable(unit_test
     unit/dense_layer.unit.cpp
     unit/div.unit.cpp
     unit/natural_log.unit.cpp
+    unit/framework/softmax_layer.test.cpp
 )
 
 target_include_directories(unit_test PRIVATE ${CMAKE_SOURCE_DIR}/api)

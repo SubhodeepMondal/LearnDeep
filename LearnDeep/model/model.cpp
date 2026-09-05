@@ -136,7 +136,7 @@ Model::fit(const std::vector<tf::tensor> &training_inputs,
            const std::vector<tf::tensor> &valdiation_data, unsigned epochs,
            unsigned batch_size,
            std::vector<std::shared_ptr<Callback>> callback_ptr,
-           unsigned verbose) {
+           unsigned verbose, bool training) {
 
   tf::history_container hist;
   if (this->inputs.size() != training_inputs.size()) {
@@ -201,20 +201,21 @@ Model::fit(const std::vector<tf::tensor> &training_inputs,
           this->runCallbackOnBatchBegin(callback, i);
 
           ctx_compute_n_gradient.run(); // forward propagation
+          if (training) {
+            if (!this->auto_grad_created) {
+              ctx_compute_n_gradient.initialize_gradient();
 
-          if (!this->auto_grad_created) {
-            ctx_compute_n_gradient.initialize_gradient();
+              for (Layer *layer : this->layers)
+                layer->backward(optimizer.getPtr());
 
-            for (Layer *layer : this->layers)
-              layer->backward(optimizer.getPtr());
+              for (tf::loss *loss : this->losses)
+                loss->backward();
 
-            for (tf::loss *loss : this->losses)
-              loss->backward();
-
-            this->auto_grad_created = true;
+              this->auto_grad_created = true;
+            }
+            ctx_compute_n_gradient.compute_gradient(); // back propagation
+            optimizer.execute_optimizer();
           }
-          ctx_compute_n_gradient.compute_gradient(); // back propagation
-          optimizer.execute_optimizer();
 
           this->runCallbackOnBatchEnd(callback, i);
           hist.record_history_on_batch_end(i, losses);

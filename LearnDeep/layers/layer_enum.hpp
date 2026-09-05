@@ -1,7 +1,13 @@
 #ifndef _TENSORFLOW_LAYER_ENUM_
 #define _TENSORFLOW_LAYER_ENUM_
 
-enum LayerType { tf_dense, tf_conv2d, tf_batchnormalization, tf_dropout };
+enum LayerType {
+  tf_dense,
+  tf_conv2d,
+  tf_batchnormalization,
+  tf_dropout,
+  tf_softmax_layer
+};
 
 enum class Layer_Parameter {
   dense_input,
@@ -21,7 +27,11 @@ enum class Layer_Parameter {
   relu_input,
   relu_output,
   relu_training_input,
-  relu_training_output
+  relu_training_output,
+  softmax_input,
+  softmax_output,
+  softmax_training_input,
+  softmax_training_output
 };
 
 enum class InitializationMethod {

@@ -220,6 +220,24 @@ public:
   Layer *getLayerPtr() const;
 } relu;
 
+typedef struct softmax {
+private:
+  Layer *softmax_layer;
+
+public:
+  softmax(unsigned axis = 0);
+
+  ~softmax();
+
+  std::vector<tf::tensor> operator()(const std::vector<tf::tensor> &inputs);
+
+  std::vector<const tf::tensor *> get_input_tensors();
+
+  std::vector<tf::tensor> get_output_tensors();
+
+  Layer *getLayerPtr() const;
+} softmax;
+
 } // namespace layer
 
 namespace callback {
@@ -378,7 +396,7 @@ public:
       std::vector<std::shared_ptr<Callback>> callbacks = {nullptr},
       unsigned epochs = 10, unsigned batch_size = 1,
       const std::vector<tf::tensor> &validation_datas = {tf::tensor()},
-      unsigned verbose = 0);
+      unsigned verbose = 0, bool training = true);
 
   void shuffle(bool shuffle);
 
