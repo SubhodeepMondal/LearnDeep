@@ -396,7 +396,7 @@ public:
       std::vector<std::shared_ptr<Callback>> callbacks = {nullptr},
       unsigned epochs = 10, unsigned batch_size = 1,
       const std::vector<tf::tensor> &validation_datas = {tf::tensor()},
-      unsigned verbose = 0);
+      unsigned verbose = 0, bool training = true);
 
   void shuffle(bool shuffle);
 

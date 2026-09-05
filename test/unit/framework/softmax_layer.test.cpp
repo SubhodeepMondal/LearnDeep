@@ -50,7 +50,8 @@ TEST_F(FrameworkTest, SoftmaxLayer_Test_1) {
   tf::model mymodel({x}, softmax_output);
   mymodel.shuffle(false);
   mymodel.compile(OptimizerType::SGD, LossType::squared_error);
-  mymodel.fit({input}, {output}, {call_back.callback()}, epochs, batch_size);
+  mymodel.fit({input}, {output}, {call_back.callback()}, epochs, batch_size, {},
+              0, false);
 
   std::vector<std::vector<std::vector<tf::tensor>>> predicted_output =
       call_back.get_parameter_on_batch_end(

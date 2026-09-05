@@ -138,7 +138,7 @@ public:
       unsigned batch_size = 1,
       std::vector<std::shared_ptr<Callback>> callback =
           std::vector<std::shared_ptr<Callback>>(),
-      unsigned verbose = 0);
+      unsigned verbose = 0, bool training = true);
 
   /** @file model.hpp basic model implementation */
   /** @brief Feeds the model with input and does a inference on it to predict

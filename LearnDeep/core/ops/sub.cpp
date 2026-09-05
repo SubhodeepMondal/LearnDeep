@@ -240,16 +240,9 @@ void Opssub::kernel_dispatch(std::float64_t **ptr, const unsigned nDimA,
     }
     break;
   case KernelType::CPU_SCALAR:
-    cpu::__msub_broadcast(ptr, nDimA, dimA, nDimB, dimB, isBroadCast);
-    break;
   case KernelType::AUTO:
   default: {
-    double *d_arr[3];
-    d_arr[0] = reinterpret_cast<double *>(ptr[0]);
-    d_arr[1] = reinterpret_cast<double *>(ptr[1]);
-    d_arr[2] = reinterpret_cast<double *>(ptr[2]);
-    gpu::gpu_mat_sub_broadcast_f64(d_arr, nDimA, dimA, nDimB, dimB,
-                                   isBroadCast);
+    cpu::__msub_broadcast(ptr, nDimA, dimA, nDimB, dimB, isBroadCast);
     break;
   }
   }

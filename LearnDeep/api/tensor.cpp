@@ -682,10 +682,10 @@ tf::model::fit(const std::vector<tf::tensor> &inputs,
                std::vector<std::shared_ptr<Callback>> callback_ptr,
                unsigned epochs, unsigned batch_size,
                const std::vector<tf::tensor> &validation_datas,
-               unsigned verbose) {
+               unsigned verbose, bool training) {
 
   return this->model_ptr->fit(inputs, outputs, validation_datas, epochs,
-                              batch_size, callback_ptr, verbose);
+                              batch_size, callback_ptr, verbose, training);
 }
 
 void tf::model::shuffle(bool shuffle) { model_ptr->shuffle(shuffle); }
