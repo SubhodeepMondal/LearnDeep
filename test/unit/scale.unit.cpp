@@ -56,3 +56,42 @@ TEST_F(MathTest, Graph_MatrixScale_2D) {
     }
   }
 }
+
+TEST_F(MathTest, Scale_AutoGrad_Test_1) {
+  tf::tensor A, B, C, D, E;
+  A.tf_create(tf_float64, 12, 8);
+  C.tf_create(tf_float64, 12, 8);
+
+  A.tensor_of(load_bin("test/data/ScaleMulPow_Test_1_A.bin", 12 * 8).data());
+  C.tensor_of(load_bin("test/data/ScaleMulPow_Test_1_C.bin", 12 * 8).data());
+
+  {
+    tf::graph_context ctx;
+    B = A.scale(2.78);
+    D = B.mul(C);
+    E = B.pow(3);
+
+    ctx.run();
+    ctx.initialize_gradient();
+    ctx.compute_gradient();
+
+    tf::tensor A_grad = ctx.get_gradient(A);
+    tf::tensor B_grad = ctx.get_gradient(B);
+
+    auto a_grad = load_bin("test/data/ScaleMulPow_Test_1_grad_A.bin", 12 * 8);
+
+    auto b_grad = load_bin("test/data/ScaleMulPow_Test_1_grad_B.bin", 12 * 8);
+
+    for (int j = 0; j < 8; j++) {
+      for (int i = 0; i < 12; i++) {
+        EXPECT_NEAR(A_grad.getData()[i + j * 12], a_grad[i + j * 12], 1e-6);
+      }
+    }
+
+    for (int j = 0; j < 8; j++) {
+      for (int i = 0; i < 12; i++) {
+        EXPECT_NEAR(B_grad.getData()[i + j * 12], b_grad[i + j * 12], 1e-6);
+      }
+    }
+  }
+}
