@@ -972,6 +972,10 @@ tf::loss::loss(const LossType lossType,
     this->loss_ptr = new SquaredError(input_preds);
     break;
   }
+  case (LossType::categorical_cross_entropy): {
+    this->loss_ptr = new CategoricalCrossEntropy(input_preds);
+    break;
+  }
   }
 }
 
