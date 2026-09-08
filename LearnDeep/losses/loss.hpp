@@ -66,4 +66,37 @@ public:
   getLossParameter(Loss_Parameter loss_parameter) override;
 };
 
+class CategoricalCrossEntropy : public Loss {
+
+  std::vector<tf::tensor *> training_inputs;
+  std::vector<tf::tensor *> target_outputs;
+  tf::tensor grad_training_inputs;
+  tf::tensor *log_value;
+  tf::tensor *log_difference;
+  tf::tensor *loss_tensor_batch;
+  tf::tensor *loss_tensor;
+  tf::tensor *loss_gradient;
+
+public:
+  CategoricalCrossEntropy() = default;
+
+  CategoricalCrossEntropy(std::vector<Tensor<std::float64_t> *> input_preds);
+
+  ~CategoricalCrossEntropy();
+
+  void forward(std::vector<tf::tensor *> inputs,
+               const unsigned batch_size) override;
+
+  void backward() override;
+
+  void setTargetOutput(const std::vector<tf::tensor> output_predicts) override;
+
+  void
+  setPredictedOutput(const std::vector<tf::tensor *> &output_targets) override;
+
+  std::float64_t const getScalerLoss() override;
+
+  std::vector<tf::tensor *>
+  getLossParameter(Loss_Parameter loss_parameter) override;
+};
 #endif // _TENSORFLOW_CORE_LOSS_

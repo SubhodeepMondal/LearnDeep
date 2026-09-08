@@ -56,8 +56,7 @@ class Dense : public Layer {
   tf::tensor training_matmul_result;
   tf::tensor training_output;
   std::vector<tf::tensor *> training_outputs;
-  tf::tensor grad_weight_batch;
-  tf::tensor grad_bias_batch;
+  tf::tensor grad_input;
   tf::tensor grad_weight;
   tf::tensor grad_bias;
   tf::tensor updated_weight;
