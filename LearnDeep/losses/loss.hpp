@@ -73,6 +73,7 @@ class CategoricalCrossEntropy : public Loss {
   tf::tensor grad_training_inputs;
   tf::tensor *log_value;
   tf::tensor *log_difference;
+  tf::tensor *loss_tensor_batch;
   tf::tensor *loss_tensor;
   tf::tensor *loss_gradient;
 

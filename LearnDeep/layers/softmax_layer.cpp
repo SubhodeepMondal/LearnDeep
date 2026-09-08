@@ -65,7 +65,17 @@ Softmax::forward(std::vector<const tf::tensor *> &input, unsigned batch_size) {
   return this->training_outputs;
 }
 
-void Softmax::backward(Optimizer *optimiser) {}
+void Softmax::backward(Optimizer *optimiser) {
+
+  if (!this->isGradRecorded) {
+
+    Graph *g = GraphManager::instance().getCurrentGraph();
+    this->grad_input =
+        tf::tensor(this->training_inputs->dt_type,
+                   g->getGradientTensor(this->training_inputs->getPtr()));
+    this->isGradRecorded = true;
+  }
+}
 
 LayerType Softmax::getLayerType() { return this->layer_type; }
 
@@ -105,6 +115,10 @@ Softmax::getLayerParameter(Layer_Parameter layer_parameter, bool print_flag) {
     LOG(INFO) << "Layer: Selu, training output:\n";
     for (tf::tensor *training_output_tensor : this->training_outputs)
       layer_parameter_tensor.push_back(training_output_tensor);
+    break;
+  case Layer_Parameter::softmax_grad_input:
+    LOG(INFO) << "Layer: Softmax, grad input:\n";
+    layer_parameter_tensor.push_back(&this->grad_input);
     break;
   default:
     LOG(ERROR) << "Sever! the selected layer parameter is not available for "

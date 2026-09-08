@@ -44,13 +44,21 @@ void CategoricalCrossEntropy::forward(std::vector<tf::tensor *> inputs,
     this->log_difference = new tf::tensor();
     this->log_difference->tf_create(dims, this->training_inputs[0]->dt_type);
 
+    this->loss_tensor_batch = new tf::tensor();
+    this->loss_tensor_batch->tf_create(dims, this->training_inputs[0]->dt_type);
+
     this->loss_tensor = new tf::tensor();
     this->loss_tensor->tf_create(dims, this->training_inputs[0]->dt_type);
 
     *(this->log_value) = this->training_inputs[0]->log(); // log(y^)
     *(this->log_difference) =
-        this->log_value->mul(*(this->target_outputs[0]));      // y_i log(y^)
-    *(this->loss_tensor) = this->log_difference->scale(-1.0f); // -1 y_i log(y^)
+        this->log_value->mul(*(this->target_outputs[0])); // y_i log(y^)
+    *(this->loss_tensor_batch) =
+        this->log_difference->scale(-1.0f); // -1 y_i log(y^)
+    *(this->loss_tensor) =
+        (this->loss_tensor_batch)
+            ->mean(this->training_inputs[0]->getNoOfDimensions() -
+                   1); //  -1 y_i log(y^) / batch_size;
   }
 }
 
@@ -114,7 +122,7 @@ CategoricalCrossEntropy::getLossParameter(Loss_Parameter loss_parameter) {
     temp_tensor.push_back(&this->grad_training_inputs);
     break;
   }
-  case Loss_Parameter::mean_absolute_categorical_cross_entropy_error: {
+  case Loss_Parameter::categorical_cross_entropy_target_output: {
     // tf::tensor temp_reference = tf::tensor(tf_float64, target_outputs[0]);
     temp_tensor.push_back(target_outputs[0]);
     break;
