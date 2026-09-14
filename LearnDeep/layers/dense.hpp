@@ -59,6 +59,7 @@ class Dense : public Layer {
   tf::tensor grad_input;
   tf::tensor grad_weight;
   tf::tensor grad_bias;
+  tf::tensor incoming_grad;
   tf::tensor updated_weight;
   tf::tensor updated_bias;
 

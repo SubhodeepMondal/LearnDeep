@@ -57,8 +57,9 @@ void CategoricalCrossEntropy::forward(std::vector<tf::tensor *> inputs,
         this->log_difference->scale(-1.0f); // -1 y_i log(y^)
     *(this->loss_tensor) =
         (this->loss_tensor_batch)
-            ->mean(this->training_inputs[0]->getNoOfDimensions() -
-                   1); //  -1 y_i log(y^) / batch_size;
+            ->scale(1.0 / this->training_inputs[0]->getDimensions()
+                              [this->training_inputs[0]->getNoOfDimensions() -
+                               1]); //  -1 y_i log(y^) / batch_size;
   }
 }
 
@@ -92,21 +93,10 @@ void CategoricalCrossEntropy::setTargetOutput(
 }
 
 std::float64_t const CategoricalCrossEntropy::getScalerLoss() {
-  tf::tensor temp_tensor;
-  std::vector<unsigned> dims;
+  this->loss_value = 0.0;
+  for (unsigned i = 0; i < this->loss_tensor->getNoOfElem(); i++)
+    this->loss_value += this->loss_tensor->getData()[i];
 
-  for (unsigned i = 0; i < this->loss_tensor->getNoOfDimensions(); i++)
-    dims.push_back(this->loss_tensor->getDimensions()[i]);
-  temp_tensor.tf_create(dims, this->loss_tensor->dt_type);
-  temp_tensor.tensor_of(this->loss_tensor->getData());
-
-  if (temp_tensor.getNoOfDimensions()) {
-    for (size_t i = 0; i < temp_tensor.getNoOfDimensions(); i++) {
-      tf::tensor reduced_tensor = temp_tensor.mean(0, false);
-      temp_tensor = std::move(reduced_tensor);
-    }
-    this->loss_value = temp_tensor.getData()[0];
-  }
   return loss_value;
 }
 

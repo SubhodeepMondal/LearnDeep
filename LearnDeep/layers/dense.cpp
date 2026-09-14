@@ -98,6 +98,9 @@ void Dense::backward(Optimizer *optimizer) {
     this->grad_input =
         tf::tensor(this->training_inputs->dt_type,
                    g->getGradientTensor(this->training_inputs->getPtr()));
+    this->incoming_grad =
+        tf::tensor(this->training_inputs->dt_type,
+                   g->getGradientTensor(this->training_output.getPtr()));
     optimizer->createParameterUpdateGraph(
         this->training_weight, this->updated_weight, this->grad_weight);
     optimizer->createParameterUpdateGraph(this->training_bias,
@@ -204,6 +207,10 @@ Dense::getLayerParameter(Layer_Parameter layer_parameter, bool print_flag) {
   case Layer_Parameter::dense_grad_bias:
     LOG(INFO) << "Layer: Dense, grad bias:\n";
     layer_parameter_tensor.push_back(&this->grad_bias);
+    break;
+  case Layer_Parameter::dense_incoming_grad:
+    LOG(INFO) << "Layer: Dense, grad bias:\n";
+    layer_parameter_tensor.push_back(&this->incoming_grad);
     break;
   case Layer_Parameter::dense_updated_weight:
     LOG(INFO) << "Layer: Dense, grad weight:\n";

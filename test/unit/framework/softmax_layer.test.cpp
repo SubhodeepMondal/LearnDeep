@@ -57,17 +57,16 @@ TEST_F(FrameworkTest, SoftmaxLayer_Test_1) {
       call_back.get_parameter_on_batch_end(
           softmax.getLayerPtr(), Layer_Parameter::softmax_training_output);
 
-  for (unsigned j = 0; j < batch_size; j++) {
-    for (unsigned i = 0; j < dense_feature; j++) {
-      unsigned index = i * j * dense_feature;
-      EXPECT_NEAR(predicted_output[i][j][0].getData()[index],
-                  output.getData()[index], 1e-6)
-          << "at :" << index;
-    }
-  }
+  ASSERT_EQ(predicted_output.size(), 1u);
+  ASSERT_EQ(predicted_output[0].size(), 1u);
+  tf::tensor &predicted = predicted_output[0][0][0];
+  ASSERT_EQ(predicted.getNoOfElem(), output.getNoOfElem());
+  for (unsigned index = 0; index < output.getNoOfElem(); index++)
+    EXPECT_NEAR(predicted.getData()[index], output.getData()[index], 1e-10)
+        << "at :" << index;
 }
 
-TEST_F(FrameworkTest, CategoricalClassification_Test_1) {
+TEST_F(FrameworkTest, SoftmaxLayer_CategoricalClassification_Test_1) {
   tf::tensor x;
   tf::tensor weights_1, weights_2, weights_3;
   tf::tensor bias_1, bias_2, bias_3;
@@ -79,7 +78,7 @@ TEST_F(FrameworkTest, CategoricalClassification_Test_1) {
   unsigned dense_unit_1 = 16;
   unsigned dense_unit_2 = 8;
   unsigned dense_unit_3 = 2;
-  unsigned epoches = 10000;
+  unsigned epoches = 1000;
 
   x.tf_create(tf_float64, input_feature, batch_size);
   input.tf_create(tf_float64, input_feature, input_sample_size);
@@ -156,229 +155,106 @@ TEST_F(FrameworkTest, CategoricalClassification_Test_1) {
   tf::loss cce = mymodel.get_model_loss(softmax_out[0]);
 
   tf::callback::trace call_back;
-  /*
-    call_back.record_parameter_on_batch_end(
-        dense_1.getLayerPtr(), Layer_Parameter::dense_training_input);
-    call_back.record_parameter_on_batch_end(
-        dense_1.getLayerPtr(), Layer_Parameter::dense_training_weight);
-    call_back.record_parameter_on_batch_end(dense_1.getLayerPtr(),
-                                            Layer_Parameter::dense_training_bias);
-    call_back.record_parameter_on_batch_end(dense_1.getLayerPtr(),
-                                            Layer_Parameter::dense_grad_input);
 
-    call_back.record_parameter_on_batch_end(dense_1.getLayerPtr(),
-                                            Layer_Parameter::dense_grad_weight);
-    call_back.record_parameter_on_batch_end(dense_1.getLayerPtr(),
-                                            Layer_Parameter::dense_grad_bias);
+  call_back.record_parameter_on_batch_end(
+      dense_1.getLayerPtr(), Layer_Parameter::dense_training_input);
+  call_back.record_parameter_on_batch_end(
+      dense_1.getLayerPtr(), Layer_Parameter::dense_training_output);
+  call_back.record_parameter_on_batch_end(
+      dense_1.getLayerPtr(), Layer_Parameter::dense_training_weight);
+  call_back.record_parameter_on_batch_end(dense_1.getLayerPtr(),
+                                          Layer_Parameter::dense_training_bias);
+  call_back.record_parameter_on_batch_end(dense_1.getLayerPtr(),
+                                          Layer_Parameter::dense_grad_input);
 
-    call_back.record_parameter_on_batch_end(
-        dense_1.getLayerPtr(), Layer_Parameter::dense_updated_weight);
-    call_back.record_parameter_on_batch_end(dense_1.getLayerPtr(),
-                                            Layer_Parameter::dense_updated_bias);
+  call_back.record_parameter_on_batch_end(dense_1.getLayerPtr(),
+                                          Layer_Parameter::dense_grad_weight);
+  call_back.record_parameter_on_batch_end(dense_1.getLayerPtr(),
+                                          Layer_Parameter::dense_grad_bias);
 
-    call_back.record_parameter_on_batch_end(relu_1.getLayerPtr(),
-                                            Layer_Parameter::relu_grad_input);
+  call_back.record_parameter_on_batch_end(
+      dense_1.getLayerPtr(), Layer_Parameter::dense_updated_weight);
+  call_back.record_parameter_on_batch_end(dense_1.getLayerPtr(),
+                                          Layer_Parameter::dense_updated_bias);
 
-    call_back.record_parameter_on_batch_end(
-        dense_2.getLayerPtr(), Layer_Parameter::dense_training_input);
-    call_back.record_parameter_on_batch_end(
-        dense_2.getLayerPtr(), Layer_Parameter::dense_training_weight);
-    call_back.record_parameter_on_batch_end(dense_2.getLayerPtr(),
-                                            Layer_Parameter::dense_training_bias);
-    call_back.record_parameter_on_batch_end(dense_2.getLayerPtr(),
-                                            Layer_Parameter::dense_grad_input);
+  call_back.record_parameter_on_batch_end(relu_1.getLayerPtr(),
+                                          Layer_Parameter::relu_grad_input);
 
-    call_back.record_parameter_on_batch_end(dense_2.getLayerPtr(),
-                                            Layer_Parameter::dense_grad_weight);
-    call_back.record_parameter_on_batch_end(dense_2.getLayerPtr(),
-                                            Layer_Parameter::dense_grad_bias);
-    call_back.record_parameter_on_batch_end(
-        dense_2.getLayerPtr(), Layer_Parameter::dense_updated_weight);
-    call_back.record_parameter_on_batch_end(dense_2.getLayerPtr(),
-                                            Layer_Parameter::dense_updated_bias);
+  call_back.record_parameter_on_batch_end(
+      dense_2.getLayerPtr(), Layer_Parameter::dense_training_input);
+  call_back.record_parameter_on_batch_end(
+      dense_2.getLayerPtr(), Layer_Parameter::dense_training_output);
+  call_back.record_parameter_on_batch_end(
+      dense_2.getLayerPtr(), Layer_Parameter::dense_training_weight);
+  call_back.record_parameter_on_batch_end(dense_2.getLayerPtr(),
+                                          Layer_Parameter::dense_training_bias);
+  call_back.record_parameter_on_batch_end(dense_2.getLayerPtr(),
+                                          Layer_Parameter::dense_grad_input);
 
-    call_back.record_parameter_on_batch_end(relu_2.getLayerPtr(),
-                                            Layer_Parameter::relu_grad_input);
+  call_back.record_parameter_on_batch_end(dense_2.getLayerPtr(),
+                                          Layer_Parameter::dense_grad_weight);
+  call_back.record_parameter_on_batch_end(dense_2.getLayerPtr(),
+                                          Layer_Parameter::dense_grad_bias);
+  call_back.record_parameter_on_batch_end(
+      dense_2.getLayerPtr(), Layer_Parameter::dense_updated_weight);
+  call_back.record_parameter_on_batch_end(dense_2.getLayerPtr(),
+                                          Layer_Parameter::dense_updated_bias);
 
-    call_back.record_parameter_on_batch_end(
-        dense_3.getLayerPtr(), Layer_Parameter::dense_training_input);
-    call_back.record_parameter_on_batch_end(
-        dense_3.getLayerPtr(), Layer_Parameter::dense_training_weight);
-    call_back.record_parameter_on_batch_end(dense_3.getLayerPtr(),
-                                            Layer_Parameter::dense_training_bias);
-    call_back.record_parameter_on_batch_end(dense_3.getLayerPtr(),
-                                            Layer_Parameter::dense_grad_input);
+  call_back.record_parameter_on_batch_end(relu_2.getLayerPtr(),
+                                          Layer_Parameter::relu_grad_input);
 
-    call_back.record_parameter_on_batch_end(dense_3.getLayerPtr(),
-                                            Layer_Parameter::dense_grad_weight);
-    call_back.record_parameter_on_batch_end(dense_3.getLayerPtr(),
-                                            Layer_Parameter::dense_grad_bias);
+  call_back.record_parameter_on_batch_end(
+      dense_3.getLayerPtr(), Layer_Parameter::dense_training_input);
+  call_back.record_parameter_on_batch_end(
+      dense_3.getLayerPtr(), Layer_Parameter::dense_training_weight);
+  call_back.record_parameter_on_batch_end(dense_3.getLayerPtr(),
+                                          Layer_Parameter::dense_training_bias);
+  call_back.record_parameter_on_batch_end(
+      dense_3.getLayerPtr(), Layer_Parameter::dense_training_output);
+  call_back.record_parameter_on_batch_end(dense_3.getLayerPtr(),
+                                          Layer_Parameter::dense_grad_input);
 
-    call_back.record_parameter_on_batch_end(
-        dense_3.getLayerPtr(), Layer_Parameter::dense_updated_weight);
-    call_back.record_parameter_on_batch_end(dense_3.getLayerPtr(),
-                                            Layer_Parameter::dense_updated_bias);
+  call_back.record_parameter_on_batch_end(dense_3.getLayerPtr(),
+                                          Layer_Parameter::dense_grad_weight);
+  call_back.record_parameter_on_batch_end(dense_3.getLayerPtr(),
+                                          Layer_Parameter::dense_grad_bias);
 
-    call_back.record_parameter_on_batch_end(
-        softmax.getLayerPtr(), Layer_Parameter::softmax_training_output);
+  call_back.record_parameter_on_batch_end(
+      dense_3.getLayerPtr(), Layer_Parameter::dense_updated_weight);
+  call_back.record_parameter_on_batch_end(dense_3.getLayerPtr(),
+                                          Layer_Parameter::dense_updated_bias);
+  call_back.record_parameter_on_batch_end(dense_3.getLayerPtr(),
+                                          Layer_Parameter::dense_incoming_grad);
 
-    call_back.record_tensor_loss_on_batch_end(
-        cce, Loss_Parameter::categorical_cross_entropy_error);
+  call_back.record_parameter_on_batch_end(
+      softmax.getLayerPtr(), Layer_Parameter::softmax_training_output);
+  call_back.record_parameter_on_batch_end(softmax.getLayerPtr(),
+                                          Layer_Parameter::softmax_grad_input);
 
-    call_back.record_tensor_loss_on_batch_end(
-        cce, Loss_Parameter::categorical_cross_entropy_target_output);
-  */
+  call_back.record_tensor_loss_on_batch_end(
+      cce, Loss_Parameter::categorical_cross_entropy_error);
+
+  call_back.record_tensor_loss_on_batch_end(
+      cce, Loss_Parameter::categorical_cross_entropy_target_output);
+
   auto history = mymodel.fit({input}, {output}, {call_back.callback()}, epoches,
                              batch_size);
-  /*
-  std::vector<std::vector<std::vector<tf::tensor>>> training_losses =
-      call_back.get_tensor_loss_on_batch_end(
-          cce, Loss_Parameter::categorical_cross_entropy_error);
 
-  std::vector<std::vector<std::vector<tf::tensor>>> training_target =
-      call_back.get_tensor_loss_on_batch_end(
-          cce, Loss_Parameter::categorical_cross_entropy_target_output);
+  ASSERT_EQ(history["loss"].size(), epoches);
+  for (const std::vector<std::float64_t> &losses : history["loss"])
+    ASSERT_EQ(losses.size(), input_sample_size / batch_size);
 
-  std::vector<std::vector<std::vector<tf::tensor>>> dense_1_training_input =
-      call_back.get_parameter_on_batch_end(
-          dense_1.getLayerPtr(), Layer_Parameter::dense_training_input);
-  std::vector<std::vector<std::vector<tf::tensor>>> dense_1_training_weight =
-      call_back.get_parameter_on_batch_end(
-          dense_1.getLayerPtr(), Layer_Parameter::dense_training_weight);
-  std::vector<std::vector<std::vector<tf::tensor>>> dense_1_training_bias =
-      call_back.get_parameter_on_batch_end(
-          dense_1.getLayerPtr(), Layer_Parameter::dense_training_bias);
-  std::vector<std::vector<std::vector<tf::tensor>>> dense_1_grad_weight =
-      call_back.get_parameter_on_batch_end(dense_1.getLayerPtr(),
-                                           Layer_Parameter::dense_grad_weight);
-  std::vector<std::vector<std::vector<tf::tensor>>> dense_1_grad_bias =
-      call_back.get_parameter_on_batch_end(dense_1.getLayerPtr(),
-                                           Layer_Parameter::dense_grad_bias);
-  std::vector<std::vector<std::vector<tf::tensor>>> dense_1_updated_weight =
-      call_back.get_parameter_on_batch_end(
-          dense_1.getLayerPtr(), Layer_Parameter::dense_updated_weight);
-  std::vector<std::vector<std::vector<tf::tensor>>> dense_1_updated_bias =
-      call_back.get_parameter_on_batch_end(dense_1.getLayerPtr(),
-                                           Layer_Parameter::dense_updated_bias);
+  const std::vector<std::float64_t> expected_losses =
+      load_bin("test/data/Classification_Test_1_batch_loss_history.bin",
+               epoches * (input_sample_size / batch_size));
+  ASSERT_EQ(expected_losses.size(), epoches * (input_sample_size / batch_size));
 
-  std::vector<std::vector<std::vector<tf::tensor>>> relu_1_training_output =
-      call_back.get_parameter_on_batch_end(relu_1.getLayerPtr(),
-                                           Layer_Parameter::relu_grad_input);
-
-  std::vector<std::vector<std::vector<tf::tensor>>> dense_2_training_input =
-      call_back.get_parameter_on_batch_end(
-          dense_2.getLayerPtr(), Layer_Parameter::dense_training_input);
-  std::vector<std::vector<std::vector<tf::tensor>>> dense_2_training_weight =
-      call_back.get_parameter_on_batch_end(
-          dense_2.getLayerPtr(), Layer_Parameter::dense_training_weight);
-  std::vector<std::vector<std::vector<tf::tensor>>> dense_2_training_bias =
-      call_back.get_parameter_on_batch_end(
-          dense_2.getLayerPtr(), Layer_Parameter::dense_training_bias);
-  std::vector<std::vector<std::vector<tf::tensor>>> dense_2_grad_weight =
-      call_back.get_parameter_on_batch_end(dense_2.getLayerPtr(),
-                                           Layer_Parameter::dense_grad_weight);
-  std::vector<std::vector<std::vector<tf::tensor>>> dense_2_grad_bias =
-      call_back.get_parameter_on_batch_end(dense_2.getLayerPtr(),
-                                           Layer_Parameter::dense_grad_bias);
-  std::vector<std::vector<std::vector<tf::tensor>>> dense_2_updated_weight =
-      call_back.get_parameter_on_batch_end(
-          dense_2.getLayerPtr(), Layer_Parameter::dense_updated_weight);
-  std::vector<std::vector<std::vector<tf::tensor>>> dense_2_updated_bias =
-      call_back.get_parameter_on_batch_end(dense_2.getLayerPtr(),
-                                           Layer_Parameter::dense_updated_bias);
-
-  std::vector<std::vector<std::vector<tf::tensor>>> relu_2_training_output =
-      call_back.get_parameter_on_batch_end(relu_2.getLayerPtr(),
-                                           Layer_Parameter::relu_grad_input);
-
-  std::vector<std::vector<std::vector<tf::tensor>>> dense_3_training_input =
-      call_back.get_parameter_on_batch_end(
-          dense_3.getLayerPtr(), Layer_Parameter::dense_training_input);
-  std::vector<std::vector<std::vector<tf::tensor>>> dense_3_training_weight =
-      call_back.get_parameter_on_batch_end(
-          dense_3.getLayerPtr(), Layer_Parameter::dense_training_weight);
-  std::vector<std::vector<std::vector<tf::tensor>>> dense_3_training_bias =
-      call_back.get_parameter_on_batch_end(
-          dense_3.getLayerPtr(), Layer_Parameter::dense_training_bias);
-  std::vector<std::vector<std::vector<tf::tensor>>> dense_3_grad_weight =
-      call_back.get_parameter_on_batch_end(dense_3.getLayerPtr(),
-                                           Layer_Parameter::dense_grad_weight);
-  std::vector<std::vector<std::vector<tf::tensor>>> dense_3_grad_bias =
-      call_back.get_parameter_on_batch_end(dense_3.getLayerPtr(),
-                                           Layer_Parameter::dense_grad_bias);
-  std::vector<std::vector<std::vector<tf::tensor>>> dense_3_updated_weight =
-      call_back.get_parameter_on_batch_end(
-          dense_3.getLayerPtr(), Layer_Parameter::dense_updated_weight);
-  std::vector<std::vector<std::vector<tf::tensor>>> dense_3_updated_bias =
-      call_back.get_parameter_on_batch_end(dense_3.getLayerPtr(),
-                                           Layer_Parameter::dense_updated_bias);
-
-  std::vector<std::vector<std::vector<tf::tensor>>> softmax_training_output =
-      call_back.get_parameter_on_batch_end(
-          softmax.getLayerPtr(), Layer_Parameter::softmax_training_output);
-
-    for (unsigned i = 0; i < epoches; i++) {
-      for (unsigned j = 0; j < input_sample_size / batch_size; j++) {
-        std::cout << "Epoch num:" << i << " batch num : " << j << std::endl;
-        std::cout << "\nDense 1 input\n";
-        dense_1_training_input[i][j][0].print_data();
-        std::cout << "\nDense 1 weights\n";
-        dense_1_training_weight[i][j][0].print_data();
-        std::cout << "\nDense 1 bias\n";
-        dense_1_training_bias[i][j][0].print_data();
-        std::cout << "\nDense 1 weight grad\n";
-        dense_1_grad_weight[i][j][0].print_data();
-        std::cout << "\nDense 1 bias grad t\n";
-        dense_1_grad_bias[i][j][0].print_data();
-        std::cout << "\nDense 1 updated weight\n";
-        dense_1_updated_weight[i][j][0].print_data();
-        std::cout << "\nDense 1 updated bias\n";
-        dense_1_updated_bias[i][j][0].print_data();
-
-        std::cout << "\nrelu 1 input gradient\n";
-        relu_1_training_output[i][j][0].print_data();
-
-        std::cout << "\ndense 2 input\n";
-        dense_2_training_input[i][j][0].print_data();
-        std::cout << "\ndense 2 weights\n";
-        dense_2_training_weight[i][j][0].print_data();
-        std::cout << "\ndense 2 bias\n";
-        dense_2_training_bias[i][j][0].print_data();
-        std::cout << "\ndense 2 weight grad\n";
-        dense_2_grad_weight[i][j][0].print_data();
-        std::cout << "\ndense 2 bias grad t\n";
-        dense_2_grad_bias[i][j][0].print_data();
-        std::cout << "\ndense 2 updated weight\n";
-        dense_2_updated_weight[i][j][0].print_data();
-        std::cout << "\ndense 2 updated bias\n";
-        dense_2_updated_bias[i][j][0].print_data();
-
-        std::cout << "\nRelu 2 input gradient\n";
-        relu_2_training_output[i][j][0].print_data();
-
-        std::cout << "\ndense_3 input\n";
-        dense_3_training_input[i][j][0].print_data();
-        std::cout << "\ndense_3 weights\n";
-        dense_3_training_weight[i][j][0].print_data();
-        std::cout << "\ndense_3 bias\n";
-        dense_3_training_bias[i][j][0].print_data();
-        std::cout << "\ndense_3 weight grad\n";
-        dense_3_grad_weight[i][j][0].print_data();
-        std::cout << "\ndense_3 bias grad t\n";
-        dense_3_grad_bias[i][j][0].print_data();
-        std::cout << "\ndense_3 updated weight\n";
-        dense_3_updated_weight[i][j][0].print_data();
-        std::cout << "\ndense_3 updated bias\n";
-        dense_3_updated_bias[i][j][0].print_data();
-
-        std::cout << "\nsoftmax output\n";
-        softmax_training_output[i][j][0].print_data();
-        std::cout << "\ncce error tensor\n";
-        training_losses[i][j][0].print_data();
-        std::cout << "\ntraining target\n";
-        training_target[i][j][0].print_data();
-      }
-    }*/
-  for (auto loss : history["loss"])
-    std::cout << loss << "\n";
+  for (unsigned epoch = 0; epoch < epoches; epoch++) {
+    for (unsigned batch = 0; batch < input_sample_size / batch_size; batch++) {
+      unsigned index = epoch * (input_sample_size / batch_size) + batch;
+      EXPECT_NEAR(history["loss"][epoch][batch], expected_losses[index], 1e-10)
+          << "at epoch " << epoch << ", batch " << batch
+          << " loss: " << history["loss"][epoch][batch] << "\n";
+    }
+  }
 }

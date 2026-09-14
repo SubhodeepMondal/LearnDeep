@@ -102,18 +102,15 @@ void Opsdiv::addGradGraph(Graph *gradient_graph) {
     this->incoming_gradient->initData(1.0);
   }
 
-  Tensor<std::float64_t> *temp_grad_tensors;
   for (unsigned i = 0; i < 2; i++) {
     // Finding d/dx[i] for division operation
     //  f(x[i]) = x[i] * x_b
     //  f'(x[i]) = x_b
-    temp_grad_tensors =
-        new Tensor<std::float64_t>(*this->inputs[(2 - i - 1) % 2]);
     // end of Finding d/dx[i]
 
     // graph setup for d/dx[i] * z'
     Ops *ops_mul = new Opsdiv;
-    tensor_ptr[0] = temp_grad_tensors;
+    tensor_ptr[0] = this->inputs[(2 - i - 1) % 2];
     tensor_ptr[1] = this->incoming_gradient;
 
     // input initialization
@@ -161,8 +158,8 @@ void Opsdiv::printoutput() {
   std::cout << "\n";
 }
 
-Tensor<std::float64_t> *Opsdiv::getOutgoingGradientTensor(
-    Tensor<std::float64_t> *gradient_input) {
+Tensor<std::float64_t> *
+Opsdiv::getOutgoingGradientTensor(Tensor<std::float64_t> *gradient_input) {
   int i, it;
   bool flag = false;
   for (i = 0; i < 2; i++)
@@ -192,51 +189,49 @@ void Opsdiv::kernel_dispatch(std::float64_t **ptr, const unsigned nDimA,
 #endif
 
   switch (kernel) {
-    case KernelType::GPU:
+  case KernelType::GPU:
 #ifdef ENABLE_CUDA
-    {
-      double *d_arr[3];
-      d_arr[0] = reinterpret_cast<double *>(ptr[0]);
-      d_arr[1] = reinterpret_cast<double *>(ptr[1]);
-      d_arr[2] = reinterpret_cast<double *>(ptr[2]);
-      gpu::gpu_div_broadcast_f64(d_arr, nDimA, dimA, nDimB, dimB, isBroadCast);
-    }
+  {
+    double *d_arr[3];
+    d_arr[0] = reinterpret_cast<double *>(ptr[0]);
+    d_arr[1] = reinterpret_cast<double *>(ptr[1]);
+    d_arr[2] = reinterpret_cast<double *>(ptr[2]);
+    gpu::gpu_div_broadcast_f64(d_arr, nDimA, dimA, nDimB, dimB, isBroadCast);
+  }
 #else
-      throw std::runtime_error("GPU kernel requested but CUDA not enabled");
+    throw std::runtime_error("GPU kernel requested but CUDA not enabled");
 #endif
+  break;
+
+  case KernelType::AVX2:
+    if (__builtin_cpu_supports("avx2")) {
+      avx2::avx2_div_broadcast_f64(ptr, nDimA, dimA, nDimB, dimB, isBroadCast);
+    } else {
+      throw std::runtime_error("AVX2 not supported on this CPU");
+    }
     break;
 
-    case KernelType::AVX2:
-      if (__builtin_cpu_supports("avx2")) {
-        avx2::avx2_div_broadcast_f64(ptr, nDimA, dimA, nDimB, dimB,
-                                     isBroadCast);
-      } else {
-        throw std::runtime_error("AVX2 not supported on this CPU");
-      }
-      break;
+  case KernelType::CPU_SCALAR:
+    cpu::__mdiv_broadcast(ptr, nDimA, dimA, nDimB, dimB, isBroadCast);
+    break;
 
-    case KernelType::CPU_SCALAR:
+  case KernelType::AUTO:
+  default:
+#ifdef ENABLE_CUDA
+  {
+    double *d_arr[3];
+    d_arr[0] = reinterpret_cast<double *>(ptr[0]);
+    d_arr[1] = reinterpret_cast<double *>(ptr[1]);
+    d_arr[2] = reinterpret_cast<double *>(ptr[2]);
+    gpu::gpu_div_broadcast_f64(d_arr, nDimA, dimA, nDimB, dimB, isBroadCast);
+  }
+#else
+    if (__builtin_cpu_supports("avx2")) {
+      avx2::avx2_div_broadcast_f64(ptr, nDimA, dimA, nDimB, dimB, isBroadCast);
+    } else {
       cpu::__mdiv_broadcast(ptr, nDimA, dimA, nDimB, dimB, isBroadCast);
-      break;
-
-    case KernelType::AUTO:
-    default:
-#ifdef ENABLE_CUDA
-    {
-      double *d_arr[3];
-      d_arr[0] = reinterpret_cast<double *>(ptr[0]);
-      d_arr[1] = reinterpret_cast<double *>(ptr[1]);
-      d_arr[2] = reinterpret_cast<double *>(ptr[2]);
-      gpu::gpu_div_broadcast_f64(d_arr, nDimA, dimA, nDimB, dimB, isBroadCast);
     }
-#else
-      if (__builtin_cpu_supports("avx2")) {
-        avx2::avx2_div_broadcast_f64(ptr, nDimA, dimA, nDimB, dimB,
-                                     isBroadCast);
-      } else {
-        cpu::__mdiv_broadcast(ptr, nDimA, dimA, nDimB, dimB, isBroadCast);
-      }
 #endif
-    break;
+  break;
   }
 }

@@ -131,14 +131,13 @@ public:
    * level 4: + validation loss
    * level 5: + va;odation metric */
   /** @return void */
-  std::unordered_map<std::string, std::vector<std::float64_t>>
-  fit(const std::vector<tf::tensor> &inputs,
-      const std::vector<tf::tensor> &output,
-      const std::vector<tf::tensor> &valdiation_data = {}, unsigned epochs = 10,
-      unsigned batch_size = 1,
-      std::vector<std::shared_ptr<Callback>> callback =
-          std::vector<std::shared_ptr<Callback>>(),
-      unsigned verbose = 0, bool training = true);
+  tf::history_container fit(const std::vector<tf::tensor> &inputs,
+                            const std::vector<tf::tensor> &output,
+                            const std::vector<tf::tensor> &valdiation_data = {},
+                            unsigned epochs = 10, unsigned batch_size = 1,
+                            std::vector<std::shared_ptr<Callback>> callback =
+                                std::vector<std::shared_ptr<Callback>>(),
+                            unsigned verbose = 0, bool training = true);
 
   /** @file model.hpp basic model implementation */
   /** @brief Feeds the model with input and does a inference on it to predict

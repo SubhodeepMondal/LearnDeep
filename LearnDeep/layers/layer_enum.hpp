@@ -23,6 +23,7 @@ enum class Layer_Parameter {
   dense_grad_input,
   dense_grad_weight,
   dense_grad_bias,
+  dense_incoming_grad,
   dense_updated_weight,
   dense_updated_bias,
   relu_grad_input,

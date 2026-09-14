@@ -8,6 +8,7 @@ enum class Loss_Parameter {
   categorical_cross_entropy_error,
   mean_categorical_cross_entropy_error,
   mean_absolute_categorical_cross_entropy_error,
+  categorical_cross_entropy_input_grad,
   categorical_cross_entropy_target_output
 };
 

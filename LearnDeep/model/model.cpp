@@ -130,7 +130,7 @@ bool Model::checkEarlyStopping(
   return stop_epoch;
 }
 
-std::unordered_map<std::string, std::vector<std::float64_t>>
+tf::history_container
 Model::fit(const std::vector<tf::tensor> &training_inputs,
            const std::vector<tf::tensor> &training_target,
            const std::vector<tf::tensor> &valdiation_data, unsigned epochs,
@@ -142,7 +142,7 @@ Model::fit(const std::vector<tf::tensor> &training_inputs,
   if (this->inputs.size() != training_inputs.size()) {
     LOG(ERROR) << "Fatal! # no of input is mismatching with the no of graph "
                   "created during construction.\n";
-    return hist.history;
+    return hist;
   }
 
   this->batch_size = batch_size;
@@ -165,7 +165,7 @@ Model::fit(const std::vector<tf::tensor> &training_inputs,
   if (!upper_bound) {
     LOG(ERROR) << "Fatal! number of training samples is smaller than batch "
                   "size.\n";
-    return hist.history;
+    return hist;
   }
   int randIndex = -1;
 
@@ -233,7 +233,7 @@ Model::fit(const std::vector<tf::tensor> &training_inputs,
       }
     }
   }
-  return hist.history;
+  return hist;
 }
 
 /** this subroutine inspects each input and creates a local training-input which
