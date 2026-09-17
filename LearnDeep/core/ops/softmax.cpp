@@ -105,7 +105,7 @@ void Opssoftmax::addGradGraph(Graph *gradient_graph) {
   gradient_graph->addGradientEdge(ops_reduce_sum, reduce_output);
 
   // broadcast substraction
-  Ops *ops_sub = new Opssub;
+  Ops *ops_sub = new Opssub();
   tensor_ptr[0] = this->incoming_gradient;
   tensor_ptr[1] = reduce_output;
 
