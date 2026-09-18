@@ -77,23 +77,28 @@
     "buildPresets": [
         {
             "name": "default",
-            "configurePreset": "default"
+            "configurePreset": "default",
+            "jobs" : 16
         },
         {
             "name": "release_cpu",
-            "configurePreset": "release_cpu"
+            "configurePreset": "release_cpu",
+            "jobs" : 16
         },
         {
             "name": "release_gpu",
-            "configurePreset": "release_gpu"
+            "configurePreset": "release_gpu",
+            "jobs" : 16
         },
         {
             "name": "debug_cpu",
-            "configurePreset": "debug_cpu"
+            "configurePreset": "debug_cpu",
+            "jobs" : 16
         },
         {
             "name": "debug_gpu",
-            "configurePreset": "debug_gpu"
+            "configurePreset": "debug_gpu",
+            "jobs" : 16
         }
     ],
     "testPresets": [

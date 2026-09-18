@@ -72,7 +72,7 @@ void Opspower::addGradGraph(Graph *gradient_graph) {
       tensor_ptr[0] = intermediate_gradient_sum;
       tensor_ptr[1] = inc_grad_tensor;
 
-      Ops *ops_add = new Opsadd;
+      Ops *ops_add = new Opsadd();
       ops_add->initializeinputs(tensor_ptr);
 
       gradient_graph->addGradientNode(ops_add);
@@ -104,7 +104,7 @@ void Opspower::addGradGraph(Graph *gradient_graph) {
 
   // graph setup for calculating derivation temp_grad_tensorsf power
   // operations graph setup for x ^ (n-1)
-  Ops *ops_power = new Opspower;
+  Ops *ops_power = new Opspower();
   ops_power->initializeinputs(this->inputs.data());
   ops_power->initializeExpoent(this->exponent - 1);
   ops_power->initializeoutput(temp_grad_tensors[0]);
@@ -117,7 +117,7 @@ void Opspower::addGradGraph(Graph *gradient_graph) {
   gradient_graph->addGradientEdge(ops_power, temp_grad_tensors[0]);
 
   // graph setup for  n * x
-  Ops *ops_scale = new Opsscale;
+  Ops *ops_scale = new Opsscale();
   ops_scale->initializeinputs(&temp_grad_tensors[0]);
   ops_scale->initializeScale(this->exponent);
   ops_scale->initializeoutput(temp_grad_tensors[1]);
@@ -130,7 +130,7 @@ void Opspower::addGradGraph(Graph *gradient_graph) {
   gradient_graph->addGradientEdge(ops_scale, temp_grad_tensors[1]);
 
   // graph setup for d/dx[i] * z'
-  Ops *ops_mul = new Opsmul;
+  Ops *ops_mul = new Opsmul();
   tensor_ptr[0] = temp_grad_tensors[1];
   tensor_ptr[1] = this->incoming_gradient;
 

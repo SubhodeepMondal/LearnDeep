@@ -41,7 +41,7 @@ void Opsrelu::addGradGraph(Graph *gradient_graph) {
       tensor_ptr[0] = intermediate_gradient_sum;
       tensor_ptr[1] = inc_grad_tensor;
 
-      Ops *ops_add = new Opsadd;
+      Ops *ops_add = new Opsadd();
       ops_add->initializeinputs(tensor_ptr);
 
       gradient_graph->addGradientNode(ops_add);
@@ -82,7 +82,7 @@ void Opsrelu::addGradGraph(Graph *gradient_graph) {
   gradient_graph->addGradientEdge(ops_greater_than_zero, temp_grad_tensors[0]);
 
   // graph setup for d/dx[i] * z'
-  Ops *ops_mul = new Opsmul;
+  Ops *ops_mul = new Opsmul();
   tensor_ptr[0] = temp_grad_tensors[0];
   tensor_ptr[1] = this->incoming_gradient;
 

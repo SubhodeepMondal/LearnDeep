@@ -108,7 +108,7 @@ void Opsmatmul::addGradGraph(Graph *gradient_graph) {
       tensor_ptr[0] = intermediate_gradient_sum;
       tensor_ptr[1] = inc_grad_tensor;
 
-      Ops *ops_add = new Opsadd;
+      Ops *ops_add = new Opsadd();
       ops_add->initializeinputs(tensor_ptr);
 
       gradient_graph->addGradientNode(ops_add);
@@ -134,7 +134,7 @@ void Opsmatmul::addGradGraph(Graph *gradient_graph) {
   for (unsigned i = 0; i < 2; i++) {
     temp_trans_tensor =
         new Tensor<std::float64_t>(*this->inputs[(2 - i - 1) % 2]);
-    Ops *ops_transpose = new Opstranspose;
+    Ops *ops_transpose = new Opstranspose();
     tensor_ptr[0] = this->inputs[(2 - i - 1) % 2];
 
     // X = X.T
@@ -151,7 +151,7 @@ void Opsmatmul::addGradGraph(Graph *gradient_graph) {
 
     // d/dx = (G * B.T) & (A.T * G)
 
-    Ops *ops_matmul = new Opsmatmul;
+    Ops *ops_matmul = new Opsmatmul();
     if (i == 0) {
       tensor_ptr[0] = this->incoming_gradient;
       tensor_ptr[1] = temp_trans_tensor;

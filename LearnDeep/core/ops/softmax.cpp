@@ -44,7 +44,7 @@ void Opssoftmax::addGradGraph(Graph *gradient_graph) {
       tensor_ptr[0] = intermediate_gradient_sum;
       tensor_ptr[1] = inc_grad_tensor;
 
-      Ops *ops_add = new Opsadd;
+      Ops *ops_add = new Opsadd();
       ops_add->initializeinputs(tensor_ptr);
 
       gradient_graph->addGradientNode(ops_add);
@@ -76,7 +76,7 @@ void Opssoftmax::addGradGraph(Graph *gradient_graph) {
       new Tensor<std::float64_t>(*this->inputs[0]);
 
   // multiplication
-  Ops *ops_mul = new Opsmul;
+  Ops *ops_mul = new Opsmul();
   ops_mul->initializeinputs(temp_grad_tensors);
   ops_mul->initializeoutput(mul_output);
 
@@ -123,7 +123,7 @@ void Opssoftmax::addGradGraph(Graph *gradient_graph) {
   gradient_graph->addGradientEdge(ops_sub, sub_output);
 
   // multiplication
-  Ops *ops_mul_2 = new Opsmul;
+  Ops *ops_mul_2 = new Opsmul();
   tensor_ptr[0] = this->output;
   tensor_ptr[1] = sub_output;
 

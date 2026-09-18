@@ -100,7 +100,7 @@ void Opsscale::addGradGraph(Graph *gradient_graph) {
       tensor_ptr[0] = intermediate_gradient_sum;
       tensor_ptr[1] = inc_grad_tensor;
 
-      Ops *ops_add = new Opsadd;
+      Ops *ops_add = new Opsadd();
       ops_add->initializeinputs(tensor_ptr);
 
       gradient_graph->addGradientNode(ops_add);
@@ -124,7 +124,7 @@ void Opsscale::addGradGraph(Graph *gradient_graph) {
   }
 
   // graph setup for d/dx[i] * z'
-  Ops *ops_scale = new Opsscale;
+  Ops *ops_scale = new Opsscale();
 
   // input initialization
   ops_scale->initializeinputs(&this->incoming_gradient);
