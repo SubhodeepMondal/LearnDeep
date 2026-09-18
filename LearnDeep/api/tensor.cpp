@@ -676,7 +676,7 @@ tf::model::model(const std::vector<tf::tensor> &inputs,
 
 tf::model::~model() { delete model_ptr; }
 
-std::unordered_map<std::string, std::vector<std::float64_t>>
+tf::history_container
 tf::model::fit(const std::vector<tf::tensor> &inputs,
                const std::vector<tf::tensor> &outputs,
                std::vector<std::shared_ptr<Callback>> callback_ptr,
@@ -970,6 +970,10 @@ tf::loss::loss(const LossType lossType,
   switch (lossType) {
   case (LossType::squared_error): {
     this->loss_ptr = new SquaredError(input_preds);
+    break;
+  }
+  case (LossType::categorical_cross_entropy): {
+    this->loss_ptr = new CategoricalCrossEntropy(input_preds);
     break;
   }
   }

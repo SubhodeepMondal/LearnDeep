@@ -658,7 +658,7 @@ template <typename T>
 Tensor<T> *Tensor<T>::softmax(const unsigned axis, bool graph_flag) {
 
   Tensor<T> *output;
-  Ops *ops = new Opssoftmax;
+  Ops *ops = new Opssoftmax();
   DataType d_type = tf_float64;
 
   output =

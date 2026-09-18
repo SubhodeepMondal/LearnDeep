@@ -17,6 +17,7 @@ class Relu : public Layer {
   LayerType layer_type;
 
   const tf::tensor *training_inputs;
+  tf::tensor grad_input;
   tf::tensor output;
   tf::tensor training_output;
   std::vector<tf::tensor *> training_outputs;

@@ -333,6 +333,10 @@ typedef struct history_container {
 
   std::vector<std::float64_t> get_loss();
 
+  std::vector<std::vector<std::float64_t>> operator[](std::string metric) {
+    return batch_history[metric];
+  }
+
 } history_container;
 typedef struct model {
 private:
@@ -390,7 +394,7 @@ public:
    * level 4: + validation loss
    * level 5: + va;odation metric */
   /** @return void */
-  std::unordered_map<std::string, std::vector<std::float64_t>>
+  history_container
   fit(const std::vector<tf::tensor> &inputs,
       const std::vector<tf::tensor> &outputs,
       std::vector<std::shared_ptr<Callback>> callbacks = {nullptr},

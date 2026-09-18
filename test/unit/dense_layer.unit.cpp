@@ -469,7 +469,7 @@ TEST_F(FrameworkTest, DenseLayer_Test_3) {
   tf::tensor input, target_output, validation_data;
 
   unsigned sample_size = 512;
-  unsigned batch_size = 256;
+  unsigned batch_size = 32;
   unsigned no_of_input_feature = 27;
   unsigned no_of_dense_unit_1 = 31;
   unsigned no_of_dense_unit_2 = 7;
@@ -524,17 +524,22 @@ TEST_F(FrameworkTest, DenseLayer_Test_3) {
   tf::callback::earlystopping early_stopping(loss_sgd, 5, 1e-3, true);
 
   /* --- training the model ----*/
-  unsigned epoch = 100;
+  unsigned epoches = 100;
   auto hist = mymodel.fit({input}, {target_output}, {early_stopping.callback()},
-                          epoch, batch_size);
+                          epoches, batch_size);
 
   /* --- validating loss --- */
-  std::vector<std::float64_t> loss_data =
-      load_bin("test/data/DenseLayer_Test_3_epoch_loss.bin", epoch);
-  unsigned i = 0;
-  for (std::float64_t scalar_loss : hist["loss"]) {
-    EXPECT_NEAR(scalar_loss, loss_data[i], 1e-4) << "at" << i;
-    i++;
+  std::vector<std::float64_t> expected_losses =
+      load_bin("test/data/DenseLayer_Test_3_batch_loss.bin",
+               epoches * (sample_size / batch_size));
+
+  for (unsigned epoch = 0; epoch < hist["loss"].size(); epoch++) {
+    for (unsigned batch = 0; batch < sample_size / batch_size; batch++) {
+      unsigned index = epoch * (sample_size / batch_size) + batch;
+      EXPECT_NEAR(hist["loss"][epoch][batch], expected_losses[index], 1e-4)
+          << "at epoch " << epoch << ", batch " << batch
+          << " loss: " << hist["loss"][epoch][batch] << "\n";
+    }
   }
 }
 
@@ -958,26 +963,23 @@ TEST_F(FrameworkTest, Sin_x_Func_Fit_Test) {
       load_bin("test/data/Sin_ReluDense_Test_1_initial_weights_1.bin",
                no_of_dense_unit_1 * no_of_input_feature)
           .data());
-  bias_1.tensor_of(
-      load_bin("test/data/Sin_ReluDense_Test_1_initial_bias_1.bin",
-               no_of_dense_unit_1)
-          .data());
+  bias_1.tensor_of(load_bin("test/data/Sin_ReluDense_Test_1_initial_bias_1.bin",
+                            no_of_dense_unit_1)
+                       .data());
   weight_2.tensor_of(
       load_bin("test/data/Sin_ReluDense_Test_1_initial_weights_2.bin",
                no_of_dense_unit_2 * no_of_dense_unit_1)
           .data());
-  bias_2.tensor_of(
-      load_bin("test/data/Sin_ReluDense_Test_1_initial_bias_2.bin",
-               no_of_dense_unit_2)
-          .data());
+  bias_2.tensor_of(load_bin("test/data/Sin_ReluDense_Test_1_initial_bias_2.bin",
+                            no_of_dense_unit_2)
+                       .data());
   weight_3.tensor_of(
       load_bin("test/data/Sin_ReluDense_Test_1_initial_weights_3.bin",
                no_of_dense_unit_3 * no_of_dense_unit_2)
           .data());
-  bias_3.tensor_of(
-      load_bin("test/data/Sin_ReluDense_Test_1_initial_bias_3.bin",
-               no_of_dense_unit_3)
-          .data());
+  bias_3.tensor_of(load_bin("test/data/Sin_ReluDense_Test_1_initial_bias_3.bin",
+                            no_of_dense_unit_3)
+                       .data());
 
   auto dense_1 = tf::layer::dense(no_of_dense_unit_1);
   auto relu_layer_1 = tf::layer::relu();

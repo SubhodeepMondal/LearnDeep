@@ -80,7 +80,7 @@ void Opsmul::addGradGraph(Graph *gradient_graph) {
       tensor_ptr[0] = intermediate_gradient_sum;
       tensor_ptr[1] = inc_grad_tensor;
 
-      Ops *ops_add = new Opsadd;
+      Ops *ops_add = new Opsadd();
       ops_add->initializeinputs(tensor_ptr);
 
       gradient_graph->addGradientNode(ops_add);
@@ -103,19 +103,15 @@ void Opsmul::addGradGraph(Graph *gradient_graph) {
     this->incoming_gradient->initData(1.0);
   }
 
-  Tensor<std::float64_t> *temp_grad_tensors;
   for (unsigned i = 0; i < 2; i++) {
 
     // Finding d/dx[i] for multiplication operation
     //  f(x[i]) = x[i] * x_b
     //  f'(x[i]) = x_b
-    temp_grad_tensors =
-        new Tensor<std::float64_t>(*this->inputs[(2 - i - 1) % 2]);
-    // end of Finding d/dx[i]
 
     // graph setup for d/dx[i] * z'
-    Ops *ops_mul = new Opsmul;
-    tensor_ptr[0] = temp_grad_tensors;
+    Ops *ops_mul = new Opsmul();
+    tensor_ptr[0] = this->inputs[(2 - i - 1) % 2];
     tensor_ptr[1] = this->incoming_gradient;
 
     // input initialization
