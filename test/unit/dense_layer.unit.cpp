@@ -469,7 +469,7 @@ TEST_F(FrameworkTest, DenseLayer_Test_3) {
   tf::tensor input, target_output, validation_data;
 
   unsigned sample_size = 512;
-  unsigned batch_size = 256;
+  unsigned batch_size = 32;
   unsigned no_of_input_feature = 27;
   unsigned no_of_dense_unit_1 = 31;
   unsigned no_of_dense_unit_2 = 7;
@@ -533,15 +533,14 @@ TEST_F(FrameworkTest, DenseLayer_Test_3) {
       load_bin("test/data/DenseLayer_Test_3_batch_loss.bin",
                epoches * (sample_size / batch_size));
 
-  //   for (unsigned epoch = 0; epoch < epoches; epoch++) {
-  //     for (unsigned batch = 0; batch < sample_size / batch_size; batch++) {
-  //       unsigned index = epoch * (sample_size / batch_size) + batch;
-  //       EXPECT_NEAR(hist["loss"][epoch][batch], expected_losses[index],
-  //       1e-10)
-  //           << "at epoch " << epoch << ", batch " << batch
-  //           << " loss: " << hist["loss"][epoch][batch] << "\n";
-  //     }
-  //   }
+  for (unsigned epoch = 0; epoch < hist["loss"].size(); epoch++) {
+    for (unsigned batch = 0; batch < sample_size / batch_size; batch++) {
+      unsigned index = epoch * (sample_size / batch_size) + batch;
+      EXPECT_NEAR(hist["loss"][epoch][batch], expected_losses[index], 1e-4)
+          << "at epoch " << epoch << ", batch " << batch
+          << " loss: " << hist["loss"][epoch][batch] << "\n";
+    }
+  }
 }
 
 TEST_F(FrameworkTest, Quadratic_Func_Fit_Test) {
