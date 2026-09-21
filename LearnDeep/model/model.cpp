@@ -34,6 +34,7 @@ Model::Model(const std::vector<tf::tensor> &inputs,
       break;
     }
   this->doTensorAndLayerMappings();
+  this->createLayerGraph();
 }
 
 Model::~Model() {
@@ -49,6 +50,11 @@ void Model::initializeTrainingMappings() {
   for (tf::loss *loss : this->losses)
     this->loss_training_input_mappings[loss].assign(
         loss_input_mappings[loss].size(), nullptr);
+}
+
+void Model::initializePredictionInputMappings() {
+  for (Layer *layer : this->layers)
+    this->layer_prediction_input_mappings[layer].resize(0);
 }
 
 std::vector<tf::tensor>
@@ -236,6 +242,14 @@ Model::fit(const std::vector<tf::tensor> &training_inputs,
   return hist;
 }
 
+std::vector<tf::tensor> Model::predict(std::vector<tf::tensor> inputs) {
+  prediction_outputs.resize(outputs.size());
+  initializePredictionInputMappings();
+  initializeInputsForPrediction(inputs);
+  doLayerCalculation();
+  return prediction_outputs;
+}
+
 /** this subroutine inspects each input and creates a local training-input which
  * has exact dimention of each incoming input tensor except the n-th dim which
  * is tranculated to batch size*/
@@ -252,6 +266,9 @@ void Model::initilizeInputsForTraining(
     this->local_training_inputs.push_back(temp_training_input_tensor);
   }
 }
+
+void Model::initializeInputsForPrediction(
+    const std::vector<tf::tensor> &inputs) {}
 
 /** this subroutine
  * 1. first accumulate all the layers from global layer graph
@@ -305,6 +322,21 @@ void Model::doTensorAndLayerMappings() {
         this->input_layer_mappings[input].push_back(layer);
         this->input_layers.push_back(layer);
       }
+  }
+}
+
+void Model::createLayerGraph() {
+  for (Layer *this_layer : this->layers) {
+    ;
+    for (const tf::tensor *layer_output_tensor :
+         layer_output_mappings[this_layer]) {
+      for (Layer *layer : this->layers) {
+        if (std::ranges::contains(layer_input_mappings[layer],
+                                  layer_output_tensor->getPtr())) {
+          global_layer_graph.addLayerGraphEdge(this, this_layer, layer);
+        }
+      }
+    }
   }
 }
 
@@ -387,6 +419,66 @@ void Model::doDummyAndTrainingTensorMapping() {
       LOG(ERROR) << "Fatal! a loss is not properly mapped with layer output.";
       throw std::runtime_error(
           "Exiting due to mismatch with loss and layer output.");
+    }
+  }
+}
+
+void Model::doLayerCalculation() {
+  std::queue<Layer *> prediction_layers;
+
+  bool flag;
+  for (Layer *layer : this->input_layers)
+    prediction_layers.push(layer);
+
+  while (prediction_layers.size()) {
+    Layer *this_layer = prediction_layers.front();
+    prediction_layers.pop();
+
+    /** if all the inputs are ready for a layer(i.e !nullptr) call forward on
+     * that layer else, push it back on the queue for subsequent layers to give
+     * its output
+     */
+    if (this->layer_prediction_input_mappings[this_layer].size() ==
+        layer_input_mappings[this_layer].size()) {
+      std::vector<tf::tensor> this_layer_prediction_outputs =
+          this_layer->calculate(
+              this->layer_prediction_input_mappings[this_layer]);
+
+      /* now find where each output is going*/
+      for (Layer *layer : this->layers) {
+        flag = false;
+        unsigned i = 0;
+        for (const tf::tensor *this_layer_output :
+             this->layer_output_mappings[this_layer]) {
+          auto it = std::find(this->layer_input_mappings[layer].begin(),
+                              this->layer_input_mappings[layer].end(),
+                              this_layer_output->getPtr());
+
+          if (it != this->layer_input_mappings[layer].end()) {
+            unsigned index =
+                std::distance(this->layer_input_mappings[layer].begin(), it);
+            this->layer_prediction_input_mappings[layer][index] =
+                this_layer_prediction_outputs[index];
+            flag = true;
+          }
+        }
+        if (flag)
+          prediction_layers.push(layer);
+      }
+      // place outputs to its place
+      for (const tf::tensor *layer_output : layer_output_mappings[this_layer]) {
+        auto it = std::find(this->outputs.begin(), this->outputs.end(),
+                            layer_output->getPtr());
+
+        if (it != this->outputs.end()) {
+          unsigned index = std::distance(this->outputs.begin(), it);
+          this->prediction_outputs[index] =
+              this_layer_prediction_outputs[index];
+        }
+      }
+
+    } else {
+      prediction_layers.push(this_layer);
     }
   }
 }

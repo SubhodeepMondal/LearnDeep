@@ -7,6 +7,7 @@
 #include <core/graph/graph_framework.hpp>
 #include <core/graph/graph_manager.hpp>
 #include <optimizers/optimizers.hpp>
+#include <vector>
 
 // --- Constructor
 Dense::Dense(unsigned unit)
@@ -83,6 +84,15 @@ Dense::forward(std::vector<const tf::tensor *> &input, unsigned batch_size) {
                << input.size() << ".\n";
   }
   return this->training_outputs;
+}
+
+std::vector<tf::tensor> Dense::calculate(std::vector<tf::tensor> inputs) {
+  tf::tensor prediction_output;
+  if (inputs.size() == 1) {
+    tf::tensor matmul_out = inputs[0].matmul(weight);
+    prediction_output = matmul_out.add(bias);
+  }
+  return {prediction_output};
 }
 
 void Dense::backward(Optimizer *optimizer) {

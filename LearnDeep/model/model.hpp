@@ -17,6 +17,7 @@ private:
   bool auto_grad_created;
   std::vector<Tensor<std::float64_t> *> inputs;
   std::vector<Tensor<std::float64_t> *> outputs;
+  std::vector<tf::tensor> prediction_outputs;
 
   tf::tensor *temp_training_input_tensor;
 
@@ -29,10 +30,12 @@ private:
 
   std::unordered_map<Layer *, std::vector<const tf::tensor *>>
       layer_training_input_mappings;
+  std::unordered_map<Layer *, std::vector<tf::tensor>>
+      layer_prediction_input_mappings;
+
   std::unordered_map<const Tensor<std::float64_t> *, std::vector<Layer *>>
       input_layer_mappings;
 
-  LayerGraph model_layer_graph;
   std::vector<Layer *> layers;
   std::vector<Layer *> input_layers;
 
@@ -50,6 +53,8 @@ private:
       std::queue<const Tensor<std::float64_t> *> &output_queue);
 
   void initializeTrainingMappings();
+
+  void initializePredictionInputMappings();
 
   std::vector<tf::tensor>
   createBatchTargetBuffer(const std::vector<tf::tensor> &training_target);
@@ -79,12 +84,18 @@ private:
 
   void doDummyAndTrainingTensorMapping();
 
+  void doLayerCalculation();
+
   void doTensorAndLayerMappings();
+
+  void createLayerGraph();
 
   void initializeLayerGraph();
 
   void
   initilizeInputsForTraining(const std::vector<tf::tensor> &training_inputs);
+
+  void initializeInputsForPrediction(const std::vector<tf::tensor> &inputs);
 
 public:
   Model(std::vector<tf::tensor> const inputs);
@@ -146,7 +157,7 @@ public:
    * model, of dimension no_feature x batch_size fearture can be of any
    * dimension */
   /** @return tf::tensor  output tensor after inference */
-  tf::tensor predict(std::vector<tf::tensor> input);
+  std::vector<tf::tensor> predict(std::vector<tf::tensor> inputs);
 
   void shuffle(bool shuffle);
 

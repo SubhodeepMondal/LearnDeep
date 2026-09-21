@@ -21,6 +21,8 @@ public:
   virtual const std::vector<tf::tensor *> &
   forward(std::vector<const tf::tensor *> &input, unsigned batch_size) = 0;
 
+  virtual std::vector<tf::tensor> calculate(std::vector<tf::tensor> inputs) = 0;
+
   virtual void backward(Optimizer *optimizer) = 0;
 
   virtual const std::vector<tf::tensor *> &
