@@ -531,7 +531,7 @@ TEST_F(FrameworkTest, DenseLayer_Test_3) {
   /* --- validating loss --- */
   std::vector<std::float64_t> expected_losses =
       load_bin("test/data/DenseLayer_Test_3_batch_loss.bin",
-               epoches * (sample_size / batch_size));
+               8 * (sample_size / batch_size));
 
   for (unsigned epoch = 0; epoch < hist["loss"].size(); epoch++) {
     for (unsigned batch = 0; batch < sample_size / batch_size; batch++) {
@@ -540,6 +540,81 @@ TEST_F(FrameworkTest, DenseLayer_Test_3) {
           << "at epoch " << epoch << ", batch " << batch
           << " loss: " << hist["loss"][epoch][batch] << "\n";
     }
+  }
+
+  auto model_prediction_output = mymodel.predict({input});
+
+  std::vector<std::float64_t> prediction_history =
+      load_bin("test/data/DenseLayer_Test_3_final_prediction.bin",
+               no_of_dense_unit_2 * sample_size);
+  //   output[0].print_data();
+
+  for (unsigned i = 0; i < sample_size; i++) {
+    for (unsigned j = 0; j < no_of_dense_unit_2; j++) {
+      unsigned index = i * no_of_dense_unit_2 + j;
+      EXPECT_NEAR(model_prediction_output[0].getData()[index],
+                  prediction_history[index], 1e-4)
+          << "at " << index << "\n";
+    }
+  }
+}
+
+TEST_F(FrameworkTest, DenseLayer_Test_4) {
+  tf::tensor x;
+  tf::tensor weight_1, bias_1, weight_2, bias_2;
+  tf::tensor input, output;
+
+  unsigned sample_size = 4;
+  unsigned no_of_input_feature = 8;
+  unsigned no_of_dense_unit_1 = 16;
+  unsigned no_of_dense_unit_2 = 8;
+
+  x.tf_create(tf_float64, no_of_input_feature, sample_size);
+  input.tf_create(tf_float64, no_of_input_feature, sample_size);
+  weight_1.tf_create(tf_float64, no_of_dense_unit_1, no_of_input_feature);
+  bias_1.tf_create(tf_float64, no_of_dense_unit_1, 1);
+  weight_2.tf_create(tf_float64, no_of_dense_unit_2, no_of_dense_unit_1);
+  bias_2.tf_create(tf_float64, no_of_dense_unit_2, 1);
+  output.tf_create(tf_float64, no_of_dense_unit_2, sample_size);
+
+  /* --- read all the data and save in buffer --- */
+  input.tensor_of(load_bin("test/data/DenseLayer_Test_4_input.bin",
+                           sample_size * no_of_input_feature)
+                      .data());
+  weight_1.tensor_of(load_bin("test/data/DenseLayer_Test_4_weight_1.bin",
+                              no_of_input_feature * no_of_dense_unit_1)
+                         .data()); // random values generated with numpy
+  bias_1.tensor_of(
+      load_bin("test/data/DenseLayer_Test_4_bias_1.bin", no_of_dense_unit_1)
+          .data()); // zeros
+  weight_2.tensor_of(load_bin("test/data/DenseLayer_Test_4_weight_2.bin",
+                              no_of_dense_unit_1 * no_of_dense_unit_2)
+                         .data()); // random values generated with numpy
+  bias_2.tensor_of(
+      load_bin("test/data/DenseLayer_Test_4_bias_2.bin", no_of_dense_unit_2)
+          .data()); // zeros
+  output.tensor_of(load_bin("test/data/DenseLayer_Test_4_expected_output.bin",
+                            sample_size * no_of_dense_unit_2)
+                       .data());
+
+  auto dense_1 = tf::layer::dense(no_of_dense_unit_1);
+  auto dense_2 = tf::layer::dense(no_of_dense_unit_2);
+  auto dense_1_output = dense_1({x});
+  auto dense_output = dense_2({dense_1_output});
+
+  dense_1.set_weight(weight_1);
+  dense_1.set_bias(bias_1);
+
+  dense_2.set_weight(weight_2);
+  dense_2.set_bias(bias_2);
+
+  /* --- model creation --- */
+  tf::model mymodel({x}, dense_output);
+
+  auto predicted_output = mymodel.predict({input});
+  for (unsigned i = 0; i < sample_size * no_of_dense_unit_2; i++) {
+    EXPECT_NEAR(predicted_output[0].getData()[i], output.getData()[i], 1e-6)
+        << "at " << i;
   }
 }
 

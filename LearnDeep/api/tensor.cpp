@@ -116,6 +116,17 @@ void tf::tensor::assign_pointer(std::vector<unsigned> dimensions) {
   }
 }
 
+void tf::tensor::assign_ptr(void *ptr) {
+
+  switch (this->dt_type) {
+  case tf_float64:
+    this->ptr = static_cast<Tensor<std::float64_t> *>(ptr);
+    break;
+  default:
+    this->ptr = nullptr;
+  }
+}
+
 Tensor<std::float64_t> *tf::tensor::getPtr() const { return this->ptr; }
 
 const void tf::tensor::setPtr(Tensor<std::float64_t> *ptr) { this->ptr = ptr; }
@@ -144,6 +155,13 @@ void tf::tensor::tf_create(std::vector<unsigned> dimensions, DataType d_type) {
                                          this->dt_type);
   tf::tensor_nodes[this->ptr] = this;
   tf::tensor_to_be_spared.insert(this->ptr);
+}
+
+tf::tensor tf::tensor::copy() const {
+  tf::tensor new_tensor;
+  new_tensor.dt_type = this->dt_type;
+  new_tensor.assign_ptr(new Tensor<std::float64_t>(*this->ptr));
+  return new_tensor;
 }
 
 void tf::tensor::tensor_of(double low_limit, double upper_limit) {
@@ -686,6 +704,12 @@ tf::model::fit(const std::vector<tf::tensor> &inputs,
 
   return this->model_ptr->fit(inputs, outputs, validation_datas, epochs,
                               batch_size, callback_ptr, verbose, training);
+}
+
+std::vector<tf::tensor>
+tf::model::predict(const std::vector<tf::tensor> inputs) {
+
+  return this->model_ptr->predict(inputs);
 }
 
 void tf::model::shuffle(bool shuffle) { model_ptr->shuffle(shuffle); }

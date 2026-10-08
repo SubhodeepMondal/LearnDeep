@@ -238,6 +238,10 @@ Model::fit(const std::vector<tf::tensor> &training_inputs,
         break;
       }
     }
+
+    // store final weights and biases
+    for (Layer *layer : this->layers)
+      layer->initializeParameters();
   }
   return hist;
 }
@@ -268,7 +272,27 @@ void Model::initilizeInputsForTraining(
 }
 
 void Model::initializeInputsForPrediction(
-    const std::vector<tf::tensor> &inputs) {}
+    const std::vector<tf::tensor> &prediction_inputs) {
+
+  for (Layer *input_layer : this->layers) {
+    this->layer_prediction_input_mappings[input_layer].resize(
+        layer_input_mappings[input_layer].size());
+
+    unsigned i = 0;
+    for (Tensor<std::float64_t> *input : this->inputs) {
+      auto it = std::find(layer_input_mappings[input_layer].begin(),
+                          layer_input_mappings[input_layer].end(), input);
+      if (it != layer_input_mappings[input_layer].end()) {
+        unsigned index =
+            std::distance(layer_input_mappings[input_layer].begin(), it);
+
+        this->layer_prediction_input_mappings[input_layer][index] =
+            prediction_inputs[i];
+      }
+      i++;
+    }
+  }
+}
 
 /** this subroutine
  * 1. first accumulate all the layers from global layer graph
@@ -458,7 +482,7 @@ void Model::doLayerCalculation() {
             unsigned index =
                 std::distance(this->layer_input_mappings[layer].begin(), it);
             this->layer_prediction_input_mappings[layer][index] =
-                this_layer_prediction_outputs[index];
+                this_layer_prediction_outputs[index].copy();
             flag = true;
           }
         }
@@ -473,7 +497,7 @@ void Model::doLayerCalculation() {
         if (it != this->outputs.end()) {
           unsigned index = std::distance(this->outputs.begin(), it);
           this->prediction_outputs[index] =
-              this_layer_prediction_outputs[index];
+              this_layer_prediction_outputs[index].copy();
         }
       }
 
