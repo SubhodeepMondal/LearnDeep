@@ -331,7 +331,7 @@ void Dense::initializeBias() {
                           this->updated_bias.getDimensions()[1]});
       this->bias.getPtr()->initData(this->updated_bias.getData());
       if (this->training_bias.getPtr())
-        this->training_bias.getPtr()->initData(this->updated_bias.getData())
+        this->training_bias.getPtr()->initData(this->updated_bias.getData());
     }
 
     break;
