@@ -618,6 +618,89 @@ TEST_F(FrameworkTest, DenseLayer_Test_4) {
   }
 }
 
+/**
+  == == == == == == == == == == == == == == == == == == == == == == == == == ==
+ Composite_Layer_Prediction_Test_5
+
+  Model:
+  Dense(19)->ReLU->Dense(11)->Softmax
+
+  Prediction only : no training, no gradients.
+  == == == == == == == == == == == == == == == == == == == == == == == == == ==
+*/
+TEST_F(FrameworkTest, Composite_Layer_Prediction_Test_5) {
+
+  tf::tensor x;
+  tf::tensor weight_1, bias_1, weight_2, bias_2;
+  tf::tensor input, output;
+
+  unsigned sample_size = 3050;
+  unsigned no_of_input_feature = 17;
+  unsigned no_of_dense_unit_1 = 19;
+  unsigned no_of_dense_unit_2 = 11;
+
+  x.tf_create(tf_float64, no_of_input_feature, sample_size);
+  input.tf_create(tf_float64, no_of_input_feature, sample_size);
+  weight_1.tf_create(tf_float64, no_of_dense_unit_1, no_of_input_feature);
+  bias_1.tf_create(tf_float64, no_of_dense_unit_1, 1);
+  weight_2.tf_create(tf_float64, no_of_dense_unit_2, no_of_dense_unit_1);
+  bias_2.tf_create(tf_float64, no_of_dense_unit_2, 1);
+  output.tf_create(tf_float64, no_of_dense_unit_2, sample_size);
+
+  /* --- read all the data and save in buffer --- */
+  input.tensor_of(
+      load_bin("test/data/Composite_Layer_Prediction_Test_5_input.bin",
+               sample_size * no_of_input_feature)
+          .data());
+  weight_1.tensor_of(
+      load_bin("test/data/Composite_Layer_Prediction_Test_5_weight_1.bin",
+               no_of_input_feature * no_of_dense_unit_1)
+          .data()); // random values generated with numpy
+  bias_1.tensor_of(
+      load_bin("test/data/Composite_Layer_Prediction_Test_5_bias_1.bin",
+               no_of_dense_unit_1)
+          .data()); // zeros
+  weight_2.tensor_of(
+      load_bin("test/data/Composite_Layer_Prediction_Test_5_weight_2.bin",
+               no_of_dense_unit_1 * no_of_dense_unit_2)
+          .data()); // random values generated with numpy
+  bias_2.tensor_of(
+      load_bin("test/data/Composite_Layer_Prediction_Test_5_bias_2.bin",
+               no_of_dense_unit_2)
+          .data()); // zeros
+  output.tensor_of(
+      load_bin(
+          "test/data/Composite_Layer_Prediction_Test_5_expected_output.bin",
+          sample_size * no_of_dense_unit_2)
+          .data());
+
+  auto dense_1 = tf::layer::dense(no_of_dense_unit_1);
+  auto relu = tf::layer::relu();
+  auto dense_2 = tf::layer::dense(no_of_dense_unit_2);
+  auto softmax = tf::layer::softmax();
+
+  dense_1.set_weight(weight_1);
+  dense_1.set_bias(bias_1);
+  dense_2.set_weight(weight_2);
+  dense_2.set_bias(bias_2);
+
+  // model architecture
+  auto dense_1_output = dense_1({x});
+  auto relu_output = relu(dense_1_output);
+  auto dense_2_output = dense_2(relu_output);
+  auto softmax_output = softmax(dense_2_output);
+
+  /* --- model creation --- */
+  tf::model mymodel({x}, softmax_output);
+
+  /* --- predictiona and assertion --- */
+  auto predicted_output = mymodel.predict({input});
+  for (unsigned i = 0; i < sample_size * no_of_dense_unit_2; i++) {
+    EXPECT_NEAR(predicted_output[0].getData()[i], output.getData()[i], 1e-6)
+        << "at " << i;
+  }
+}
+
 TEST_F(FrameworkTest, Quadratic_Func_Fit_Test) {
 
   tf::tensor x;
