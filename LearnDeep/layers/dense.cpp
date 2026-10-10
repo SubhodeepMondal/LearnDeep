@@ -7,14 +7,17 @@
 #include <core/graph/graph_framework.hpp>
 #include <core/graph/graph_manager.hpp>
 #include <optimizers/optimizers.hpp>
+#include <vector>
 
 // --- Constructor
 Dense::Dense(unsigned unit)
     : no_of_unit(unit), no_of_features(1), batch_size(1),
       forwardGraphCreated(false), backwardGraphCrated(false),
-      layer_type(tf_dense), isGradRecorded(false){
+      layer_type(tf_dense), isGradRecorded(false),
+      weight_initialization_method(InitializationMethod::ZEROS),
+      bias_initialization_method(InitializationMethod::ZEROS){
 
-                            };
+      };
 
 // ---Destructor
 Dense::~Dense() {
@@ -29,12 +32,24 @@ Dense::operator()(std::vector<tf::tensor> input_tensors) {
   if (input_tensors.size() == 1) {
     this->layer_inputs.push_back(input_tensors[0].getPtr());
 
+    if (input_tensors[0].getNoOfDimensions() != 2) {
+      LOG(ERROR)
+          << "Fatal! Dense: Layer expects rank of 2, here input has rank of "
+          << input_tensors[0].getNoOfDimensions() << ".\n";
+      return this->layer_outputs;
+    }
+
+    this->no_of_features = input_tensors[0].getDimensions()[0];
+    this->batch_size = input_tensors[0].getDimensions()[1];
+
     std::vector<unsigned> arr(2);
     arr[0] = this->no_of_unit;
     arr[1] = 1;
 
     this->weight.tf_create(arr, tf_float64);
+    arr[1] = 1;
     this->bias.tf_create(arr, tf_float64);
+    arr[1] = 1;
     this->matmul_result.tf_create(arr, tf_float64);
     output.tf_create(arr, tf_float64);
     this->layer_outputs.push_back(&output);
@@ -83,6 +98,16 @@ Dense::forward(std::vector<const tf::tensor *> &input, unsigned batch_size) {
                << input.size() << ".\n";
   }
   return this->training_outputs;
+}
+
+std::vector<tf::tensor> Dense::calculate(std::vector<tf::tensor> inputs) {
+  initializeParameters();
+  std::vector<tf::tensor> output;
+  if (inputs.size() == 1) {
+    tf::tensor matmul_out = inputs[0].matmul(weight, false);
+    output.emplace_back(matmul_out.add(bias, false));
+  }
+  return output;
 }
 
 void Dense::backward(Optimizer *optimizer) {
@@ -234,23 +259,38 @@ Dense::getLayerParameter(Layer_Parameter layer_parameter, bool print_flag) {
 void Dense::initializeWeight() {
   switch (this->weight_initialization_method) {
   case InitializationMethod::MANUAL: {
+    this->weight.reshape({this->initialization_weight.getDimensions()[0],
+                          this->initialization_weight.getDimensions()[1]});
     this->weight.getPtr()->initData(this->initialization_weight.getData());
-    this->training_weight.getPtr()->initData(this->weight.getData());
+    if (this->training_weight.getPtr())
+      // this->training_weight.getPtr()->initData(this->weight.getData());
+      this->training_weight.getPtr()->initData(this->weight.getData());
     this->weight_initialization_method = InitializationMethod::UPDATE_FROM_GRAD;
     break;
   }
   case InitializationMethod::ZEROS: {
-    this->training_weight.getPtr()->initData(0.0);
+    this->weight.getPtr()->initData(0.0);
+    if (this->training_weight.getPtr())
+      this->training_weight.getPtr()->initData(0.0);
     this->weight_initialization_method = InitializationMethod::UPDATE_FROM_GRAD;
     break;
   }
   case InitializationMethod::ONES: {
-    this->training_weight.getPtr()->initData(1.0);
+    this->weight.getPtr()->initData(1.0);
+    if (this->training_weight.getPtr())
+      this->training_weight.getPtr()->initData(1.0);
     this->weight_initialization_method = InitializationMethod::UPDATE_FROM_GRAD;
     break;
   }
   case InitializationMethod::UPDATE_FROM_GRAD: {
-    this->training_weight.getPtr()->initData(this->updated_weight.getData());
+    if (this->updated_weight.getPtr()) {
+      this->weight.reshape({this->updated_weight.getDimensions()[0],
+                            this->updated_weight.getDimensions()[1]});
+      this->weight.getPtr()->initData(this->updated_weight.getData());
+      if (this->training_weight.getPtr())
+        this->training_weight.getPtr()->initData(
+            this->updated_weight.getData());
+    }
     break;
   }
   default:
@@ -262,25 +302,38 @@ void Dense::initializeWeight() {
 void Dense::initializeBias() {
   switch (this->bias_initialization_method) {
   case InitializationMethod::MANUAL: {
+    this->bias.reshape({this->initialization_bias.getDimensions()[0],
+                        this->initialization_bias.getDimensions()[1]});
     this->bias.getPtr()->initData(this->initialization_bias.getData());
-    this->training_bias.getPtr()->initData(this->bias.getData());
+    if (this->training_bias.getPtr())
+      this->training_bias.getPtr()->initData(this->bias.getData());
     this->bias_initialization_method = InitializationMethod::UPDATE_FROM_GRAD;
     break;
   }
   case InitializationMethod::ZEROS: {
+
     this->bias.getPtr()->initData(0.0);
-    this->training_bias.getPtr()->initData(0.0);
+    if (this->training_bias.getPtr())
+      this->training_bias.getPtr()->initData(0.0);
     this->bias_initialization_method = InitializationMethod::UPDATE_FROM_GRAD;
     break;
   }
   case InitializationMethod::ONES: {
     this->bias.getPtr()->initData(1.0);
-    this->training_bias.getPtr()->initData(1.0);
+    if (this->training_bias.getPtr())
+      this->training_bias.getPtr()->initData(1.0);
     this->bias_initialization_method = InitializationMethod::UPDATE_FROM_GRAD;
     break;
   }
   case InitializationMethod::UPDATE_FROM_GRAD: {
-    this->training_bias.getPtr()->initData(this->updated_bias.getData());
+    if (this->updated_bias.getPtr()) {
+      this->bias.reshape({this->updated_bias.getDimensions()[0],
+                          this->updated_bias.getDimensions()[1]});
+      this->bias.getPtr()->initData(this->updated_bias.getData());
+      if (this->training_bias.getPtr())
+        this->training_bias.getPtr()->initData(this->updated_bias.getData());
+    }
+
     break;
   }
   default:

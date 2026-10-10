@@ -34,6 +34,7 @@ Model::Model(const std::vector<tf::tensor> &inputs,
       break;
     }
   this->doTensorAndLayerMappings();
+  this->createLayerGraph();
 }
 
 Model::~Model() {
@@ -49,6 +50,11 @@ void Model::initializeTrainingMappings() {
   for (tf::loss *loss : this->losses)
     this->loss_training_input_mappings[loss].assign(
         loss_input_mappings[loss].size(), nullptr);
+}
+
+void Model::initializePredictionInputMappings() {
+  for (Layer *layer : this->layers)
+    this->layer_prediction_input_mappings[layer].resize(0);
 }
 
 std::vector<tf::tensor>
@@ -232,8 +238,20 @@ Model::fit(const std::vector<tf::tensor> &training_inputs,
         break;
       }
     }
+
+    // store final weights and biases
+    for (Layer *layer : this->layers)
+      layer->initializeParameters();
   }
   return hist;
+}
+
+std::vector<tf::tensor> Model::predict(std::vector<tf::tensor> inputs) {
+  prediction_outputs.resize(outputs.size());
+  initializePredictionInputMappings();
+  initializeInputsForPrediction(inputs);
+  doLayerCalculation();
+  return prediction_outputs;
 }
 
 /** this subroutine inspects each input and creates a local training-input which
@@ -250,6 +268,29 @@ void Model::initilizeInputsForTraining(
     temp_training_input_tensor = new tf::tensor();
     temp_training_input_tensor->tf_create(dims, tf_float64);
     this->local_training_inputs.push_back(temp_training_input_tensor);
+  }
+}
+
+void Model::initializeInputsForPrediction(
+    const std::vector<tf::tensor> &prediction_inputs) {
+
+  for (Layer *input_layer : this->layers) {
+    this->layer_prediction_input_mappings[input_layer].resize(
+        layer_input_mappings[input_layer].size());
+
+    unsigned i = 0;
+    for (Tensor<std::float64_t> *input : this->inputs) {
+      auto it = std::find(layer_input_mappings[input_layer].begin(),
+                          layer_input_mappings[input_layer].end(), input);
+      if (it != layer_input_mappings[input_layer].end()) {
+        unsigned index =
+            std::distance(layer_input_mappings[input_layer].begin(), it);
+
+        this->layer_prediction_input_mappings[input_layer][index] =
+            prediction_inputs[i];
+      }
+      i++;
+    }
   }
 }
 
@@ -305,6 +346,21 @@ void Model::doTensorAndLayerMappings() {
         this->input_layer_mappings[input].push_back(layer);
         this->input_layers.push_back(layer);
       }
+  }
+}
+
+void Model::createLayerGraph() {
+  for (Layer *this_layer : this->layers) {
+    ;
+    for (const tf::tensor *layer_output_tensor :
+         layer_output_mappings[this_layer]) {
+      for (Layer *layer : this->layers) {
+        if (std::ranges::contains(layer_input_mappings[layer],
+                                  layer_output_tensor->getPtr())) {
+          global_layer_graph.addLayerGraphEdge(this, this_layer, layer);
+        }
+      }
+    }
   }
 }
 
@@ -387,6 +443,66 @@ void Model::doDummyAndTrainingTensorMapping() {
       LOG(ERROR) << "Fatal! a loss is not properly mapped with layer output.";
       throw std::runtime_error(
           "Exiting due to mismatch with loss and layer output.");
+    }
+  }
+}
+
+void Model::doLayerCalculation() {
+  std::queue<Layer *> prediction_layers;
+
+  bool flag;
+  for (Layer *layer : this->input_layers)
+    prediction_layers.push(layer);
+
+  while (prediction_layers.size()) {
+    Layer *this_layer = prediction_layers.front();
+    prediction_layers.pop();
+
+    /** if all the inputs are ready for a layer(i.e !nullptr) call forward on
+     * that layer else, push it back on the queue for subsequent layers to give
+     * its output
+     */
+    if (this->layer_prediction_input_mappings[this_layer].size() ==
+        layer_input_mappings[this_layer].size()) {
+      std::vector<tf::tensor> this_layer_prediction_outputs =
+          this_layer->calculate(
+              this->layer_prediction_input_mappings[this_layer]);
+
+      /* now find where each output is going*/
+      for (Layer *layer : this->layers) {
+        flag = false;
+        unsigned i = 0;
+        for (const tf::tensor *this_layer_output :
+             this->layer_output_mappings[this_layer]) {
+          auto it = std::find(this->layer_input_mappings[layer].begin(),
+                              this->layer_input_mappings[layer].end(),
+                              this_layer_output->getPtr());
+
+          if (it != this->layer_input_mappings[layer].end()) {
+            unsigned index =
+                std::distance(this->layer_input_mappings[layer].begin(), it);
+            this->layer_prediction_input_mappings[layer][index] =
+                this_layer_prediction_outputs[index].copy();
+            flag = true;
+          }
+        }
+        if (flag)
+          prediction_layers.push(layer);
+      }
+      // place outputs to its place
+      for (const tf::tensor *layer_output : layer_output_mappings[this_layer]) {
+        auto it = std::find(this->outputs.begin(), this->outputs.end(),
+                            layer_output->getPtr());
+
+        if (it != this->outputs.end()) {
+          unsigned index = std::distance(this->outputs.begin(), it);
+          this->prediction_outputs[index] =
+              this_layer_prediction_outputs[index].copy();
+        }
+      }
+
+    } else {
+      prediction_layers.push(this_layer);
     }
   }
 }
