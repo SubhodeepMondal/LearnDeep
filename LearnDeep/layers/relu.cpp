@@ -64,6 +64,14 @@ Relu::forward(std::vector<const tf::tensor *> &input, unsigned batch_size) {
   return this->training_outputs;
 }
 
+std::vector<tf::tensor> Relu::calculate(std::vector<tf::tensor> inputs) {
+  std::vector<tf::tensor> output;
+  if (inputs.size() == 1) {
+    output.emplace_back(inputs[0].relu(false));
+  }
+  return output;
+}
+
 void Relu::backward(Optimizer *optimiser) {
 
   if (!this->isGradRecorded) {

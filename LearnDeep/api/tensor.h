@@ -79,11 +79,13 @@ public:
     assign_pointer(dimensions);
   }
 
-  // tf::tensor deep_copy() const;
-
   void tf_create(std::vector<unsigned> dims, DataType d_type);
 
   void assign_ptr(std::vector<unsigned> dimensions);
+
+  void assign_ptr(void *ptr);
+
+  tf::tensor copy() const;
 
   unsigned getNoOfDimensions();
 
@@ -401,6 +403,8 @@ public:
       unsigned epochs = 10, unsigned batch_size = 1,
       const std::vector<tf::tensor> &validation_datas = {tf::tensor()},
       unsigned verbose = 0, bool training = true);
+
+  std::vector<tf::tensor> predict(const std::vector<tf::tensor> inputs);
 
   void shuffle(bool shuffle);
 

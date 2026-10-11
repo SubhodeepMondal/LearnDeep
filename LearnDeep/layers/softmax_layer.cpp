@@ -65,6 +65,14 @@ Softmax::forward(std::vector<const tf::tensor *> &input, unsigned batch_size) {
   return this->training_outputs;
 }
 
+std::vector<tf::tensor> Softmax::calculate(std::vector<tf::tensor> inputs) {
+  std::vector<tf::tensor> output;
+  if (inputs.size() == 1) {
+    output.emplace_back(inputs[0].softmax(this->axis, false));
+  }
+  return output;
+}
+
 void Softmax::backward(Optimizer *optimiser) {
 
   if (!this->isGradRecorded) {

@@ -10,7 +10,7 @@
 
 LayerGraph global_layer_graph;
 
-LayerGraph::LayerGraph() {}
+LayerGraph::LayerGraph(){};
 
 LayerGraph::~LayerGraph() { this->layers.clear(); }
 
@@ -27,6 +27,12 @@ LayerGraph::getLayersOfIncomingTensor(const Tensor<std::float64_t> *tensor) {
   }
   return outgoing_layer;
 }
+
+void LayerGraph::addLayerGraphEdge(Model *model, Layer *srcNode,
+                                   Layer *desNode) {
+  this->model_layer_graph[model][srcNode].push_back(desNode);
+}
+
 void LayerGraph::removeNode(Layer *layer) { layers.erase(layer); }
 
 Layer *
