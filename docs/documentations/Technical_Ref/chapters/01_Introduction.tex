@@ -1,0 +1,89 @@
+
+% ==================================================
+\chapter{Introduction}
+% ==================================================
+
+\section{Overview}
+
+LearnDeep is an educational deep learning framework
+developed from scratch to explore the fundamental
+concepts, algorithms, and engineering principles
+behind modern deep learning systems.
+
+The primary objective of this project is to understand
+how a deep learning framework operates internally,
+from tensor computations and numerical kernels to
+automatic differentiation, neural network layers,
+and model training.
+
+Rather than treating a deep learning framework as a
+black box, LearnDeep aims to make its underlying
+mechanisms explicit through a modular implementation
+and a focus on mathematical correctness.
+
+\section{Motivation}
+
+Modern deep learning frameworks provide high-level
+interfaces for constructing, training, and evaluating
+neural networks. However, many of the mechanisms
+responsible for these operations remain hidden behind
+their public APIs.
+
+Developing LearnDeep provides an opportunity to
+investigate these mechanisms directly, including:
+
+\begin{itemize}
+    \item Tensor representation, indexing, and
+          memory ownership.
+    \item Numerical operations, broadcasting, and
+          CPU and GPU kernel execution.
+    \item Computational graphs and reverse-mode
+          automatic differentiation.
+    \item Neural network layers, loss functions,
+          and gradient propagation.
+    \item Model training, optimization, and execution
+          management.
+\end{itemize}
+
+Implementing these components from the ground up
+provides practical insight into the relationship
+between mathematical operations, software
+architecture, and hardware-level computation.
+
+\section{Scope}
+
+LearnDeep is intended primarily as a learning and
+experimentation platform. Its implementation
+prioritizes understanding, modularity, and correctness
+while exploring the design of a deep learning framework.
+
+The technical reference documents the framework's
+architecture, public interfaces, mathematical
+foundations, and important implementation decisions.
+
+It is organized around the major components of the
+system, allowing readers to understand both how
+individual components work and how they interact
+during model execution and training.
+
+\section{Organization of This Document}
+
+The remainder of this document is organized as follows:
+
+\begin{itemize}
+    \item \textbf{Tensor System:} Tensor representation,
+          shape semantics, data layout, and ownership.
+    \item \textbf{Operations and Kernels:} Numerical
+          operations, broadcasting, and backend execution.
+    \item \textbf{Automatic Differentiation:}
+          Computational graphs, gradient propagation,
+          and backward execution.
+    \item \textbf{Neural Network Components:} Layers,
+          loss functions, and model construction.
+    \item \textbf{Training:} Forward execution,
+          optimization, and training workflows.
+\end{itemize}
+
+These sections describe the design and behavior of
+the implemented system, including relevant
+mathematical definitions and validation methods.

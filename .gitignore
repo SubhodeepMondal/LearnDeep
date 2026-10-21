@@ -5,6 +5,12 @@
 *.so
 .vscode
 *.log
+*.aux
+*.dvi
+*.fls
+*.gz
+*.toc
+*.fdb_latexmk
 
 **/build/*
 !**/build/.gitkeep
