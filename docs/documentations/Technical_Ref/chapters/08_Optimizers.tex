@@ -1,2 +1,250 @@
 
 \chapter{Neural Network Components: Optimizers}
+\label{Optimizers}
+
+
+\begin{figure}[!ht]
+    \centering
+    \includegraphics[width=\textwidth]{../../images/08_Optimizers_ From Gradients to Updates.png
+    }
+\end{figure}
+
+\paragraph{}
+We've already established the basic workings of an
+end-to-end neural network. We've seen how tensors,
+operations, graphs, layers and losses come together
+to perform a sequence of mathematical operations
+that produce the intended output.
+
+However, measuring how far the prediction is from
+the desired result is only part of the process. As
+discussed in Chapter \ref{Losses}, the loss function
+quantifies the prediction error. We still need a way
+to minimize this error by updating the model
+parameters. This is where optimizers come into play.
+
+During initialization, the model parameters are
+typically assigned values using an initialization
+strategy. These initial values generally do not
+produce satisfactory predictions. During training,
+the optimizer uses the gradients calculated during
+backpropagation to update the model parameters,
+helping the network minimize its loss.
+
+\paragraph{}
+We've already seen that the model parameters
+are initialized randomly. So at first it is
+going to give very incorrect output. Now it
+is optimizer which makes changes to the
+model parameters based on the gradients
+calculated during backward pass that pushes
+model parameters to calculate output close to
+desired target. Lets see how it works.
+
+\section{Gradient Descent: GD}
+Gradient descent is one of the fundamental
+optimization algorithms used to train neural
+networks. It updates model parameters in the
+direction opposite to the gradient of the loss
+function.
+
+Compared with second-order methods such as
+Newton-Raphson, standard gradient descent is
+generally simpler to implement and requires less
+memory because it does not need to compute and
+store the full Hessian matrix. This makes it a
+practical choice for large neural networks.
+
+\[ W_\text{t+1} = W_\text{t} - \eta * \partial{W_t} \]
+
+from the above example we can easily tell
+what a optimizer suppose to do. For a
+model parameter $W$ we're updating it's value
+by subtracting partial difference times $\eta$
+with original value. $\eta$ is learning rate.
+
+\paragraph{Learning Rate}
+The learning rate, denoted by $\eta$, controls the
+step size of each parameter update.
+
+If the learning rate is too large, the optimizer
+may overshoot the minimum, oscillate around it,
+or even diverge. If it is too small, convergence
+may become unnecessarily slow.
+
+Choosing an appropriate learning rate is therefore
+critical to effective training. In practice, the
+learning rate may also be adjusted during training
+using a learning-rate schedule.
+
+We're not going to work on a single sample.
+So working with a large sample size. Based
+on how we can tackle a large sample size
+and update model parameter values there are
+three distinct GD stratigies in place.
+
+\begin{itemize}
+    \item Batch Gradient Descent(BGD)
+    \item Mini Batch Gradient Descent(MGD)
+    \item Stocastic Gradicnt Descent(SGD)
+\end{itemize}
+
+Now, Lets take a look at each of them.
+
+\subsection{Batch Gradient Descent: BGD}
+The gradient is calculated using the entire
+training dataset, and the parameters are
+updated once after the full dataset has
+been evaluated.
+
+\paragraph{Pros:} The gradient represents
+the entire dataset, giving a consistent
+update direction for the current parameter
+values.
+
+\paragraph{Cons:} Each update can be
+computationally expensive for large
+datasets.
+
+\subsection{Mini Batch Gradient Descent: MGD}
+The training dataset is divided into smaller
+batches. The model processes each batch and
+updates its parameters after each batch.
+
+
+\paragraph{Pros:} Balances computational
+efficiency and gradient stability. It
+also works well with vectorized CPU and
+GPU operations.
+
+\paragraph{Cons:} The gradient is an
+estimate of the full-dataset gradient,
+so updates can fluctuate between batches.
+\subsection{Stocastic Gradient Descent: SGD}
+In its strict definition, the gradient is
+calculated using one randomly selected
+training sample per update.
+
+
+\paragraph{Pros:} Updates are inexpensive and
+frequent. The noise in the gradient can
+sometimes help the optimizer move away
+from saddle regions or shallow local minima.
+
+\paragraph{Cons:} Updates can fluctuate
+considerably, making convergence less
+smooth.
+
+\section{Stocastic Gradient Descent}
+\label{Optimizer::SGD}
+
+I've briefly touched SGD in the previous
+section but lets dig deeper into this
+algorithm. So I've already established
+how SGD works Mathematically. Let's see
+how it is integrated with the framework.
+
+
+
+\begin{lstlisting}[
+    caption={Creating Optimizer class},
+    label={lst:Declear Optimizer class}
+]
+// file optimizer.hpp
+class Optimizer{
+    Graph *optimizer_graph;
+
+  virtual void createParameterUpdateGraph(tf::tensor param,
+                                          tf::tensor &update_param,
+                                          tf::tensor gradient_param) = 0;
+
+  void executeOptimizer();
+}
+\end{lstlisting}
+
+\begin{lstlisting}[
+    caption={Defining Optimizer class},
+    label={lst:Define Optimizer class}
+]
+// file optimizer.cpp
+#include "optimizers.hpp"
+#include <core/graph/graph_framework.hpp>
+
+Optimizer::Optimizer() { this->optimizer_graph = new Graph(); }
+void Optimizer::executeOptimizer() { this->optimizer_graph->compute(); }
+\end{lstlisting}
+
+So, Optimizer is a abstruct class which works
+as base class for other optimizers.
+
+The createParameterUpdateGraph() subrountine is
+something new. Mostly for industry standard
+frameworks optimizers works in eager mode, in my
+case it is operating in graph mode. Why not to
+attempt something differet.
+
+
+
+\begin{lstlisting}[
+    caption={Defining SGD class},
+    label={lst:SGD class}
+]
+// file sgd.cpp
+#include "optimizers.hpp"
+#include <core/graph/graph_manager.hpp>
+
+SGD::SGD() : learning_rate(0.01) {}
+
+void SGD::createParameterUpdateGraph(tf::tensor param, tf::tensor &update_param,
+                                     tf::tensor gradient_param) {
+
+  GraphManager::instance().pushGraph(this->optimizer_graph);
+  scaler_param.push_back(tf::tensor());
+
+  std::vector<unsigned> dims;
+  for (unsigned i = 0; i < param.getNoOfDimensions(); i++)
+    dims.push_back(param.getDimensions()[i]);
+  scaler_param.back().tf_create(dims, param.dt_type);
+
+  scaler_param.back() = gradient_param.scale(learning_rate);
+  update_param = param.sub(scaler_param.back());
+
+  GraphManager::instance().popGraph();
+}
+
+void SGD::updateLearningRate(std::float64_t learning_rate) {
+  this->learning_rate = learning_rate;
+}
+
+\end{lstlisting}
+
+Here we can see GraphManager in action. By pushing
+the optimizer graph onto the graph manager, the
+operations used to calculate parameter updates are
+recorded in the appropriate graph.
+
+This graph is constructed during the setup of the
+training process for each trainable parameter.
+Once a training batch has completed its forward and
+backward passes, the training loop executes the
+optimizer graph to calculate the parameter updates.
+
+This separates the construction of the update
+operations from their execution during training.
+
+\paragraph{}
+Although vanilla SGD is simple and computationally
+efficient, it has some limitations. Its updates can
+fluctuate significantly, and it may converge slowly
+in regions where the loss landscape has poorly
+conditioned curvature.
+
+Several optimizer variants address these issues by
+incorporating additional information into the
+parameter updates. One of the simplest and most
+important extensions is SGD with momentum, which
+we will explore next.
+
+
+\section{SGD with momentum}
+
