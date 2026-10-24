@@ -1,0 +1,190 @@
+\chapter{Deep Learning Framework from Scratch}
+\label{chap:deep-learning-framework-from-scratch}
+
+
+\section{Tensor 101}
+
+A tensor is a multidimensional array. Scalars contain a single value, vectors extend this idea to one dimension, and matrices extend it to two dimensions. Tensors generalize the same concept to an arbitrary number of dimensions.
+
+Einstein did not invent tensors, but his work helped popSularize their use in physics.
+
+\subsection{Why Do We Need Tensors?}
+
+To do mathematics, of course.
+
+At a basic level, a tensor implementation needs a block of memory to store its elements and metadata describing the size of each dimension. In this implementation, the elements are stored in a contiguous memory allocation, while the dimensions are represented separately.
+
+A simplified version of the class looks like this:
+
+\begin{lstlisting}[
+    language=C++,
+    caption={A simplified tensor class},
+    label={lst:basic-tensor-class}
+]
+template<typename T>
+class tensor {
+    T* data;                 // Manual memory management.
+    size_t no_of_dimensions;
+    size_t* dimensions;
+
+public:
+    tensor();
+    ~tensor();
+
+    tensor add(tensor b);
+    tensor matmul(tensor b);
+};
+\end{lstlisting}
+
+No \texttt{std::unique\_ptr}, no \texttt{std::vector}. As the joke goes: \emph{``Hum toh mard hai, Jaskirat. We manage our own memory.''}
+
+Of course, manual memory management also means that allocation, deallocation, copying, and ownership must be handled carefully. This is one of the engineering trade-offs involved in building the underlying storage abstraction yourself.
+
+For example,
+
+\begin{lstlisting}[language=C++, caption={Creating a three-dimensional tensor}]
+tf::tensor A(2, 3, 4);
+\end{lstlisting}
+
+creates a three-dimensional tensor with dimensions \((2,3,4)\). It contains 2 elements along the first dimension, 3 along the second, and 4 along the third, for a total of \(2 \times 3 \times 4 = 24\) elements.
+
+Simple enough. No rocket science.
+
+\subsection{A Different Dimension Convention}
+
+There is an important design choice in LearnDeep: its dimension ordering differs from the convention commonly encountered in NumPy, TensorFlow, and PyTorch.
+
+In LearnDeep, the leftmost dimension is treated as the primary dimension. Consequently, a tensor described by dimensions \((2,3,4)\) follows the framework's own axis convention and should not be assumed to have the same interpretation as a tensor with that shape in another library.
+
+When comparing shapes or transferring data between frameworks, this difference must be taken into account. Changing the convention later would require careful refactoring of operations, kernels, and code that depends on the current layout.
+
+For now, this is the convention used by LearnDeep.
+
+\section{Working with Tensors}
+
+Having a tensor abstraction is useful only if we can perform computations with it. Tensor operations provide the basic mathematical building blocks used throughout the framework.
+
+For example, two tensors can be created, populated with data, and added together:
+
+\begin{lstlisting}[
+    language=C++,
+    caption={Adding two tensors},
+    label={lst:tensor-add-example}
+]
+tf::tensor A, B, C;
+
+A.tf_create(2, 3, 4);
+B.tf_create(2, 3, 4);
+
+A.tensor_of(data_1);
+B.tensor_of(data_2);
+
+C = A.add(B);
+\end{lstlisting}
+
+Matrix multiplication can be expressed in a similar way:
+
+\begin{lstlisting}[
+    language=C++,
+    caption={Matrix multiplication using LearnDeep's dimension convention},
+    label={lst:tensor-matmul-example}
+]
+A.tf_create(2, 3);
+B.tf_create(4, 2);
+
+C = A.matmul(B);
+
+// Result dimensions: (4, 3)
+\end{lstlisting}
+
+The result dimensions shown above follow LearnDeep's custom axis convention. They differ from the shape notation readers may expect when working with NumPy, so the framework's own conventions must be kept in mind when interpreting the operation.
+
+These examples illustrate the public interface. The actual arithmetic is performed by the underlying operation and kernel implementation.
+
+\section{How Should the Mathematics Be Implemented?}
+
+BLAS, BLIS, LAPACK, cuBLAS, Eigen\ldots
+
+Those libraries provide powerful implementations of numerical operations. However, the purpose of this project is to understand how such computations work internally, so I decided to implement the kernels myself.
+
+One possible approach would be to place the implementation of every operation directly inside the tensor class:
+
+\begin{lstlisting}[
+    language=C++,
+    caption={A direct implementation inside the tensor class},
+    label={lst:tensor-inline-operation}
+]
+class tensor {
+    tensor add(tensor input_b) {
+        tensor output;
+
+        // Iterate over the elements and add them.
+
+        return output;
+    }
+};
+\end{lstlisting}
+
+This is simple to understand, but it mixes tensor storage and interface responsibilities with the implementation of individual operations.
+
+Instead, LearnDeep separates operations from the tensor abstraction. This provides a place to organize computation and, as the framework grows, to support features such as:
+
+\begin{enumerate}
+    \item \textbf{Kernel dispatching:} selecting an appropriate implementation, such as a basic CPU, AVX2, or GPU kernel.
+    \item \textbf{Kernel registration:} organizing the available kernel implementations.
+    \item \textbf{Automatic differentiation:} associating operations with the information needed to calculate gradients during backpropagation.
+\end{enumerate}
+
+A simplified illustration of this idea is shown below:
+
+\begin{lstlisting}[
+    language=C++,
+    caption={An illustrative abstraction for operations},
+    label={lst:operation-abstraction}
+]
+class ops {
+public:
+    virtual void compute() = 0;
+    virtual void kernel_dispatcher() = 0;
+};
+
+class add : protected ops {
+public:
+    void compute() override;
+    void kernel_dispatcher() override;
+};
+\end{lstlisting}
+
+This is a conceptual example rather than a complete representation of the final implementation. The design can evolve as additional operations and execution backends are introduced.
+
+The important idea is to keep the tensor abstraction, operation definitions, and kernel execution strategy sufficiently separate. This gives the framework room to grow without forcing every new implementation detail into the tensor class itself.
+
+\section{Testing and Numerical Verification}
+
+Once the basic abstractions and operations are in place, the next step is testing.
+
+For this project, NumPy serves as an independent numerical reference. I generate test data, calculate expected results using NumPy, and compare those results against the output produced by LearnDeep.
+
+This approach helps identify discrepancies in tensor operations and provides a practical way to verify that the framework's computations behave as expected.
+
+The tests are an important part of the development process: successful compilation alone does not establish that an operation is numerically correct.
+
+% Replace the placeholders below with screenshots of the actual test suite
+% and validation results. Keep the image files in the project image directory.
+%
+% \begin{figure}[htbp]
+%     \centering
+%     \includegraphics[width=\textwidth]{../images/tensor-test-results.png}
+%     \caption{Tensor operation tests and numerical validation results.}
+%     \label{fig:tensor-test-results}
+% \end{figure}
+
+\section{Closing Remarks}
+
+This is the starting point of LearnDeep: a tensor abstraction, a growing set of mathematical operations, and an implementation strategy that leaves room for multiple kernel backends and automatic differentiation.
+
+The framework will become more capable as these foundations are extended and connected. For now, the priority is to build the core carefully, test it against independent reference results, and understand the engineering decisions behind each component.
+
+There is plenty left to do.
+
+To be continued\ldots

@@ -1,0 +1,240 @@
+\chapter{Tensor Operations and Kernel Dispatching}
+\label{chap:tensor-operations}
+
+
+\begin{figure}[!ht]
+    \centering
+    \includegraphics[width=\textwidth]{../../images/03_Tensor Operations From Scratch.png}
+\end{figure}
+
+
+\section{Introduction}
+
+In the previous chapter, we introduced the motivation behind LearnDeep and established a basic tensor abstraction. We now turn to the operations that make tensors useful.
+
+Tensor operations are not limited to mathematical calculations. They can also transform data, change how it is interpreted, apply logical conditions, or move values between locations. In a deep learning framework, these operations form the building blocks from which more complex computations are assembled.
+
+This chapter explores several important operations and the design decisions involved in implementing them efficiently.
+
+\section{Basic Element-Wise Operations}
+
+Operations such as \texttt{add()}, \texttt{sub()}, and \texttt{mul()} apply a calculation independently to corresponding elements of their input tensors, provided their shapes are compatible.
+
+At a basic level, an element-wise operation can be represented as:
+
+\begin{lstlisting}[
+    language=C++,
+    caption={A generic element-wise operation},
+    label={lst:element-wise-operation}
+]
+for (each element i) {
+    output[i] = ops(input_a[i], input_b[i]);
+}
+\end{lstlisting}
+
+When tensor data is stored contiguously, iterating through adjacent elements can provide a straightforward memory access pattern. On a GPU, adjacent threads accessing adjacent memory locations can also enable coalesced memory accesses, depending on the mapping of threads to data.
+
+One way to expose more independent operations is loop unrolling. For example, a loop can process eight elements per iteration:
+
+\begin{lstlisting}[
+    language=C++,
+    caption={An illustrative unrolled element-wise loop},
+    label={lst:unrolled-element-wise-loop}
+]
+for (each row) {
+    for (each group of 8 elements) {
+        output[i]     = input_a[i]     + input_b[i];
+        output[i + 1] = input_a[i + 1] + input_b[i + 1];
+        output[i + 2] = input_a[i + 2] + input_b[i + 2];
+        output[i + 3] = input_a[i + 3] + input_b[i + 3];
+        output[i + 4] = input_a[i + 4] + input_b[i + 4];
+        output[i + 5] = input_a[i + 5] + input_b[i + 5];
+        output[i + 6] = input_a[i + 6] + input_b[i + 6];
+        output[i + 7] = input_a[i + 7] + input_b[i + 7];
+    }
+
+    // Handle any remaining elements.
+}
+\end{lstlisting}
+
+Loop unrolling and vectorization are related but distinct techniques. Unrolling reduces loop-control overhead and exposes multiple independent operations, while vectorization performs multiple element operations using a single vector instruction.
+
+LearnDeep uses \texttt{float64} for these kernels. A 256-bit AVX2 vector can therefore hold four double-precision values, allowing an appropriate vectorized kernel to process four such values per vector instruction.
+
+The actual performance benefit depends on the compiler, memory access pattern, data size, and implementation. Unrolling alone does not guarantee vectorization, so the two techniques should be considered separately.
+
+\section{Matrix Multiplication}
+
+Matrix multiplication is one of the central operations in deep learning. Dense layers, many attention computations, and numerous other neural network operations rely on matrix products.
+
+The conventional scalar implementation uses three nested loops. For matrices with compatible dimensions, the computation can be expressed as follows:
+
+\begin{lstlisting}[
+    language=C++,
+    caption={A straightforward matrix multiplication loop},
+    label={lst:basic-matmul}
+]
+for (unsigned i = 0; i < m; i++) {
+    for (unsigned j = 0; j < n; j++) {
+        C[i][j] = 0;
+
+        for (unsigned k = 0; k < l; k++) {
+            C[i][j] += A[i][k] * B[k][j];
+        }
+    }
+}
+\end{lstlisting}
+
+Although this implementation expresses the mathematics clearly, its memory access pattern can be inefficient for row-major storage.
+
+In the innermost loop, the code accesses consecutive elements from a row of \(A\), but accesses a column of \(B\). Moving between successive elements of that column jumps across rows, potentially reducing cache efficiency.
+
+We can change the loop ordering to improve the access pattern:
+
+\begin{lstlisting}[
+    language=C++,
+    caption={Matrix multiplication with interchanged loops},
+    label={lst:interchanged-matmul}
+]
+// Initialize C to zero before these loops.
+
+for (unsigned i = 0; i < m; i++) {
+    for (unsigned j = 0; j < l; j++) {
+        for (unsigned k = 0; k < n; k++) {
+            C[i][k] += A[i][j] * B[j][k];
+        }
+    }
+}
+\end{lstlisting}
+
+In this arrangement, the innermost loop traverses consecutive elements in a row of \(B\) and updates consecutive elements in a row of \(C\). This can improve memory locality compared with the original loop order.
+
+The output matrix must be initialized to zero before accumulation. The dimensions and loop bounds must also match the matrix multiplication convention used by the implementation.
+
+Can we do better? Certainly. Techniques such as cache blocking, loop tiling, vectorization, and GPU tiling can further improve performance. These optimizations deserve a deeper discussion of their own and will be explored separately.
+
+\section{Broadcasting}
+
+Consider the following operation using LearnDeep's dimension convention:
+
+\begin{lstlisting}[
+    language=C++,
+    caption={An example of broadcasting},
+    label={lst:broadcast-example}
+]
+tensor A(48, 12);
+tensor B(48);
+
+tensor C = A.add(B);
+\end{lstlisting}
+
+What should the dimensions of \(C\) be?
+
+Under LearnDeep's convention, the 48-element tensor aligns with the first dimension of \(A\), so the resulting tensor has dimensions \((48,12)\). Each value in \(B\) is reused along the second dimension.
+
+This differs from the conventional shape interpretation used by libraries such as NumPy, PyTorch, and TensorFlow. Under their standard broadcasting rules, shapes \((48,12)\) and \((48,)\) are not directly compatible. The axis convention must therefore be taken into account when comparing behavior across frameworks.
+
+Broadcasting allows tensors with compatible dimensions to participate in an operation without explicitly copying the smaller tensor to match the larger one.
+
+A common example appears in dense layers. Matrix multiplication produces outputs for a batch of samples, after which a bias vector is added to each sample. Instead of manually duplicating the bias vector for every sample, broadcasting allows the operation to reuse its values.
+
+The main challenge is not the addition itself, but determining shape compatibility and mapping each output element to the appropriate input elements. In an ordinary element-wise operation, corresponding elements can be accessed directly. With broadcasting, one input element may contribute to multiple output elements.
+
+Correct broadcasting behavior is therefore essential when composing tensor operations into higher-level layers.
+
+\section{Greater-Than-Zero Operation}
+
+A greater-than-zero operation evaluates each tensor element and produces \(1\) when the element is positive and \(0\) otherwise.
+
+For example:
+
+\begin{lstlisting}[
+    caption={Illustrative input and output for a greater-than-zero operation},
+    label={lst:greater-than-zero-example}
+]
+input:  [-2.5, 0.0, 3.7, -1.2]
+output: [ 0.0, 0.0, 1.0,  0.0]
+\end{lstlisting}
+
+Although simple, this operation can be useful in neural network computations. Consider the Rectified Linear Unit (ReLU) activation function:
+
+\[
+\operatorname{ReLU}(x) = \max(0,x)
+\]
+
+During the forward pass, negative values become zero while positive values pass through unchanged.
+
+Away from zero, its derivative is:
+
+\[
+\operatorname{ReLU}'(x) =
+\begin{cases}
+0 & x < 0,\\
+1 & x > 0.
+\end{cases}
+\]
+
+A greater-than-zero mask can help implement this derivative during backpropagation. The derivative at exactly zero requires a chosen convention, and the mask itself is only one part of the backward computation.
+
+This illustrates an important point: operations that appear trivial in isolation can become useful primitives when applied across entire tensors or combined into larger computational graphs.
+
+Their role becomes even clearer when we examine automatic differentiation and graph execution.
+
+\section{Kernel Dispatching}
+
+So far, we have discussed what several tensor operations compute. But an operation's mathematical definition is separate from the implementation that executes it.
+
+For example, tensor addition could be implemented using a scalar CPU kernel, an AVX2 vectorized kernel, or a CUDA kernel running on a GPU. These implementations aim to perform the same operation, but use different execution resources and strategies.
+
+The kernel dispatcher provides a place to select an appropriate implementation rather than repeating backend-selection logic inside every operation.
+
+Conceptually, the flow is:
+
+\begin{center}
+    Tensor operation
+    \(\longrightarrow\)
+    Kernel dispatcher
+    \(\longrightarrow\)
+    Selected implementation
+\end{center}
+
+Possible implementations include:
+
+\begin{itemize}
+    \item \textbf{Scalar CPU:} a basic implementation suitable as a reference or fallback.
+    \item \textbf{AVX2:} a CPU implementation that uses vector instructions where appropriate.
+    \item \textbf{CUDA:} a GPU implementation for operations with supported CUDA kernels.
+\end{itemize}
+
+The dispatcher must consider the requested execution backend and whether an implementation of the operation is available. If the requested kernel is unavailable, the framework can use a supported fallback where appropriate; a GPU request does not imply that every operation already has a CUDA implementation.
+
+Separating operation definitions from kernel selection reduces duplicated logic and provides a natural extension point as new operations and backends are introduced.
+
+In short, the operation describes \emph{what} should be computed, while the dispatcher helps determine \emph{which implementation} will compute it.
+
+\section{Testing and Validation}
+
+The behavior of tensor operations must be verified rather than assumed. LearnDeep uses test cases that compare its computed results against independently generated reference values, including values calculated with NumPy.
+
+These tests help identify discrepancies in element-wise operations, matrix multiplication, broadcasting, and other supported computations.
+
+% Insert screenshots of the operation tests and validation results here.
+%
+% \begin{figure}[htbp]
+%     \centering
+%     \includegraphics[width=\textwidth]{../images/operation-test-results.png}
+%     \caption{Operation tests and numerical validation results.}
+%     \label{fig:operation-test-results}
+% \end{figure}
+
+\section{Closing Remarks}
+
+Tensor operations form the computational foundation of LearnDeep. Their implementation involves more than translating mathematical formulas into loops: memory layout, cache locality, vectorization, broadcasting rules, and execution-backend selection all influence how the framework behaves.
+
+Separating operations from their kernel implementations also establishes a foundation for supporting multiple execution backends without duplicating the same dispatch logic throughout the library.
+
+This chapter has introduced several of these ideas through basic element-wise operations, matrix multiplication, broadcasting, logical masks, and kernel dispatching. More advanced kernel optimizations, including cache blocking and tiled GPU execution, remain natural areas for further exploration.
+
+There is plenty more to build.
+
+To be continued\ldots

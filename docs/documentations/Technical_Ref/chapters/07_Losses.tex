@@ -1,0 +1,212 @@
+\chapter{Neural Network Components: Losses}
+\label{Losses}
+
+
+\begin{figure}[!ht]
+    \centering
+    \includegraphics[width=\textwidth]{../../images/07_Neural Network Loss Functions Explained.png
+    }
+\end{figure}
+
+% Document layers, loss functions, and model APIs here.
+
+From the previous chapters, we've established
+the core components of our framework, including
+tensors, operations, autodiff, and neural
+network components such as layers.
+
+So far, our framework is good at performing
+mathematical computations through forward and
+backward passes. But how does it know whether
+its predictions are correct? More importantly,
+how does it know whether training is making
+progress?
+
+Our model's trainable parameters are initialized,
+and gradients can be calculated through the
+computational graph. But we still need a way
+to measure the difference between the model's
+predictions and the expected outputs.
+
+That's where loss functions come in.
+
+In supervised learning, a loss function measures
+the discrepancy between predicted outputs and their
+corresponding targets. During training, we typically
+aim to minimize this loss. For each batch, the
+model produces predictions during the forward pass,
+and the loss function evaluates how far those
+predictions are from the actual targets.
+
+Let's see how this works in practice.
+
+\section{Loss Functions: Mean Squared Error (MSE)}
+
+\[
+\mathrm{MSE} = \frac{1}{N}\sum_{i=1}^{N}(Y_i-\hat{Y}_i)^2
+\]
+
+where \(N\) is the number of elements over which
+the squared errors are averaged, \(Y_i\) is the
+target, and \(\hat{Y}_i\) is the predicted output.
+
+For each element, we subtract the prediction from
+the target and square the resulting difference. We
+then calculate the mean of these squared errors
+over the selected elements.
+
+\subsection{MSE: Differentiation}
+
+Although our autodiff engine calculates the gradients
+automatically, let's look at the derivative to
+understand what happens during backpropagation.
+
+Differentiating MSE with respect to a prediction gives:
+
+\[
+\frac{\partial \mathrm{MSE}}{\partial \hat{Y}_i}
+=\frac{2}{N}(\hat{Y}_i-Y_i)
+\]
+
+This gradient measures how the loss changes with
+respect to each predicted value. Our autodiff
+engine propagates it through the computational
+graph to calculate gradients for the model's
+trainable parameters.
+
+\subsection{MSE: Putting things together}
+
+Okey, now as we've sorted out the math part, we
+can now focus on the implementation. If we think
+deeply losses share common traits from their
+bigger sibling layers. They have few differences
+
+\begin{itemize}
+    \item 1. Don't have trainable parameter
+    \item 2. Outputs a scaler value rather than
+    tensor.
+\end{itemize}
+
+So, we can follow same structure like Layers
+
+\begin{lstlisting}[
+    caption={Creating loss class},
+    label={lst:layer abstruct class}
+]
+// file loss.hpp
+
+class Loss {
+public:
+    virtual ~Loss() = default;
+
+    virtual float calculate(std::vector<tf::tensor> inputs) = 0;
+    virtual void forward(std::vector<tf::tensor> inputs) = 0;
+    virtual void backward() = 0;
+};
+\end{lstlisting}
+
+Although the loss function does not need to
+implement differentiation manually, its backward
+interface can provide access to the gradients
+recorded by the computational graph. This is
+useful for debugging and inspecting the
+intermediate gradients.
+
+Let's see how MeanSquaredError(MSE) is layed out.
+
+\begin{lstlisting}[
+    caption={Creating MSE class},
+    label={lst:MSE class}
+]
+// file mse.cpp
+#include <mse.hpp>
+
+    void MSE::forward(std::vector<tf::tensor> inputs) {
+      if (inputs.size() == 1) {
+        training_inputs.push_back(inputs[0]);
+        ...
+        // initialize the intermediate tensors
+        ...
+
+        differences = target_ouput.sub(training_inputs[0]);
+        loss_tensor = differences.pow(2).scale(1.0/batch_size);
+      }
+    };
+    void MSE::backward(){
+        if (!this->isGradRecorded) {
+            this->isGradRecorded = true;
+            Graph *g = GraphManager::instance().getCurrentGraph();
+            grad_training_inputs = g,getGradTensor(trining_inputs[0]);
+        }
+    };
+\end{lstlisting}
+
+but sadly I've don't have any standalone
+configuration to showcase how a user can
+use losses. Most of its usage are inside
+model. As of now simple eager execution is
+not ready yet.
+
+\section{Loss Function: Categorical Cross Entropy (CCE)}
+
+While MSE is commonly used for regression tasks, Categorical Cross Entropy (CCE) is commonly used for classification tasks. It measures how well the predicted class probabilities match the target distribution.
+
+For one-hot encoded targets, CCE is defined as:
+
+\[
+\mathrm{CCE}=-\frac{1}{N}
+\sum_{i=1}^{N}\sum_{c=1}^{C}
+Y_{ic}\log(\hat{Y}_{ic})
+\]
+
+where \(N\) is the batch size and \(C\) is the number of classes.
+
+For each sample, we multiply the target value
+for each class by the logarithm of its predicted
+probability, sum over the classes, and average
+over the batch. The negative sign ensures that
+minimizing the loss encourages the model to
+assign higher probabilities to the correct classes.
+
+\subsection{CCE: Differentiation}
+
+\[
+\frac{\partial{CCE_\text{batch}}}{\partial{\hat(Y)}}= - \frac{1}{n}\frac{Y}{\hat{Y}}
+\]
+
+\subsection{CCE: Putting things together}
+
+\begin{lstlisting}[
+    caption={Creating CCE class},
+    label={lst:CCE class}
+]
+// file cce.cpp
+#include <cce.hpp>
+
+    void CCE::forward(std::vector<tf::tensor> inputs) {
+      if (inputs.size() == 1) {
+        training_inputs.push_back(inputs[0]);
+        ...
+        // initialize the intermediate tensors
+        ...
+
+        log_differences = target_inputs[0].mul(training_inputs[0].log());
+        loss_tensor = log_differences.scale(1.0/batch_size);
+      }
+    };
+    void CCE::backward(){
+        if (!this->isGradRecorded) {
+            this->isGradRecorded = true;
+            Graph *g = GraphManager::instance().getCurrentGraph();
+            grad_training_inputs = g,getGradTensor(trining_inputs[0]);
+        }
+    };
+\end{lstlisting}
+
+\subsection{CCE: In practice}
+
+Like MSE I've don't have eager mode calculate()
+is still not ready. So I don't have much ex.
+to showcase.
+
+% Document layers, loss functions, and model APIs here.

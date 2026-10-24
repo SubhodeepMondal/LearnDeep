@@ -1,0 +1,102 @@
+\documentclass[11pt,a4paper,oneside]{report}
+
+% --------------------------------------------------
+% Packages
+% --------------------------------------------------
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage[a4paper,margin=1in]{geometry}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{graphicx}
+\usepackage{tikz}
+\usetikzlibrary{positioning}
+
+% --------------------------------------------------
+% PDF metadata and hyperlinks
+% --------------------------------------------------
+\hypersetup{
+    pdftitle={LearnDeep: Technical Reference},
+    pdfauthor={Subhodeep Mondal},
+    pdfsubject={Architecture and implementation of a deep learning framework},
+    colorlinks=true,
+    linkcolor=blue,
+    urlcolor=blue,
+    citecolor=blue
+}
+
+% --------------------------------------------------
+% Cpp Language Setup
+% --------------------------------------------------
+% Custom color definitions for C++ syntax
+\definecolor{mBackground}{rgb}{0.97,0.97,0.98}
+\definecolor{mKeyword}{rgb}{0.0, 0.4, 0.65}
+\definecolor{mString}{rgb}{0.13, 0.54, 0.13}
+\definecolor{mComment}{rgb}{0.5, 0.5, 0.5}
+\definecolor{mNumber}{rgb}{0.7, 0.2, 0.1}
+
+% Global C++ style configuration
+\lstdefinestyle{mycppstyle}{
+    language=C++,
+    backgroundcolor=\color{mBackground},
+    commentstyle=\color{mComment}\itshape,
+    keywordstyle=\color{mKeyword}\bfseries,
+    numberstyle=\tiny\color{mComment},
+    stringstyle=\color{mString},
+    basicstyle=\ttfamily\small,
+    breakatwhitespace=false,
+    breaklines=true,
+    captionpos=b,
+    keepspaces=true,
+    numbers=left,
+    numbersep=8pt,
+    showspaces=false,
+    showstringspaces=false,
+    showtabs=false,
+    tabsize=4,
+    frame=single,                     % Adds a border around the code
+    rulecolor=\color{lightgray}       % Border color
+}
+\lstset{style=mycppstyle}
+
+% --------------------------------------------------
+% Document metadata
+% --------------------------------------------------
+\title{
+    \textbf{LearnDeep}\\[0.5em]
+    \large Technical Reference
+}
+\author{Subhodeep Mondal}
+\date{\today}
+
+% --------------------------------------------------
+% Document
+% --------------------------------------------------
+\begin{document}
+
+\maketitle
+
+\pagenumbering{roman}
+\tableofcontents
+\clearpage
+
+\pagenumbering{arabic}
+\include{chapters/01_Introduction}
+\include{chapters/02_Tensor_System}
+\include{chapters/03_Operations}
+\include{chapters/04_Kernels}
+\include{chapters/05_Automatic_Differrentiation}
+
+\include{chapters/06_Layers}
+\include{chapters/07_Losses}
+\include{chapters/08_Optimizers}
+\include{chapters/09_Model_Training_Inferencing}
+
+% Document training loops, optimizers, callbacks,
+% and prediction here.
+
+\end{document}
