@@ -29,8 +29,13 @@ public:
   setPredictedOutput(const std::vector<tf::tensor *> &output_targets) = 0;
   virtual std::float64_t const getScalerLoss() = 0;
 
+  virtual std::float64_t calculate(std::vector<tf::tensor> &predicted_value,
+                                   std::vector<tf::tensor> &target_output) = 0;
+
   virtual std::vector<tf::tensor *>
   getLossParameter(Loss_Parameter loss_parameter) = 0;
+
+  virtual unsigned getNoOfInputs() = 0;
 };
 
 class SquaredError : public Loss {
@@ -55,6 +60,9 @@ public:
 
   void backward() override;
 
+  std::float64_t calculate(std::vector<tf::tensor> &predicted_value,
+                           std::vector<tf::tensor> &target_output) override;
+
   void setTargetOutput(const std::vector<tf::tensor> output_predicts) override;
 
   void
@@ -64,6 +72,8 @@ public:
 
   std::vector<tf::tensor *>
   getLossParameter(Loss_Parameter loss_parameter) override;
+
+  unsigned getNoOfInputs() override { return 1; }
 };
 
 class CategoricalCrossEntropy : public Loss {
@@ -89,6 +99,9 @@ public:
 
   void backward() override;
 
+  std::float64_t calculate(std::vector<tf::tensor> &predicted_value,
+                           std::vector<tf::tensor> &target_output) override;
+
   void setTargetOutput(const std::vector<tf::tensor> output_predicts) override;
 
   void
@@ -98,5 +111,7 @@ public:
 
   std::vector<tf::tensor *>
   getLossParameter(Loss_Parameter loss_parameter) override;
+
+  unsigned getNoOfInputs() override { return 1; }
 };
 #endif // _TENSORFLOW_CORE_LOSS_

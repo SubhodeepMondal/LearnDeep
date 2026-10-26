@@ -10,10 +10,11 @@
 #include <callback/callback.hpp>
 #include <core/utility/initializers.hpp>
 #include <unordered_map>
+#include <vector>
 
 Model::Model(const std::vector<tf::tensor> &inputs,
              const std::vector<tf::tensor> &outputs)
-    : auto_grad_created(false) {
+    : auto_grad_created(false), pred_mapping(false) {
   for (tf::tensor input : inputs)
     this->inputs.push_back(input.getPtr());
 
@@ -78,6 +79,28 @@ unsigned Model::selectBatchIndex(int &randIndex, unsigned batch_count) {
     randIndex = (randIndex + 1) % batch_count;
   }
   return static_cast<unsigned>(randIndex);
+}
+
+std::vector<std::float64_t>
+Model::getEpochlevelLosses(std::vector<tf::tensor> predicted_output,
+                           std::vector<tf::tensor> target_ouput) {
+
+  std::vector<std::float64_t> temp_losses(this->losses.size());
+  unsigned i = 0;
+  for (tf::loss *loss : this->losses) {
+    for (unsigned j = 0; j < loss->get_no_of_inputs(); i++) {
+      auto it = std::find(this->outputs.begin(), this->outputs.end(),
+                          loss_input_mappings[loss][j]);
+      std::vector<tf::tensor> predicted, target;
+      if (it != outputs.end()) {
+        auto index = std::distance(this->outputs.begin(), it);
+        predicted.push_back(predicted_output[index]);
+        target.push_back(target_ouput[index]);
+      }
+      temp_losses[i++] = loss->calculate(predicted, target);
+    }
+  }
+  return temp_losses;
 }
 
 void Model::loadTrainingBatch(const std::vector<tf::tensor> &training_inputs,
@@ -225,11 +248,20 @@ Model::fit(const std::vector<tf::tensor> &training_inputs,
 
           this->runCallbackOnBatchEnd(callback, i);
           hist.record_history_on_batch_end(i, losses);
-        }
-
+        } // end of batch
         this->runCallbackOnEpochEnd(callback);
-        hist.record_history_on_epoch_end(upper_bound);
 
+        for (Layer *layer : this->layers)
+          layer->initializeParameters();
+
+        std::vector<tf::tensor> epoch_level_predicted_output =
+            this->predict(training_inputs);
+
+        std::vector<std::float64_t> epoch_level_losses =
+            this->getEpochlevelLosses(epoch_level_predicted_output,
+                                      training_target);
+
+        hist.record_history_on_epoch_end(epoch_level_losses);
         stop_epoch = this->checkEarlyStopping(callback);
       } else {
         LOG(ERROR)
@@ -237,19 +269,18 @@ Model::fit(const std::vector<tf::tensor> &training_inputs,
             << "\n";
         break;
       }
-    }
-
-    // store final weights and biases
-    for (Layer *layer : this->layers)
-      layer->initializeParameters();
+    } // end of epoch
   }
   return hist;
 }
 
 std::vector<tf::tensor> Model::predict(std::vector<tf::tensor> inputs) {
-  prediction_outputs.resize(outputs.size());
-  initializePredictionInputMappings();
-  initializeInputsForPrediction(inputs);
+  if (!pred_mapping) {
+    prediction_outputs.resize(outputs.size());
+    initializePredictionInputMappings();
+    initializeInputsForPrediction(inputs);
+    pred_mapping = true;
+  }
   doLayerCalculation();
   return prediction_outputs;
 }

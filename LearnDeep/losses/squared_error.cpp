@@ -1,5 +1,6 @@
 // Library Header
 #include <absl/log/log.h>
+#include <limits>
 #include <stdexcept>
 #include <vector>
 
@@ -62,6 +63,27 @@ void SquaredError::backward() {
       this->grad_training_inputs =
           tf::tensor(this->training_inputs[0]->dt_type,
                      g->getGradientTensor(this->training_inputs[0]->getPtr()));
+  }
+}
+
+std::float64_t
+SquaredError::calculate(std::vector<tf::tensor> &predicted_output,
+                        std::vector<tf::tensor> &target_outptut) {
+  std::float64_t loss_val = 0.0;
+  if (predicted_output.size() == 1) {
+    tf::tensor temp_diff = predicted_output[0].sub(target_outptut[0], false);
+    tf::tensor temp_loss_tensor_batch = temp_diff.pow(2, false);
+    tf::tensor temp_loss_tensor = temp_loss_tensor_batch.mean(
+        predicted_output[0].getNoOfDimensions() - 1);
+
+    for (unsigned i = 0; i < temp_loss_tensor.getNoOfElem(); i++)
+      loss_val += temp_loss_tensor.getData()[i];
+    return loss_val;
+  } else {
+    std::cerr
+        << "Mean Squared Error: requies only 1 tensor for prediction output\n";
+    loss_val = std::numeric_limits<double>::max();
+    return loss_val;
   }
 }
 

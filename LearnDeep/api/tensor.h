@@ -331,7 +331,7 @@ typedef struct history_container {
   void record_history_on_batch_end(unsigned const epoch_no,
                                    std::vector<tf::loss *> losses);
 
-  void record_history_on_epoch_end(unsigned const no_of_batches);
+  void record_history_on_epoch_end(std::vector<std::float64_t> epoch_loss);
 
   std::vector<std::float64_t> get_loss();
 
@@ -447,7 +447,12 @@ public:
 
   void backward();
 
+  std::float64_t calculate(std::vector<tf::tensor> &predicted_ouput,
+                           std::vector<tf::tensor> &target_output);
+
   const std::float64_t get_loss();
+
+  unsigned get_no_of_inputs();
 
   void set_target_output(std::vector<tf::tensor> target_output);
 

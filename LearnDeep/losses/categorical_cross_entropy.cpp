@@ -1,5 +1,6 @@
 // Library Header
 #include <absl/log/log.h>
+#include <limits>
 #include <stdexcept>
 #include <vector>
 
@@ -73,6 +74,13 @@ void CategoricalCrossEntropy::backward() {
           tf::tensor(this->training_inputs[0]->dt_type,
                      g->getGradientTensor(this->training_inputs[0]->getPtr()));
   }
+}
+
+std::float64_t
+CategoricalCrossEntropy::calculate(std::vector<tf::tensor> &predicted_value,
+                                   std::vector<tf::tensor> &target_output) {
+  std::float64_t loss_val = std::numeric_limits<double>::max();
+  return loss_val;
 }
 
 void CategoricalCrossEntropy::setPredictedOutput(

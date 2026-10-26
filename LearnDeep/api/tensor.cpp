@@ -959,14 +959,9 @@ void tf::history_container::record_history_on_batch_end(
 }
 
 void tf::history_container::record_history_on_epoch_end(
-    unsigned const no_of_batches) {
-  unsigned index = batch_history["loss"].size() - 1;
+    std::vector<std::float64_t> epoch_loss) {
 
-  std::float64_t sum =
-      std::accumulate(this->batch_history["loss"][index].begin(),
-                      this->batch_history["loss"][index].end(), 0.0);
-
-  history["loss"].push_back(sum / no_of_batches);
+  history["loss"].push_back(epoch_loss[0]);
 }
 
 // --- End History ---
@@ -1016,8 +1011,17 @@ void tf::loss::backward() {
   }
 }
 
+std::float64_t tf::loss::calculate(std::vector<tf::tensor> &predicted_ouput,
+                                   std::vector<tf::tensor> &target_output) {
+  return this->loss_ptr->calculate(predicted_ouput, target_output);
+}
+
 const std::float64_t tf::loss::get_loss() {
   return this->loss_ptr->getScalerLoss();
+}
+
+unsigned tf::loss::get_no_of_inputs() {
+  return this->loss_ptr->getNoOfInputs();
 }
 
 void tf::loss::set_target_output(std::vector<tf::tensor> target_output) {
