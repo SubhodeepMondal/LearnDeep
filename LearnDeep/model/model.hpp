@@ -60,9 +60,9 @@ private:
   std::vector<tf::tensor>
   createBatchTargetBuffer(const std::vector<tf::tensor> &training_target);
 
-  std::vector<std::float64_t>
-  getEpochlevelLosses(std::vector<tf::tensor> predicted_output,
-                      std::vector<tf::tensor> target_ouput);
+  std::unordered_map<std::string, std::float64_t>
+  getEpochlevelLosses(std::vector<tf::tensor> &predicted_output,
+                      const std::vector<tf::tensor> &target_output);
 
   unsigned selectBatchIndex(int &randIndex, unsigned batch_count);
 

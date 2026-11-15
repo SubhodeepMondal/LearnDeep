@@ -15,6 +15,7 @@ class Loss {
 protected:
   std::vector<Tensor<std::float64_t> *> input_predicts; // not owning
   std::float64_t loss_value;
+  std::string loss_name;
   bool isGradRecorded{false};
 
 public:
@@ -36,6 +37,8 @@ public:
   getLossParameter(Loss_Parameter loss_parameter) = 0;
 
   virtual unsigned getNoOfInputs() = 0;
+
+  virtual std::string getLossName() = 0;
 };
 
 class SquaredError : public Loss {
@@ -51,7 +54,8 @@ class SquaredError : public Loss {
 public:
   SquaredError() = default;
 
-  SquaredError(std::vector<Tensor<std::float64_t> *> input_preds);
+  SquaredError(std::vector<Tensor<std::float64_t> *> input_preds,
+               std::string loss_name = "Mean_Squared_Loss");
 
   ~SquaredError();
 
@@ -74,8 +78,9 @@ public:
   getLossParameter(Loss_Parameter loss_parameter) override;
 
   unsigned getNoOfInputs() override { return 1; }
-};
 
+  std::string getLossName() override { return this->loss_name; }
+};
 class CategoricalCrossEntropy : public Loss {
 
   std::vector<tf::tensor *> training_inputs;
@@ -90,7 +95,8 @@ class CategoricalCrossEntropy : public Loss {
 public:
   CategoricalCrossEntropy() = default;
 
-  CategoricalCrossEntropy(std::vector<Tensor<std::float64_t> *> input_preds);
+  CategoricalCrossEntropy(std::vector<Tensor<std::float64_t> *> input_preds,
+                          std::string loss_name = "categorical_cross_entropy");
 
   ~CategoricalCrossEntropy();
 
@@ -113,5 +119,9 @@ public:
   getLossParameter(Loss_Parameter loss_parameter) override;
 
   unsigned getNoOfInputs() override { return 1; }
+
+  std::string getLossName() override { return this->loss_name; }
 };
+
+inline std::unordered_set<std::string> loss_set;
 #endif // _TENSORFLOW_CORE_LOSS_

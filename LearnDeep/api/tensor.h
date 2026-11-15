@@ -326,12 +326,23 @@ public:
 typedef struct history_container {
   std::unordered_map<std::string, std::vector<std::vector<std::float64_t>>>
       batch_history;
-  std::unordered_map<std::string, std::vector<std::float64_t>> history;
+
+  /**
+  type: loss, accuracy, recall, precision
+  num_losses: huber loss, mse, squared_error, cse (there can be more than one
+  epoch: number of epochs
+  loss in  a model)
+  value: loss value
+   */
+  std::unordered_map<
+      std::string, std::unordered_map<std::string, std::vector<std::float64_t>>>
+      history;
 
   void record_history_on_batch_end(unsigned const epoch_no,
                                    std::vector<tf::loss *> losses);
 
-  void record_history_on_epoch_end(std::vector<std::float64_t> epoch_loss);
+  void record_history_on_epoch_end(
+      std::unordered_map<std::string, std::float64_t> epoch_loss);
 
   std::vector<std::float64_t> get_loss();
 
@@ -451,6 +462,8 @@ public:
                            std::vector<tf::tensor> &target_output);
 
   const std::float64_t get_loss();
+
+  std::string get_loss_name();
 
   unsigned get_no_of_inputs();
 

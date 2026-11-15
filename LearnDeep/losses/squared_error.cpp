@@ -2,6 +2,7 @@
 #include <absl/log/log.h>
 #include <limits>
 #include <stdexcept>
+#include <string>
 #include <vector>
 
 // Library Header
@@ -12,7 +13,8 @@
 
 SquaredError::~SquaredError() {}
 
-SquaredError::SquaredError(std::vector<Tensor<std::float64_t> *> input_preds) {
+SquaredError::SquaredError(std::vector<Tensor<std::float64_t> *> input_preds,
+                           std::string loss_name) {
   if (input_preds.size() == 1) {
     this->input_predicts.push_back(input_preds[0]);
   } else {
@@ -20,6 +22,13 @@ SquaredError::SquaredError(std::vector<Tensor<std::float64_t> *> input_preds) {
                << input_preds.size() << ".\n";
     throw std::runtime_error(
         "Exiting program due to errorneous input for SquaredError");
+  }
+
+  if (loss_set.count(loss_name)) {
+    this->loss_name = loss_name + "_" + std::to_string((long unsigned)this);
+  } else {
+    this->loss_name = loss_name;
+    loss_set.insert(loss_name);
   }
 }
 
@@ -74,7 +83,7 @@ SquaredError::calculate(std::vector<tf::tensor> &predicted_output,
     tf::tensor temp_diff = predicted_output[0].sub(target_outptut[0], false);
     tf::tensor temp_loss_tensor_batch = temp_diff.pow(2, false);
     tf::tensor temp_loss_tensor = temp_loss_tensor_batch.mean(
-        predicted_output[0].getNoOfDimensions() - 1);
+        predicted_output[0].getNoOfDimensions() - 1, false);
 
     for (unsigned i = 0; i < temp_loss_tensor.getNoOfElem(); i++)
       loss_val += temp_loss_tensor.getData()[i];

@@ -33,28 +33,28 @@ TEST_F(FrameworkTest, DenseLayer_Test_1) {
 
   /* --- call back setting --- */
   tf::callback::trace call_back;
-  call_back.record_parameter_on_epoch_begin(
+  call_back.record_parameter_on_batch_begin(
       dense_1.getLayerPtr(), Layer_Parameter::dense_training_input, false);
 
-  call_back.record_parameter_on_epoch_end(
+  call_back.record_parameter_on_batch_end(
       dense_1.getLayerPtr(), Layer_Parameter::dense_training_weight, false);
 
-  call_back.record_parameter_on_epoch_end(
+  call_back.record_parameter_on_batch_end(
       dense_1.getLayerPtr(), Layer_Parameter::dense_training_bias, false);
 
-  call_back.record_parameter_on_epoch_end(
+  call_back.record_parameter_on_batch_end(
       dense_1.getLayerPtr(), Layer_Parameter::dense_training_output, false);
 
-  call_back.record_parameter_on_epoch_end(
+  call_back.record_parameter_on_batch_end(
       dense_1.getLayerPtr(), Layer_Parameter::dense_grad_weight, false);
 
-  call_back.record_parameter_on_epoch_end(
+  call_back.record_parameter_on_batch_end(
       dense_1.getLayerPtr(), Layer_Parameter::dense_grad_bias, false);
 
-  call_back.record_parameter_on_epoch_end(
+  call_back.record_parameter_on_batch_end(
       dense_1.getLayerPtr(), Layer_Parameter::dense_updated_weight, false);
 
-  call_back.record_parameter_on_epoch_end(
+  call_back.record_parameter_on_batch_end(
       dense_1.getLayerPtr(), Layer_Parameter::dense_updated_bias, false);
   /* --- call back setting end --- */
 
@@ -65,13 +65,13 @@ TEST_F(FrameworkTest, DenseLayer_Test_1) {
   /* --- end model creation --- */
 
   tf::loss loss_sgd = mymodel.get_model_loss(dense_output[0]);
-  call_back.record_tensor_loss_on_epoch_end(
+  call_back.record_tensor_loss_on_batch_end(
       loss_sgd, Loss_Parameter::squared_error_predicted_output, false);
 
-  call_back.record_tensor_loss_on_epoch_end(
+  call_back.record_tensor_loss_on_batch_end(
       loss_sgd, Loss_Parameter::squared_error_grad_predicted_output);
 
-  call_back.record_scalar_loss_on_epoch_end(loss_sgd, false);
+  call_back.record_scalar_loss_on_batch_end(loss_sgd, false);
 
   /* --- model training --- */
   unsigned epoch = 1;
@@ -80,82 +80,75 @@ TEST_F(FrameworkTest, DenseLayer_Test_1) {
               batch_size);
 
   /* --- Intercepting  training parameters --- */
-  std::vector<std::vector<tf::tensor>> outputs =
-      call_back.get_parameter_on_epoch_end(
-          dense_1.getLayerPtr(), Layer_Parameter::dense_training_output);
+  auto outputs = call_back.get_parameter_on_batch_end(
+      dense_1.getLayerPtr(), Layer_Parameter::dense_training_output);
 
-  std::vector<std::vector<tf::tensor>> training_weights =
-      call_back.get_parameter_on_epoch_end(
-          dense_1.getLayerPtr(), Layer_Parameter::dense_training_weight);
+  auto training_weights = call_back.get_parameter_on_batch_end(
+      dense_1.getLayerPtr(), Layer_Parameter::dense_training_weight);
 
-  std::vector<std::vector<tf::tensor>> train_dense_1_grad_weights =
-      call_back.get_parameter_on_epoch_end(dense_1.getLayerPtr(),
-                                           Layer_Parameter::dense_grad_weight);
+  auto train_dense_1_grad_weights = call_back.get_parameter_on_batch_end(
+      dense_1.getLayerPtr(), Layer_Parameter::dense_grad_weight);
 
-  std::vector<std::vector<tf::tensor>> train_dense_1_grad_bias =
-      call_back.get_parameter_on_epoch_end(dense_1.getLayerPtr(),
-                                           Layer_Parameter::dense_grad_bias);
+  auto train_dense_1_grad_bias = call_back.get_parameter_on_batch_end(
+      dense_1.getLayerPtr(), Layer_Parameter::dense_grad_bias);
 
-  std::vector<std::vector<tf::tensor>> train_dense_1_updated_weights =
-      call_back.get_parameter_on_epoch_end(
-          dense_1.getLayerPtr(), Layer_Parameter::dense_updated_weight);
+  auto train_dense_1_updated_weights = call_back.get_parameter_on_batch_end(
+      dense_1.getLayerPtr(), Layer_Parameter::dense_updated_weight);
 
-  std::vector<std::vector<tf::tensor>> train_dense_1_updated_bias =
-      call_back.get_parameter_on_epoch_end(dense_1.getLayerPtr(),
-                                           Layer_Parameter::dense_updated_bias);
+  auto train_dense_1_updated_bias = call_back.get_parameter_on_batch_end(
+      dense_1.getLayerPtr(), Layer_Parameter::dense_updated_bias);
 
-  std::vector<std::vector<tf::tensor>> training_losses =
-      call_back.get_tensor_loss_on_epoch_end(
-          loss_sgd, Loss_Parameter::squared_error_predicted_output);
+  auto training_losses = call_back.get_tensor_loss_on_batch_end(
+      loss_sgd, Loss_Parameter::squared_error_predicted_output);
 
-  std::vector<std::vector<tf::tensor>> grad_training_losses =
-      call_back.get_tensor_loss_on_epoch_end(
-          loss_sgd, Loss_Parameter::squared_error_grad_predicted_output);
+  auto grad_training_losses = call_back.get_tensor_loss_on_batch_end(
+      loss_sgd, Loss_Parameter::squared_error_grad_predicted_output);
 
-  for (auto output : outputs) {
+  for (unsigned ep = 0; ep < epoch; ep++) {
+    ASSERT_EQ(outputs[ep].size(), 1);
     for (int j = 0; j < 128; j++)
       for (int i = 0; i < 32; i++)
-        EXPECT_NEAR(output[0].getData()[i + j * 32],
+        EXPECT_NEAR(outputs[ep][0][0].getData()[i + j * 32],
                     dense_layer_Test_3_output_data[i + j * 32], 1e-6)
             << "at: " << i + j * 3;
   }
 
   for (unsigned ep = 0; ep < epoch; ep++)
     for (int i = 0; i < 32; i++)
-      EXPECT_NEAR(training_losses[ep][0].getData()[i],
+      EXPECT_NEAR(training_losses[ep][0][0].getData()[i],
                   dense_layer_Test_3_loss_data[i], 1e-5)
           << "at ep : " << ep << "i: " << i;
 
   for (unsigned ep = 0; ep < epoch; ep++)
     for (int j = 0; j < 43; j++)
       for (int i = 0; i < 32; i++)
-        EXPECT_NEAR(train_dense_1_grad_weights[ep][0].getData()[i + j * 32],
+        EXPECT_NEAR(train_dense_1_grad_weights[ep][0][0].getData()[i + j * 32],
                     dense_layer_Test_3_grad_weight_data[i + j * 32], 1e-5)
             << "at ep : " << ep << " i: " << i << " j: " << j;
 
   for (unsigned ep = 0; ep < epoch; ep++)
     for (int i = 0; i < 32; i++)
-      EXPECT_NEAR(train_dense_1_grad_bias[ep][0].getData()[i],
+      EXPECT_NEAR(train_dense_1_grad_bias[ep][0][0].getData()[i],
                   dense_layer_Test_3_grad_bias_data[i], 1e-5)
           << "at i: " << i;
 
   for (unsigned ep = 0; ep < epoch; ep++)
     for (int j = 0; j < 128; j++)
       for (int i = 0; i < 32; i++)
-        EXPECT_NEAR(grad_training_losses[ep][0].getData()[i + j * 32],
+        EXPECT_NEAR(grad_training_losses[ep][0][0].getData()[i + j * 32],
                     dense_layer_Test_3_grad_loss_data[i + j * 32], 1e-5)
             << "at i: " << i << " j: " << j;
 
   for (unsigned ep = 0; ep < epoch; ep++)
     for (int j = 0; j < 43; j++)
       for (int i = 0; i < 32; i++)
-        EXPECT_NEAR(train_dense_1_updated_weights[ep][0].getData()[i + j * 32],
+        EXPECT_NEAR(train_dense_1_updated_weights[ep][0][0].getData()[i + j * 32],
                     dense_layer_Test_3_updated_weights_data[i + j * 32], 1e-5)
             << "at i: " << i << " j: " << j;
 
   for (unsigned ep = 0; ep < epoch; ep++)
     for (int i = 0; i < 32; i++)
-      EXPECT_NEAR(train_dense_1_updated_bias[ep][0].getData()[i],
+      EXPECT_NEAR(train_dense_1_updated_bias[ep][0][0].getData()[i],
                   dense_layer_Test_3_updated_bias_data[i], 1e-5)
           << "at i: " << i;
 
@@ -521,17 +514,15 @@ TEST_F(FrameworkTest, DenseLayer_Test_3) {
   /* --- end model creation --- */
 
   tf::loss loss_sgd = mymodel.get_model_loss(dense_output[0]);
-  tf::callback::earlystopping early_stopping(loss_sgd, 5, 1e-3, true);
 
   /* --- training the model ----*/
-  unsigned epoches = 100;
-  auto hist = mymodel.fit({input}, {target_output}, {early_stopping.callback()},
-                          epoches, batch_size);
+  unsigned epoches = 8;
+  auto hist = mymodel.fit({input}, {target_output}, {}, epoches, batch_size);
 
   /* --- validating loss --- */
   std::vector<std::float64_t> expected_losses =
       load_bin("test/data/DenseLayer_Test_3_batch_loss.bin",
-               8 * (sample_size / batch_size));
+               epoches * (sample_size / batch_size));
 
   for (unsigned epoch = 0; epoch < hist["loss"].size(); epoch++) {
     for (unsigned batch = 0; batch < sample_size / batch_size; batch++) {
@@ -783,9 +774,21 @@ TEST_F(FrameworkTest, Quadratic_Func_Fit_Test) {
   call_back.record_tensor_loss_on_batch_end(
       loss_sgd, Loss_Parameter::squared_error_target_output, false);
   call_back.record_scalar_loss_on_batch_end(loss_sgd, false);
+  call_back.record_scalar_loss_on_epoch_end(loss_sgd, false);
 
-  mymodel.fit({input}, {target_output}, {call_back.callback()}, epoch,
-              batch_size);
+  tf::history_container hist = mymodel.fit(
+      {input}, {target_output}, {call_back.callback()}, epoch, batch_size);
+
+  const std::string loss_name = loss_sgd.get_loss_name();
+  const auto &epoch_loss_history = hist.history["loss"][loss_name];
+
+  const auto expected_epoch_losses = load_bin(
+      "test/data/Quadratic_ReluDense_Test_1_epoch_loss_history.bin", epoch);
+  ASSERT_EQ(epoch_loss_history.size(), epoch);
+  for (unsigned ep = 0; ep < epoch; ep++) {
+    EXPECT_NEAR(epoch_loss_history[ep], expected_epoch_losses[ep], 1e-6)
+        << "history loss at epoch " << ep;
+  }
 
   std::vector<std::vector<std::vector<tf::tensor>>> input_batches =
       call_back.get_parameter_on_batch_begin(
@@ -952,8 +955,19 @@ TEST_F(FrameworkTest, Cubic_Func_Fit_Test) {
       loss_sgd, Loss_Parameter::squared_error_target_output, false);
   call_back.record_scalar_loss_on_batch_end(loss_sgd, false);
 
-  mymodel.fit({input}, {target_output}, {call_back.callback()}, epoch,
-              batch_size);
+  tf::history_container hist = mymodel.fit(
+      {input}, {target_output}, {call_back.callback()}, epoch, batch_size);
+
+  const std::string loss_name = loss_sgd.get_loss_name();
+  const auto &epoch_loss_history = hist.history["loss"][loss_name];
+  const auto expected_epoch_losses = load_bin(
+      "test/data/Cubic_ReluDense_Test_1_epoch_loss_history.bin", epoch);
+  ASSERT_EQ(epoch_loss_history.size(), epoch);
+  ASSERT_EQ(expected_epoch_losses.size(), epoch);
+  for (unsigned ep = 0; ep < epoch; ep++) {
+    EXPECT_NEAR(epoch_loss_history[ep], expected_epoch_losses[ep], 1e-6)
+        << "epoch loss at epoch " << ep;
+  }
 
   std::vector<std::vector<std::vector<tf::tensor>>> input_batches =
       call_back.get_parameter_on_batch_begin(
@@ -1166,8 +1180,19 @@ TEST_F(FrameworkTest, Sin_x_Func_Fit_Test) {
   tf::callback::trace call_back;
   call_back.record_scalar_loss_on_batch_end(loss_sgd, false);
 
-  mymodel.fit({input}, {target_output}, {call_back.callback()}, epoch,
-              batch_size);
+  tf::history_container hist = mymodel.fit(
+      {input}, {target_output}, {call_back.callback()}, epoch, batch_size);
+
+  const std::string loss_name = loss_sgd.get_loss_name();
+  const auto &epoch_loss_history = hist.history["loss"][loss_name];
+  const auto expected_epoch_losses = load_bin(
+      "test/data/Sin_ReluDense_Test_1_epoch_loss_history.bin", epoch);
+  ASSERT_EQ(epoch_loss_history.size(), epoch);
+  ASSERT_EQ(expected_epoch_losses.size(), epoch);
+  for (unsigned ep = 0; ep < epoch; ep++) {
+    EXPECT_NEAR(epoch_loss_history[ep], expected_epoch_losses[ep], 1e-6)
+        << "epoch loss at epoch " << ep;
+  }
 
   std::vector<std::vector<std::float64_t>> scalar_losses =
       call_back.get_scaler_loss_on_batch_end(loss_sgd);

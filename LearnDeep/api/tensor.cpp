@@ -13,6 +13,7 @@
 #include <model/model.hpp>
 #include <numeric>
 #include <optimizers/optimizers.hpp>
+#include <unordered_map>
 
 class CallbackTrace;
 class CallbackEarlyStopping;
@@ -959,9 +960,11 @@ void tf::history_container::record_history_on_batch_end(
 }
 
 void tf::history_container::record_history_on_epoch_end(
-    std::vector<std::float64_t> epoch_loss) {
+    std::unordered_map<std::string, std::float64_t> epoch_loss) {
 
-  history["loss"].push_back(epoch_loss[0]);
+  for (const auto &[key, value] : epoch_loss) {
+    history["loss"][key].push_back(value);
+  }
 }
 
 // --- End History ---
@@ -1019,6 +1022,8 @@ std::float64_t tf::loss::calculate(std::vector<tf::tensor> &predicted_ouput,
 const std::float64_t tf::loss::get_loss() {
   return this->loss_ptr->getScalerLoss();
 }
+
+std::string tf::loss::get_loss_name() { return this->loss_ptr->getLossName(); }
 
 unsigned tf::loss::get_no_of_inputs() {
   return this->loss_ptr->getNoOfInputs();

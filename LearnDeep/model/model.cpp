@@ -81,24 +81,23 @@ unsigned Model::selectBatchIndex(int &randIndex, unsigned batch_count) {
   return static_cast<unsigned>(randIndex);
 }
 
-std::vector<std::float64_t>
-Model::getEpochlevelLosses(std::vector<tf::tensor> predicted_output,
-                           std::vector<tf::tensor> target_ouput) {
+std::unordered_map<std::string, std::float64_t>
+Model::getEpochlevelLosses(std::vector<tf::tensor> &predicted_output,
+                           const std::vector<tf::tensor> &target_ouput) {
 
-  std::vector<std::float64_t> temp_losses(this->losses.size());
-  unsigned i = 0;
+  std::unordered_map<std::string, std::float64_t> temp_losses;
   for (tf::loss *loss : this->losses) {
-    for (unsigned j = 0; j < loss->get_no_of_inputs(); i++) {
+    std::vector<tf::tensor> predicted, target;
+    for (unsigned j = 0; j < loss->get_no_of_inputs(); j++) {
       auto it = std::find(this->outputs.begin(), this->outputs.end(),
                           loss_input_mappings[loss][j]);
-      std::vector<tf::tensor> predicted, target;
       if (it != outputs.end()) {
         auto index = std::distance(this->outputs.begin(), it);
-        predicted.push_back(predicted_output[index]);
-        target.push_back(target_ouput[index]);
+        predicted.push_back(predicted_output[index].copy());
+        target.push_back(target_ouput[index].copy());
       }
-      temp_losses[i++] = loss->calculate(predicted, target);
     }
+    temp_losses[loss->get_loss_name()] = loss->calculate(predicted, target);
   }
   return temp_losses;
 }
@@ -249,7 +248,6 @@ Model::fit(const std::vector<tf::tensor> &training_inputs,
           this->runCallbackOnBatchEnd(callback, i);
           hist.record_history_on_batch_end(i, losses);
         } // end of batch
-        this->runCallbackOnEpochEnd(callback);
 
         for (Layer *layer : this->layers)
           layer->initializeParameters();
@@ -257,7 +255,7 @@ Model::fit(const std::vector<tf::tensor> &training_inputs,
         std::vector<tf::tensor> epoch_level_predicted_output =
             this->predict(training_inputs);
 
-        std::vector<std::float64_t> epoch_level_losses =
+        std::unordered_map<std::string, std::float64_t> epoch_level_losses =
             this->getEpochlevelLosses(epoch_level_predicted_output,
                                       training_target);
 
