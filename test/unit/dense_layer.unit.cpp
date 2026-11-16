@@ -113,43 +113,55 @@ TEST_F(FrameworkTest, DenseLayer_Test_1) {
             << "at: " << i + j * 3;
   }
 
-  for (unsigned ep = 0; ep < epoch; ep++)
-    for (int i = 0; i < 32; i++)
-      EXPECT_NEAR(training_losses[ep][0][0].getData()[i],
-                  dense_layer_Test_3_loss_data[i], 1e-5)
-          << "at ep : " << ep << "i: " << i;
+  std::float64_t expected_mean_loss = 0.0;
+  for (int i = 0; i < 32; i++)
+    expected_mean_loss += dense_layer_Test_3_loss_data[i] / 32.0;
+
+  for (unsigned ep = 0; ep < epoch; ep++) {
+    ASSERT_EQ(training_losses[ep][0][0].getNoOfElem(), 1);
+    EXPECT_NEAR(training_losses[ep][0][0].getData()[0], expected_mean_loss,
+                1e-5)
+        << "at ep: " << ep;
+  }
 
   for (unsigned ep = 0; ep < epoch; ep++)
     for (int j = 0; j < 43; j++)
       for (int i = 0; i < 32; i++)
         EXPECT_NEAR(train_dense_1_grad_weights[ep][0][0].getData()[i + j * 32],
-                    dense_layer_Test_3_grad_weight_data[i + j * 32], 1e-5)
+                    dense_layer_Test_3_grad_weight_data[i + j * 32] / 32.0,
+                    1e-5)
             << "at ep : " << ep << " i: " << i << " j: " << j;
 
   for (unsigned ep = 0; ep < epoch; ep++)
     for (int i = 0; i < 32; i++)
       EXPECT_NEAR(train_dense_1_grad_bias[ep][0][0].getData()[i],
-                  dense_layer_Test_3_grad_bias_data[i], 1e-5)
+                  dense_layer_Test_3_grad_bias_data[i] / 32.0, 1e-5)
           << "at i: " << i;
 
   for (unsigned ep = 0; ep < epoch; ep++)
     for (int j = 0; j < 128; j++)
       for (int i = 0; i < 32; i++)
         EXPECT_NEAR(grad_training_losses[ep][0][0].getData()[i + j * 32],
-                    dense_layer_Test_3_grad_loss_data[i + j * 32], 1e-5)
+                    dense_layer_Test_3_grad_loss_data[i + j * 32] / 32.0,
+                    1e-5)
             << "at i: " << i << " j: " << j;
 
   for (unsigned ep = 0; ep < epoch; ep++)
     for (int j = 0; j < 43; j++)
       for (int i = 0; i < 32; i++)
         EXPECT_NEAR(train_dense_1_updated_weights[ep][0][0].getData()[i + j * 32],
-                    dense_layer_Test_3_updated_weights_data[i + j * 32], 1e-5)
+                    dense_layer_Test_3_weight_data[i + j * 32] -
+                        0.01 * dense_layer_Test_3_grad_weight_data[i + j * 32] /
+                            32.0,
+                    1e-5)
             << "at i: " << i << " j: " << j;
 
   for (unsigned ep = 0; ep < epoch; ep++)
     for (int i = 0; i < 32; i++)
       EXPECT_NEAR(train_dense_1_updated_bias[ep][0][0].getData()[i],
-                  dense_layer_Test_3_updated_bias_data[i], 1e-5)
+                  dense_layer_Test_3_bias_data[i] -
+                      0.01 * dense_layer_Test_3_grad_bias_data[i] / 32.0,
+                  1e-5)
           << "at i: " << i;
 
   std::vector<std::float64_t> scalar_losses =
@@ -323,18 +335,15 @@ TEST_F(FrameworkTest, DenseLayer_Test_2) {
   {
     std::vector<std::float64_t> dense_layer_Test_2_loss_batch_data =
         load_bin("test/data/DenseLayer_Test_2_loss_batch_data.bin",
-                 epoch * no_of_batches * no_of_dense_unit);
+                 epoch * no_of_batches);
     for (unsigned ep = 0; ep < epoch; ep++)
-      for (unsigned bt = 0; bt < no_of_batches; bt++)
-        for (unsigned i = 0; i < no_of_dense_unit; i++) {
-          unsigned index = i;
-          unsigned data_index = index + bt * no_of_dense_unit +
-                                ep * no_of_dense_unit * no_of_batches;
-          EXPECT_NEAR(training_losses[ep][bt][0].getData()[index],
-                      dense_layer_Test_2_loss_batch_data[data_index], 1e-6)
-              << "at: epoch " << ep << ", at: batch " << bt << ", index "
-              << index;
-        }
+      for (unsigned bt = 0; bt < no_of_batches; bt++) {
+        ASSERT_EQ(training_losses[ep][bt][0].getNoOfElem(), 1);
+        unsigned data_index = bt + ep * no_of_batches;
+        EXPECT_NEAR(training_losses[ep][bt][0].getData()[0],
+                    dense_layer_Test_2_loss_batch_data[data_index], 1e-6)
+            << "at: epoch " << ep << ", batch " << bt;
+      }
   }
 
   /* --- loss gradeint per batch test --- */

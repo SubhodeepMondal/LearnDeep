@@ -254,6 +254,8 @@ Model::fit(const std::vector<tf::tensor> &training_inputs,
 
         std::vector<tf::tensor> epoch_level_predicted_output =
             this->predict(training_inputs);
+        if (!this->pred_mapping)
+          this->pred_mapping = true;
 
         std::unordered_map<std::string, std::float64_t> epoch_level_losses =
             this->getEpochlevelLosses(epoch_level_predicted_output,
@@ -268,6 +270,7 @@ Model::fit(const std::vector<tf::tensor> &training_inputs,
         break;
       }
     } // end of epoch
+    this->pred_mapping = false;
   }
   return hist;
 }
@@ -277,7 +280,6 @@ std::vector<tf::tensor> Model::predict(std::vector<tf::tensor> inputs) {
     prediction_outputs.resize(outputs.size());
     initializePredictionInputMappings();
     initializeInputsForPrediction(inputs);
-    pred_mapping = true;
   }
   doLayerCalculation();
   return prediction_outputs;

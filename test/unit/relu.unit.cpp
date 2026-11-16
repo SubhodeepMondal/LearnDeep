@@ -242,7 +242,7 @@ TEST_F(FrameworkTest, ReluLayer_Test_1) {
       load_bin("test/data/ReluDense_Test_5_relu_output_data.bin",
                no_of_dense_neuron * batch_size);
   auto expected_loss =
-      load_bin("test/data/ReluDense_Test_5_loss_data.bin", no_of_dense_neuron);
+      load_bin("test/data/ReluDense_Test_5_loss_data.bin", 1);
   auto expected_grad_relu_output =
       load_bin("test/data/ReluDense_Test_5_grad_relu_output_data.bin",
                no_of_dense_neuron * batch_size);
@@ -291,10 +291,10 @@ TEST_F(FrameworkTest, ReluLayer_Test_1) {
       }
     }
 
+    ASSERT_EQ(training_losses[ep][0][0].getNoOfElem(), 1);
+    EXPECT_NEAR(training_losses[ep][0][0].getData()[0], expected_loss[0], 1e-5)
+        << "loss at ep: " << ep;
     for (unsigned i = 0; i < no_of_dense_neuron; i++) {
-      EXPECT_NEAR(training_losses[ep][0][0].getData()[i], expected_loss[i],
-                  1e-5)
-          << "loss at ep: " << ep << " i: " << i;
       EXPECT_NEAR(train_dense_1_grad_bias[ep][0][0].getData()[i],
                   expected_grad_bias[i], 1e-5)
           << "grad bias at ep: " << ep << " i: " << i;

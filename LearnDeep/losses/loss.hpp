@@ -50,6 +50,7 @@ class SquaredError : public Loss {
   tf::tensor *loss_tensor_batch;
   tf::tensor *loss_tensor;
   tf::tensor *loss_gradient;
+  std::vector<tf::tensor> loss_reduction_intermediates;
 
 public:
   SquaredError() = default;

@@ -86,22 +86,37 @@ void CategoricalCrossEntropy::backward() {
 std::float64_t
 CategoricalCrossEntropy::calculate(std::vector<tf::tensor> &predicted_output,
                                    std::vector<tf::tensor> &target_output) {
-  std::float64_t loss_val = 0.0;
-  if (predicted_output.size() == 1) {
-    tf::tensor temp_log = predicted_output[0].log(false);
-    tf::tensor temp_diff = temp_log.mul(target_output[0], false);
-    tf::tensor temp_loss_tensor_batch = temp_log.scale(-1.0f, false);
-    tf::tensor temp_loss_tensor = temp_loss_tensor_batch.mean(
-        predicted_output[0].getNoOfDimensions() - 1, false);
 
-    for (unsigned i = 0; i < temp_loss_tensor.getNoOfElem(); i++)
+  if (predicted_output.size() == 1) {
+
+    tf::tensor temp_log = predicted_output[0].log(false);
+
+    tf::tensor temp_diff = temp_log.mul(target_output[0], false);
+
+    tf::tensor temp_loss_tensor = temp_diff.scale(-1.0f, false);
+
+    // Mean over batch
+    temp_loss_tensor = temp_loss_tensor.scale(
+        1.0 / predicted_output[0]
+                  .getDimensions()[predicted_output[0].getNoOfDimensions() - 1],
+        false);
+
+    // Sum over classes/features
+    std::float64_t loss_val = 0.0;
+
+    for (unsigned i = 0; i < temp_loss_tensor.getNoOfElem(); i++) {
+
       loss_val += temp_loss_tensor.getData()[i];
+    }
+
     return loss_val;
+
   } else {
-    std::cerr << "Categorical coss entropy Error: requies only 1 tensor for "
-                 "prediction output\n";
-    loss_val = std::numeric_limits<double>::max();
-    return loss_val;
+
+    std::cerr << "Categorical Cross Entropy Error: requires only 1 tensor "
+                 "for prediction output\n";
+
+    return std::numeric_limits<double>::max();
   }
 }
 
