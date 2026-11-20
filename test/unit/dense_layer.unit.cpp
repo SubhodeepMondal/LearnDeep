@@ -2,29 +2,59 @@
 
 // library headers
 #include "LinearAlgebraFixtures.unit.hpp"
-#include "dense_layer_data.hpp"
 #include <LearnDeep/api/tensor.h>
+#include <callback/callback.hpp>
 #include <gtest/gtest.h>
+#include <losses/loss.hpp>
 
 #include <iostream>
 #include <stdfloat>
 
 TEST_F(FrameworkTest, DenseLayer_Test_1) {
 
+  constexpr unsigned no_of_input_feature = 43;
+  constexpr unsigned no_of_dense_unit = 32;
+  constexpr unsigned sample_size = 128;
+
+  auto input_data = load_bin("test/data/DenseLayer_Test_1_input_data.bin",
+                             no_of_input_feature * sample_size);
+  auto target_data = load_bin("test/data/DenseLayer_Test_1_target_data.bin",
+                              no_of_dense_unit * sample_size);
+  auto weight_data = load_bin("test/data/DenseLayer_Test_1_weights_data.bin",
+                              no_of_dense_unit * no_of_input_feature);
+  auto bias_data =
+      load_bin("test/data/DenseLayer_Test_1_bias_data.bin", no_of_dense_unit);
+  auto expected_output = load_bin("test/data/DenseLayer_Test_1_output_data.bin",
+                                  no_of_dense_unit * sample_size);
+  auto expected_loss = load_bin("test/data/DenseLayer_Test_1_loss_data.bin", 1);
+  auto expected_grad_weight =
+      load_bin("test/data/DenseLayer_Test_1_grad_weight_data.bin",
+               no_of_dense_unit * no_of_input_feature);
+  auto expected_grad_bias = load_bin(
+      "test/data/DenseLayer_Test_1_grad_bias_data.bin", no_of_dense_unit);
+  auto expected_grad_loss =
+      load_bin("test/data/DenseLayer_Test_1_grad_loss_data.bin",
+               no_of_dense_unit * sample_size);
+  auto expected_updated_weights =
+      load_bin("test/data/DenseLayer_Test_1_updated_weights_data.bin",
+               no_of_dense_unit * no_of_input_feature);
+  auto expected_updated_bias = load_bin(
+      "test/data/DenseLayer_Test_1_updated_bias_data.bin", no_of_dense_unit);
+
   tf::tensor x;
   tf::tensor weight, bias;
   tf::tensor input, target_output, validation_data;
 
-  x.tf_create(tf_float64, 43, 128);
-  input.tf_create(tf_float64, 43, 128);
-  weight.tf_create(tf_float64, 32, 43);
-  bias.tf_create(tf_float64, 32, 1);
-  target_output.tf_create(tf_float64, 32, 128);
+  x.tf_create(tf_float64, no_of_input_feature, sample_size);
+  input.tf_create(tf_float64, no_of_input_feature, sample_size);
+  weight.tf_create(tf_float64, no_of_dense_unit, no_of_input_feature);
+  bias.tf_create(tf_float64, no_of_dense_unit, 1);
+  target_output.tf_create(tf_float64, no_of_dense_unit, sample_size);
 
-  input.tensor_of(dense_layer_Test_3_input_data);
-  weight.tensor_of(dense_layer_Test_3_weight_data);
-  bias.tensor_of(dense_layer_Test_3_bias_data);
-  target_output.tensor_of(dense_layer_Test_3_target_data);
+  input.tensor_of(input_data.data());
+  weight.tensor_of(weight_data.data());
+  bias.tensor_of(bias_data.data());
+  target_output.tensor_of(target_data.data());
 
   auto dense_1 = tf::layer::dense(32);
   auto dense_output = dense_1({x});
@@ -109,18 +139,13 @@ TEST_F(FrameworkTest, DenseLayer_Test_1) {
     for (int j = 0; j < 128; j++)
       for (int i = 0; i < 32; i++)
         EXPECT_NEAR(outputs[ep][0][0].getData()[i + j * 32],
-                    dense_layer_Test_3_output_data[i + j * 32], 1e-6)
+                    expected_output[i + j * 32], 1e-6)
             << "at: " << i + j * 3;
   }
 
-  std::float64_t expected_mean_loss = 0.0;
-  for (int i = 0; i < 32; i++)
-    expected_mean_loss += dense_layer_Test_3_loss_data[i] / 32.0;
-
   for (unsigned ep = 0; ep < epoch; ep++) {
     ASSERT_EQ(training_losses[ep][0][0].getNoOfElem(), 1);
-    EXPECT_NEAR(training_losses[ep][0][0].getData()[0], expected_mean_loss,
-                1e-5)
+    EXPECT_NEAR(training_losses[ep][0][0].getData()[0], expected_loss[0], 1e-5)
         << "at ep: " << ep;
   }
 
@@ -128,40 +153,34 @@ TEST_F(FrameworkTest, DenseLayer_Test_1) {
     for (int j = 0; j < 43; j++)
       for (int i = 0; i < 32; i++)
         EXPECT_NEAR(train_dense_1_grad_weights[ep][0][0].getData()[i + j * 32],
-                    dense_layer_Test_3_grad_weight_data[i + j * 32] / 32.0,
-                    1e-5)
+                    expected_grad_weight[i + j * 32], 1e-5)
             << "at ep : " << ep << " i: " << i << " j: " << j;
 
   for (unsigned ep = 0; ep < epoch; ep++)
     for (int i = 0; i < 32; i++)
       EXPECT_NEAR(train_dense_1_grad_bias[ep][0][0].getData()[i],
-                  dense_layer_Test_3_grad_bias_data[i] / 32.0, 1e-5)
+                  expected_grad_bias[i], 1e-5)
           << "at i: " << i;
 
   for (unsigned ep = 0; ep < epoch; ep++)
     for (int j = 0; j < 128; j++)
       for (int i = 0; i < 32; i++)
         EXPECT_NEAR(grad_training_losses[ep][0][0].getData()[i + j * 32],
-                    dense_layer_Test_3_grad_loss_data[i + j * 32] / 32.0,
-                    1e-5)
+                    expected_grad_loss[i + j * 32], 1e-5)
             << "at i: " << i << " j: " << j;
 
   for (unsigned ep = 0; ep < epoch; ep++)
     for (int j = 0; j < 43; j++)
       for (int i = 0; i < 32; i++)
-        EXPECT_NEAR(train_dense_1_updated_weights[ep][0][0].getData()[i + j * 32],
-                    dense_layer_Test_3_weight_data[i + j * 32] -
-                        0.01 * dense_layer_Test_3_grad_weight_data[i + j * 32] /
-                            32.0,
-                    1e-5)
+        EXPECT_NEAR(
+            train_dense_1_updated_weights[ep][0][0].getData()[i + j * 32],
+            expected_updated_weights[i + j * 32], 1e-5)
             << "at i: " << i << " j: " << j;
 
   for (unsigned ep = 0; ep < epoch; ep++)
     for (int i = 0; i < 32; i++)
       EXPECT_NEAR(train_dense_1_updated_bias[ep][0][0].getData()[i],
-                  dense_layer_Test_3_bias_data[i] -
-                      0.01 * dense_layer_Test_3_grad_bias_data[i] / 32.0,
-                  1e-5)
+                  expected_updated_bias[i], 1e-5)
           << "at i: " << i;
 
   std::vector<std::float64_t> scalar_losses =
@@ -244,7 +263,7 @@ TEST_F(FrameworkTest, DenseLayer_Test_2) {
 
   call_back.record_scalar_loss_on_batch_end(loss_sgd, false);
 
-  tf::callback::earlystopping early_stopping(loss_sgd, 5, 0.01, true);
+  tf::callback::earlystopping early_stopping(loss_sgd, 10, 1.0, true);
 
   /* --- model training --- */
   unsigned epoch = 10;
@@ -1194,8 +1213,8 @@ TEST_F(FrameworkTest, Sin_x_Func_Fit_Test) {
 
   const std::string loss_name = loss_sgd.get_loss_name();
   const auto &epoch_loss_history = hist.history["loss"][loss_name];
-  const auto expected_epoch_losses = load_bin(
-      "test/data/Sin_ReluDense_Test_1_epoch_loss_history.bin", epoch);
+  const auto expected_epoch_losses =
+      load_bin("test/data/Sin_ReluDense_Test_1_epoch_loss_history.bin", epoch);
   ASSERT_EQ(epoch_loss_history.size(), epoch);
   ASSERT_EQ(expected_epoch_losses.size(), epoch);
   for (unsigned ep = 0; ep < epoch; ep++) {
@@ -1222,4 +1241,140 @@ TEST_F(FrameworkTest, Sin_x_Func_Fit_Test) {
             << last_epoch_mse << "\n";
 
   EXPECT_NEAR(last_epoch_mse, expected_last_epoch_mse[0], 1e-5);
+}
+
+// --- Early stopping callback tests -----------------------------------------
+
+namespace {
+// Minimal Loss stub that feeds a predetermined sequence of epoch-end losses
+// into the callback, so the stopping logic can be checked without training.
+class SequenceLoss final : public Loss {
+  std::vector<std::float64_t> values;
+  std::size_t cursor{0};
+
+public:
+  explicit SequenceLoss(std::vector<std::float64_t> epoch_losses)
+      : values(std::move(epoch_losses)) {}
+
+  void forward(std::vector<tf::tensor *>, const unsigned) override {}
+  void backward() override {}
+  void setTargetOutput(const std::vector<tf::tensor>) override {}
+  void setPredictedOutput(const std::vector<tf::tensor *> &) override {}
+  const std::float64_t getScalerLoss() override { return 0.0; }
+  const std::float64_t getEpochEndScalerLoss() override {
+    return values[cursor++];
+  }
+  std::float64_t calculate(std::vector<tf::tensor> &,
+                           std::vector<tf::tensor> &) override {
+    return 0.0;
+  }
+  std::vector<tf::tensor *> getLossParameter(Loss_Parameter) override {
+    return {};
+  }
+  unsigned getNoOfInputs() override { return 1; }
+  std::string getLossName() override { return "sequence_loss"; }
+};
+} // namespace
+
+TEST(EarlyStoppingTest, StopsAfterPatienceEpochsWithoutImprovement) {
+  // Big improvement at epoch 2, then three consecutive stalls (< 0.2 change).
+  SequenceLoss loss({10.0, 8.0, 7.95, 7.93, 7.92});
+  CallbackEarlyStopping early_stopping(&loss, /*patience=*/3,
+                                       /*min_delta=*/0.2, /*minimize=*/true);
+
+  EXPECT_FALSE(early_stopping.stopEpoch()); // no losses recorded yet
+
+  early_stopping.callOnEpochEnd(); // 10.0 -> baseline
+  EXPECT_FALSE(early_stopping.stopEpoch());
+
+  early_stopping.callOnEpochEnd(); // 8.0 -> real improvement, counter reset
+  EXPECT_FALSE(early_stopping.stopEpoch());
+
+  early_stopping.callOnEpochEnd(); // 7.95 -> stall 1
+  EXPECT_FALSE(early_stopping.stopEpoch());
+
+  early_stopping.callOnEpochEnd(); // 7.93 -> stall 2
+  EXPECT_FALSE(early_stopping.stopEpoch());
+
+  early_stopping.callOnEpochEnd(); // 7.92 -> stall 3 -> stop
+  EXPECT_TRUE(early_stopping.stopEpoch());
+}
+
+TEST(EarlyStoppingTest, ImprovementResetsThePatienceCounter) {
+  SequenceLoss loss({10.0, 9.95, 8.0, 7.99, 7.98});
+  CallbackEarlyStopping early_stopping(&loss, /*patience=*/2,
+                                       /*min_delta=*/0.1, /*minimize=*/true);
+
+  early_stopping.callOnEpochEnd(); // baseline
+  early_stopping.callOnEpochEnd(); // 9.95 -> small change, stall 1
+  EXPECT_FALSE(early_stopping.stopEpoch());
+
+  early_stopping.callOnEpochEnd(); // 8.0 -> improvement, counter reset
+  EXPECT_FALSE(early_stopping.stopEpoch());
+
+  early_stopping.callOnEpochEnd(); // stall 1 again
+  EXPECT_FALSE(early_stopping.stopEpoch());
+
+  early_stopping.callOnEpochEnd(); // stall 2 -> stop
+  EXPECT_TRUE(early_stopping.stopEpoch());
+}
+
+TEST(EarlyStoppingTest, MaximizeModeUsesUpperBound) {
+  SequenceLoss loss({0.1, 0.5, 0.51, 0.505});
+  CallbackEarlyStopping early_stopping(&loss, /*patience=*/2,
+                                       /*min_delta=*/0.1, /*minimize=*/false);
+
+  early_stopping.callOnEpochEnd(); // baseline
+  early_stopping.callOnEpochEnd(); // 0.5 -> improvement, counter reset
+  EXPECT_FALSE(early_stopping.stopEpoch());
+
+  early_stopping.callOnEpochEnd(); // 0.51 -> stall 1
+  EXPECT_FALSE(early_stopping.stopEpoch());
+
+  early_stopping.callOnEpochEnd(); // 0.505 -> stall 2 -> stop
+  EXPECT_TRUE(early_stopping.stopEpoch());
+}
+
+TEST_F(FrameworkTest, EarlyStopping_StopsTrainingViaFit) {
+  const unsigned sample_size = 64;
+  const unsigned batch_size = 16;
+  const unsigned no_of_input_feature = 4;
+  const unsigned no_of_dense_unit = 3;
+  const unsigned requested_epochs = 20;
+
+  tf::tensor x, input, target_output, weight, bias;
+  x.tf_create(tf_float64, no_of_input_feature, batch_size);
+  input.tf_create(tf_float64, no_of_input_feature, sample_size);
+  target_output.tf_create(tf_float64, no_of_dense_unit, sample_size);
+  weight.tf_create(tf_float64, no_of_dense_unit, no_of_input_feature);
+  bias.tf_create(tf_float64, no_of_dense_unit, 1);
+
+  input.tensor_of(0.0, 1.0);
+  target_output.tensor_of(0.0, 1.0);
+  weight.tensor_of(0.1, 0.2);
+  bias.tensor_of(0.0, 0.1);
+
+  auto dense = tf::layer::dense(no_of_dense_unit);
+  auto dense_output = dense({x});
+  dense.set_weight(weight);
+  dense.set_bias(bias);
+
+  tf::model model({x}, dense_output);
+  model.shuffle(false);
+  model.compile(OptimizerType::SGD, LossType::squared_error);
+  tf::loss loss = model.get_model_loss(dense_output[0]);
+
+  // A very large min_delta makes every post-baseline epoch a "stall", so with
+  // patience 2 the fit loop must break after 3 epochs regardless of the data.
+  tf::callback::earlystopping early_stopping(loss, 2, 1e6, true);
+
+  tf::history_container hist =
+      model.fit({input}, {target_output}, {early_stopping.callback()},
+                requested_epochs, batch_size);
+
+  const auto &epoch_losses = hist.history["loss"][loss.get_loss_name()];
+  ASSERT_FALSE(epoch_losses.empty());
+  EXPECT_LT(epoch_losses.size(), requested_epochs)
+      << "early stopping should end training before " << requested_epochs
+      << " epochs";
 }

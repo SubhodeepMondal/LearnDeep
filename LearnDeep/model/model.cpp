@@ -147,7 +147,7 @@ void Model::runCallbackOnBatchEnd(
 
 bool Model::checkEarlyStopping(
     std::vector<std::shared_ptr<Callback>> callbacks) {
-  bool stop_epoch;
+  bool stop_epoch = false;
   if (callbacks.size())
     for (auto callback : callbacks) {
       stop_epoch = callback.get()->stopEpoch();
@@ -261,6 +261,7 @@ Model::fit(const std::vector<tf::tensor> &training_inputs,
             this->getEpochlevelLosses(epoch_level_predicted_output,
                                       training_target);
 
+        this->runCallbackOnEpochEnd(callback);
         hist.record_history_on_epoch_end(epoch_level_losses);
         stop_epoch = this->checkEarlyStopping(callback);
       } else {
@@ -563,12 +564,33 @@ void Model::compile(const OptimizerType optimizer_type,
                     const LossType loss_type) {
 
   this->optimizer = tf::optimizer(optimizer_type);
+  int mse_count, cce_count;
+  mse_count = cce_count = 0;
+  tf::loss *temp_loss = nullptr;
   for (unsigned i = 0; i < outputs.size(); i++) {
-    tf::loss *temp_loss = new tf::loss(loss_type, {outputs[i]});
+    switch (loss_type) {
+    case (LossType::squared_error): {
+      mse_count++;
+      temp_loss =
+          new tf::loss(loss_type, {outputs[i]},
+                       "mean_squared_loss_" + std::to_string(mse_count));
+      break;
+    }
+    case (LossType::categorical_cross_entropy): {
+      cce_count++;
+      temp_loss = new tf::loss(loss_type, {outputs[i]},
+                               "categorical_cross_entropy_" +
+                                   std::to_string(cce_count));
+      break;
+    }
+    default: {
+      temp_loss = nullptr;
+      break;
+    }
+    }
     this->losses.push_back(temp_loss);
     loss_input_mappings[temp_loss].push_back(outputs[i]);
   }
-  // this->metric = tf::metric(metric_type);
 }
 
 tf::loss Model::getModelLoss(Tensor<std::float64_t> *output_tensor) {

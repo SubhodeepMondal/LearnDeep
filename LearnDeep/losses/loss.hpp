@@ -2,7 +2,10 @@
 #define _TENSORFLOW_CORE_LOSS_
 
 // C++ Headers
+#include <iostream>
+#include <limits>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 // Library Headers
@@ -14,7 +17,8 @@ enum class LossParameter { output_predict, output_target, loss };
 class Loss {
 protected:
   std::vector<Tensor<std::float64_t> *> input_predicts; // not owning
-  std::float64_t loss_value;
+  std::float64_t prev_loss_value = std::numeric_limits<double>::max();
+  std::float64_t loss_value = std::numeric_limits<double>::max();
   std::string loss_name;
   bool isGradRecorded{false};
 
@@ -29,6 +33,10 @@ public:
   virtual void
   setPredictedOutput(const std::vector<tf::tensor *> &output_targets) = 0;
   virtual std::float64_t const getScalerLoss() = 0;
+
+  virtual std::float64_t const getEpochEndScalerLoss() {
+    return this->prev_loss_value;
+  }
 
   virtual std::float64_t calculate(std::vector<tf::tensor> &predicted_value,
                                    std::vector<tf::tensor> &target_output) = 0;
@@ -56,7 +64,7 @@ public:
   SquaredError() = default;
 
   SquaredError(std::vector<Tensor<std::float64_t> *> input_preds,
-               std::string loss_name = "Mean_Squared_Loss");
+               std::string loss_name = "mean_squared_loss");
 
   ~SquaredError();
 

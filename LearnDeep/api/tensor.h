@@ -452,7 +452,8 @@ public:
   loss() = default;
 
   loss(const LossType lossType,
-       std::vector<Tensor<std::float64_t> *> input_preds);
+       std::vector<Tensor<std::float64_t> *> input_preds,
+       std::string loss_name);
 
   void forward(std::vector<tf::tensor *> inputs, const unsigned batch_size);
 

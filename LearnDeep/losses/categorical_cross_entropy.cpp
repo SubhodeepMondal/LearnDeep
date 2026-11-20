@@ -109,7 +109,8 @@ CategoricalCrossEntropy::calculate(std::vector<tf::tensor> &predicted_output,
       loss_val += temp_loss_tensor.getData()[i];
     }
 
-    return loss_val;
+    this->prev_loss_value = loss_val;
+    return this->prev_loss_value;
 
   } else {
 

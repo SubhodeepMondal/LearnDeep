@@ -163,6 +163,7 @@ class CallbackEarlyStopping : public Callback {
   bool minimize;
   float min_delta;
   unsigned num_epochs_holding_min_delta;
+  std::float64_t best_loss;
   std::vector<std::float64_t> scalar_loss;
 
 public:

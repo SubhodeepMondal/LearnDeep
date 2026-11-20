@@ -988,14 +988,15 @@ void tf::optimizer::execute_optimizer() {
 
 // --- Losses ---
 tf::loss::loss(const LossType lossType,
-               std::vector<Tensor<std::float64_t> *> input_preds) {
+               std::vector<Tensor<std::float64_t> *> input_preds,
+               std::string loss_name) {
   switch (lossType) {
   case (LossType::squared_error): {
-    this->loss_ptr = new SquaredError(input_preds);
+    this->loss_ptr = new SquaredError(input_preds, loss_name);
     break;
   }
   case (LossType::categorical_cross_entropy): {
-    this->loss_ptr = new CategoricalCrossEntropy(input_preds);
+    this->loss_ptr = new CategoricalCrossEntropy(input_preds, loss_name);
     break;
   }
   }

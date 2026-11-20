@@ -116,8 +116,8 @@ SquaredError::calculate(std::vector<tf::tensor> &predicted_output,
 
       temp_loss_tensor = temp_loss_tensor.mean(axis, false);
     }
-
-    return temp_loss_tensor.getData()[0];
+    this->prev_loss_value = temp_loss_tensor.getData()[0];
+    return this->prev_loss_value;
 
   } else {
 
