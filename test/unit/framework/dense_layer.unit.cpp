@@ -1,7 +1,7 @@
 #include <memory>
 
 // library headers
-#include "LinearAlgebraFixtures.unit.hpp"
+#include "../LinearAlgebraFixtures.unit.hpp"
 #include <LearnDeep/api/tensor.h>
 #include <callback/callback.hpp>
 #include <gtest/gtest.h>

@@ -22,9 +22,9 @@ add_executable(unit_test
     unit/sub.unit.cpp
     unit/tensor.unit.cpp
     unit/transpose.unit.cpp
-    unit/dense_layer.unit.cpp
     unit/div.unit.cpp
     unit/natural_log.unit.cpp
+    unit/framework/dense_layer.unit.cpp
     unit/framework/softmax_layer.test.cpp
 )
 
