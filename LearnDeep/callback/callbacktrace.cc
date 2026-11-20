@@ -277,7 +277,7 @@ void CallbackTrace::callOnEpochEnd() {
 
     for (Loss *loss_ptr : loss_ptrs) {
       this->scalar_loss_epoch_end[loss_ptr].push_back(
-          loss_ptr->getScalerLoss());
+          loss_ptr->getEpochEndScalerLoss());
     }
   }
 

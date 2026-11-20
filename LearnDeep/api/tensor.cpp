@@ -13,6 +13,7 @@
 #include <model/model.hpp>
 #include <numeric>
 #include <optimizers/optimizers.hpp>
+#include <unordered_map>
 
 class CallbackTrace;
 class CallbackEarlyStopping;
@@ -959,14 +960,11 @@ void tf::history_container::record_history_on_batch_end(
 }
 
 void tf::history_container::record_history_on_epoch_end(
-    unsigned const no_of_batches) {
-  unsigned index = batch_history["loss"].size() - 1;
+    std::unordered_map<std::string, std::float64_t> epoch_loss) {
 
-  std::float64_t sum =
-      std::accumulate(this->batch_history["loss"][index].begin(),
-                      this->batch_history["loss"][index].end(), 0.0);
-
-  history["loss"].push_back(sum / no_of_batches);
+  for (const auto &[key, value] : epoch_loss) {
+    history["loss"][key].push_back(value);
+  }
 }
 
 // --- End History ---
@@ -990,14 +988,15 @@ void tf::optimizer::execute_optimizer() {
 
 // --- Losses ---
 tf::loss::loss(const LossType lossType,
-               std::vector<Tensor<std::float64_t> *> input_preds) {
+               std::vector<Tensor<std::float64_t> *> input_preds,
+               std::string loss_name) {
   switch (lossType) {
   case (LossType::squared_error): {
-    this->loss_ptr = new SquaredError(input_preds);
+    this->loss_ptr = new SquaredError(input_preds, loss_name);
     break;
   }
   case (LossType::categorical_cross_entropy): {
-    this->loss_ptr = new CategoricalCrossEntropy(input_preds);
+    this->loss_ptr = new CategoricalCrossEntropy(input_preds, loss_name);
     break;
   }
   }
@@ -1016,8 +1015,19 @@ void tf::loss::backward() {
   }
 }
 
+std::float64_t tf::loss::calculate(std::vector<tf::tensor> &predicted_ouput,
+                                   std::vector<tf::tensor> &target_output) {
+  return this->loss_ptr->calculate(predicted_ouput, target_output);
+}
+
 const std::float64_t tf::loss::get_loss() {
   return this->loss_ptr->getScalerLoss();
+}
+
+std::string tf::loss::get_loss_name() { return this->loss_ptr->getLossName(); }
+
+unsigned tf::loss::get_no_of_inputs() {
+  return this->loss_ptr->getNoOfInputs();
 }
 
 void tf::loss::set_target_output(std::vector<tf::tensor> target_output) {

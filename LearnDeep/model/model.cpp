@@ -10,10 +10,11 @@
 #include <callback/callback.hpp>
 #include <core/utility/initializers.hpp>
 #include <unordered_map>
+#include <vector>
 
 Model::Model(const std::vector<tf::tensor> &inputs,
              const std::vector<tf::tensor> &outputs)
-    : auto_grad_created(false) {
+    : auto_grad_created(false), pred_mapping(false) {
   for (tf::tensor input : inputs)
     this->inputs.push_back(input.getPtr());
 
@@ -80,6 +81,27 @@ unsigned Model::selectBatchIndex(int &randIndex, unsigned batch_count) {
   return static_cast<unsigned>(randIndex);
 }
 
+std::unordered_map<std::string, std::float64_t>
+Model::getEpochlevelLosses(std::vector<tf::tensor> &predicted_output,
+                           const std::vector<tf::tensor> &target_ouput) {
+
+  std::unordered_map<std::string, std::float64_t> temp_losses;
+  for (tf::loss *loss : this->losses) {
+    std::vector<tf::tensor> predicted, target;
+    for (unsigned j = 0; j < loss->get_no_of_inputs(); j++) {
+      auto it = std::find(this->outputs.begin(), this->outputs.end(),
+                          loss_input_mappings[loss][j]);
+      if (it != outputs.end()) {
+        auto index = std::distance(this->outputs.begin(), it);
+        predicted.push_back(predicted_output[index].copy());
+        target.push_back(target_ouput[index].copy());
+      }
+    }
+    temp_losses[loss->get_loss_name()] = loss->calculate(predicted, target);
+  }
+  return temp_losses;
+}
+
 void Model::loadTrainingBatch(const std::vector<tf::tensor> &training_inputs,
                               unsigned batch_index) {
   unsigned input_index = 0;
@@ -125,7 +147,7 @@ void Model::runCallbackOnBatchEnd(
 
 bool Model::checkEarlyStopping(
     std::vector<std::shared_ptr<Callback>> callbacks) {
-  bool stop_epoch;
+  bool stop_epoch = false;
   if (callbacks.size())
     for (auto callback : callbacks) {
       stop_epoch = callback.get()->stopEpoch();
@@ -225,11 +247,22 @@ Model::fit(const std::vector<tf::tensor> &training_inputs,
 
           this->runCallbackOnBatchEnd(callback, i);
           hist.record_history_on_batch_end(i, losses);
-        }
+        } // end of batch
+
+        for (Layer *layer : this->layers)
+          layer->initializeParameters();
+
+        std::vector<tf::tensor> epoch_level_predicted_output =
+            this->predict(training_inputs);
+        if (!this->pred_mapping)
+          this->pred_mapping = true;
+
+        std::unordered_map<std::string, std::float64_t> epoch_level_losses =
+            this->getEpochlevelLosses(epoch_level_predicted_output,
+                                      training_target);
 
         this->runCallbackOnEpochEnd(callback);
-        hist.record_history_on_epoch_end(upper_bound);
-
+        hist.record_history_on_epoch_end(epoch_level_losses);
         stop_epoch = this->checkEarlyStopping(callback);
       } else {
         LOG(ERROR)
@@ -237,19 +270,18 @@ Model::fit(const std::vector<tf::tensor> &training_inputs,
             << "\n";
         break;
       }
-    }
-
-    // store final weights and biases
-    for (Layer *layer : this->layers)
-      layer->initializeParameters();
+    } // end of epoch
+    this->pred_mapping = false;
   }
   return hist;
 }
 
 std::vector<tf::tensor> Model::predict(std::vector<tf::tensor> inputs) {
-  prediction_outputs.resize(outputs.size());
-  initializePredictionInputMappings();
-  initializeInputsForPrediction(inputs);
+  if (!pred_mapping) {
+    prediction_outputs.resize(outputs.size());
+    initializePredictionInputMappings();
+    initializeInputsForPrediction(inputs);
+  }
   doLayerCalculation();
   return prediction_outputs;
 }
@@ -532,12 +564,33 @@ void Model::compile(const OptimizerType optimizer_type,
                     const LossType loss_type) {
 
   this->optimizer = tf::optimizer(optimizer_type);
+  int mse_count, cce_count;
+  mse_count = cce_count = 0;
+  tf::loss *temp_loss = nullptr;
   for (unsigned i = 0; i < outputs.size(); i++) {
-    tf::loss *temp_loss = new tf::loss(loss_type, {outputs[i]});
+    switch (loss_type) {
+    case (LossType::squared_error): {
+      mse_count++;
+      temp_loss =
+          new tf::loss(loss_type, {outputs[i]},
+                       "mean_squared_loss_" + std::to_string(mse_count));
+      break;
+    }
+    case (LossType::categorical_cross_entropy): {
+      cce_count++;
+      temp_loss = new tf::loss(loss_type, {outputs[i]},
+                               "categorical_cross_entropy_" +
+                                   std::to_string(cce_count));
+      break;
+    }
+    default: {
+      temp_loss = nullptr;
+      break;
+    }
+    }
     this->losses.push_back(temp_loss);
     loss_input_mappings[temp_loss].push_back(outputs[i]);
   }
-  // this->metric = tf::metric(metric_type);
 }
 
 tf::loss Model::getModelLoss(Tensor<std::float64_t> *output_tensor) {

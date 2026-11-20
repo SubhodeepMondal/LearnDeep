@@ -15,6 +15,7 @@ private:
   unsigned batch_size;
   bool shuffle_input;
   bool auto_grad_created;
+  bool pred_mapping;
   std::vector<Tensor<std::float64_t> *> inputs;
   std::vector<Tensor<std::float64_t> *> outputs;
   std::vector<tf::tensor> prediction_outputs;
@@ -58,6 +59,10 @@ private:
 
   std::vector<tf::tensor>
   createBatchTargetBuffer(const std::vector<tf::tensor> &training_target);
+
+  std::unordered_map<std::string, std::float64_t>
+  getEpochlevelLosses(std::vector<tf::tensor> &predicted_output,
+                      const std::vector<tf::tensor> &target_output);
 
   unsigned selectBatchIndex(int &randIndex, unsigned batch_count);
 

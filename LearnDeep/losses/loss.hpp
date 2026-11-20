@@ -2,7 +2,10 @@
 #define _TENSORFLOW_CORE_LOSS_
 
 // C++ Headers
+#include <iostream>
+#include <limits>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 // Library Headers
@@ -14,7 +17,9 @@ enum class LossParameter { output_predict, output_target, loss };
 class Loss {
 protected:
   std::vector<Tensor<std::float64_t> *> input_predicts; // not owning
-  std::float64_t loss_value;
+  std::float64_t prev_loss_value = std::numeric_limits<double>::max();
+  std::float64_t loss_value = std::numeric_limits<double>::max();
+  std::string loss_name;
   bool isGradRecorded{false};
 
 public:
@@ -29,8 +34,19 @@ public:
   setPredictedOutput(const std::vector<tf::tensor *> &output_targets) = 0;
   virtual std::float64_t const getScalerLoss() = 0;
 
+  virtual std::float64_t const getEpochEndScalerLoss() {
+    return this->prev_loss_value;
+  }
+
+  virtual std::float64_t calculate(std::vector<tf::tensor> &predicted_value,
+                                   std::vector<tf::tensor> &target_output) = 0;
+
   virtual std::vector<tf::tensor *>
   getLossParameter(Loss_Parameter loss_parameter) = 0;
+
+  virtual unsigned getNoOfInputs() = 0;
+
+  virtual std::string getLossName() = 0;
 };
 
 class SquaredError : public Loss {
@@ -42,11 +58,13 @@ class SquaredError : public Loss {
   tf::tensor *loss_tensor_batch;
   tf::tensor *loss_tensor;
   tf::tensor *loss_gradient;
+  std::vector<tf::tensor> loss_reduction_intermediates;
 
 public:
   SquaredError() = default;
 
-  SquaredError(std::vector<Tensor<std::float64_t> *> input_preds);
+  SquaredError(std::vector<Tensor<std::float64_t> *> input_preds,
+               std::string loss_name = "mean_squared_loss");
 
   ~SquaredError();
 
@@ -54,6 +72,9 @@ public:
                const unsigned batch_size) override;
 
   void backward() override;
+
+  std::float64_t calculate(std::vector<tf::tensor> &predicted_value,
+                           std::vector<tf::tensor> &target_output) override;
 
   void setTargetOutput(const std::vector<tf::tensor> output_predicts) override;
 
@@ -64,8 +85,11 @@ public:
 
   std::vector<tf::tensor *>
   getLossParameter(Loss_Parameter loss_parameter) override;
-};
 
+  unsigned getNoOfInputs() override { return 1; }
+
+  std::string getLossName() override { return this->loss_name; }
+};
 class CategoricalCrossEntropy : public Loss {
 
   std::vector<tf::tensor *> training_inputs;
@@ -80,7 +104,8 @@ class CategoricalCrossEntropy : public Loss {
 public:
   CategoricalCrossEntropy() = default;
 
-  CategoricalCrossEntropy(std::vector<Tensor<std::float64_t> *> input_preds);
+  CategoricalCrossEntropy(std::vector<Tensor<std::float64_t> *> input_preds,
+                          std::string loss_name = "categorical_cross_entropy");
 
   ~CategoricalCrossEntropy();
 
@@ -88,6 +113,9 @@ public:
                const unsigned batch_size) override;
 
   void backward() override;
+
+  std::float64_t calculate(std::vector<tf::tensor> &predicted_value,
+                           std::vector<tf::tensor> &target_output) override;
 
   void setTargetOutput(const std::vector<tf::tensor> output_predicts) override;
 
@@ -98,5 +126,11 @@ public:
 
   std::vector<tf::tensor *>
   getLossParameter(Loss_Parameter loss_parameter) override;
+
+  unsigned getNoOfInputs() override { return 1; }
+
+  std::string getLossName() override { return this->loss_name; }
 };
+
+inline std::unordered_set<std::string> loss_set;
 #endif // _TENSORFLOW_CORE_LOSS_
