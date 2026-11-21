@@ -96,12 +96,12 @@ TEST_F(FrameworkTest, DenseLayer_Test_1) {
 
   tf::loss loss_sgd = mymodel.get_model_loss(dense_output[0]);
   call_back.record_tensor_loss_on_batch_end(
-      loss_sgd, Loss_Parameter::squared_error_predicted_output, false);
+      loss_sgd, Loss_Parameter::squared_error_predicted_output);
 
   call_back.record_tensor_loss_on_batch_end(
       loss_sgd, Loss_Parameter::squared_error_grad_predicted_output);
 
-  call_back.record_scalar_loss_on_batch_end(loss_sgd, false);
+  call_back.record_scalar_loss_on_batch_end(loss_sgd);
 
   /* --- model training --- */
   unsigned epoch = 1;
@@ -253,7 +253,7 @@ TEST_F(FrameworkTest, DenseLayer_Test_2) {
 
   tf::loss loss_sgd = mymodel.get_model_loss(dense_output[0]);
   call_back.record_tensor_loss_on_batch_end(
-      loss_sgd, Loss_Parameter::squared_error_predicted_output, false);
+      loss_sgd, Loss_Parameter::squared_error_predicted_output);
 
   call_back.record_tensor_loss_on_batch_end(
       loss_sgd, Loss_Parameter::squared_error_grad_predicted_output);
@@ -261,7 +261,7 @@ TEST_F(FrameworkTest, DenseLayer_Test_2) {
   call_back.record_tensor_loss_on_batch_end(
       loss_sgd, Loss_Parameter::squared_error_target_output);
 
-  call_back.record_scalar_loss_on_batch_end(loss_sgd, false);
+  call_back.record_scalar_loss_on_batch_end(loss_sgd);
 
   tf::callback::earlystopping early_stopping(loss_sgd, 10, 1.0, true);
 
@@ -800,9 +800,9 @@ TEST_F(FrameworkTest, Quadratic_Func_Fit_Test) {
 
   tf::loss loss_sgd = mymodel.get_model_loss(predicted_output[0]);
   call_back.record_tensor_loss_on_batch_end(
-      loss_sgd, Loss_Parameter::squared_error_target_output, false);
-  call_back.record_scalar_loss_on_batch_end(loss_sgd, false);
-  call_back.record_scalar_loss_on_epoch_end(loss_sgd, false);
+      loss_sgd, Loss_Parameter::squared_error_target_output);
+  call_back.record_scalar_loss_on_batch_end(loss_sgd);
+  call_back.record_scalar_loss_on_epoch_end(loss_sgd);
 
   tf::history_container hist = mymodel.fit(
       {input}, {target_output}, {call_back.callback()}, epoch, batch_size);
@@ -980,8 +980,8 @@ TEST_F(FrameworkTest, Cubic_Func_Fit_Test) {
 
   tf::loss loss_sgd = mymodel.get_model_loss(predicted_output[0]);
   call_back.record_tensor_loss_on_batch_end(
-      loss_sgd, Loss_Parameter::squared_error_target_output, false);
-  call_back.record_scalar_loss_on_batch_end(loss_sgd, false);
+      loss_sgd, Loss_Parameter::squared_error_target_output);
+  call_back.record_scalar_loss_on_batch_end(loss_sgd);
 
   tf::history_container hist = mymodel.fit(
       {input}, {target_output}, {call_back.callback()}, epoch, batch_size);
@@ -1206,7 +1206,7 @@ TEST_F(FrameworkTest, Sin_x_Func_Fit_Test) {
 
   tf::loss loss_sgd = mymodel.get_model_loss(predicted_output[0]);
   tf::callback::trace call_back;
-  call_back.record_scalar_loss_on_batch_end(loss_sgd, false);
+  call_back.record_scalar_loss_on_batch_end(loss_sgd);
 
   tf::history_container hist = mymodel.fit(
       {input}, {target_output}, {call_back.callback()}, epoch, batch_size);

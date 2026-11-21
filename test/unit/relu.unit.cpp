@@ -198,12 +198,12 @@ TEST_F(FrameworkTest, ReluLayer_Test_1) {
 
   tf::loss loss_sgd = mymodel.get_model_loss(relu_output[0]);
   call_back.record_tensor_loss_on_batch_end(
-      loss_sgd, Loss_Parameter::squared_error_predicted_output, false);
+      loss_sgd, Loss_Parameter::squared_error_predicted_output);
 
   call_back.record_tensor_loss_on_batch_end(
       loss_sgd, Loss_Parameter::squared_error_grad_predicted_output);
 
-  call_back.record_scalar_loss_on_batch_end(loss_sgd, false);
+  call_back.record_scalar_loss_on_batch_end(loss_sgd);
 
   /* --- model training --- */
   unsigned epoch = 1;

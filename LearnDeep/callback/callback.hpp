@@ -3,6 +3,7 @@
 
 // C++ Headers
 #include <unordered_map>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -41,12 +42,12 @@ class CallbackTrace : public Callback {
   bool layers_verification_batch_end;
   bool losses_verification_epoch_end;
   bool losses_verification_batch_end;
-  std::unordered_map<Loss *, bool> scaler_loss_print_option_epoch_end;
-  std::unordered_map<Loss *, std::vector<std::pair<Loss_Parameter, bool>>>
-      tensor_loss_print_option_epoch_end;
-  std::unordered_map<Loss *, bool> scaler_loss_print_option_batch_end;
-  std::unordered_map<Loss *, std::vector<std::pair<Loss_Parameter, bool>>>
-      tensor_loss_print_option_batch_end;
+  std::unordered_set<Loss *> losses_on_epoch_end;
+  std::unordered_map<Loss *, std::vector<Loss_Parameter>>
+      loss_parameters_on_epoch_end;
+  std::unordered_set<Loss *> losses_on_batch_end;
+  std::unordered_map<Loss *, std::vector<Loss_Parameter>>
+      loss_parameters_on_batch_end;
   std::unordered_map<Loss *, std::vector<std::float64_t>> scalar_loss_epoch_end;
   std::unordered_map<Loss *,
                      std::unordered_map<Loss_Parameter,
@@ -116,17 +117,15 @@ public:
                                      Layer_Parameter trainable_parameter_no,
                                      bool print = false);
 
-  void recordScalerLossEpochEnd(Loss *const loss_ptr, bool printFlag = false);
+  void recordScalerLossEpochEnd(Loss *const loss_ptr);
 
   void recordTensorLossEpochEnd(Loss *const loss_ptr,
-                                Loss_Parameter loss_parameter,
-                                bool printFlag = false);
+                                Loss_Parameter loss_parameter);
 
-  void recordScalerLossBatchEnd(Loss *const loss_ptr, bool printFlag = false);
+  void recordScalerLossBatchEnd(Loss *const loss_ptr);
 
   void recordTensorLossBatchEnd(Loss *const loss_ptr,
-                                Loss_Parameter loss_parameter,
-                                bool printFlag = false);
+                                Loss_Parameter loss_parameter);
 
   /* --- epoch batch vector-tensor --- */
   std::vector<std::vector<tf::tensor *>>

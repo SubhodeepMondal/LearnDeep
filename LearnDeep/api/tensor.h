@@ -268,17 +268,15 @@ public:
                                      Layer_Parameter trainable_parameter_no,
                                      bool print_flag = false);
 
-  void record_scalar_loss_on_epoch_end(tf::loss loss, bool printFlag = false);
+  void record_scalar_loss_on_epoch_end(tf::loss loss);
 
   void record_tensor_loss_on_epoch_end(tf::loss loss,
-                                       Loss_Parameter loss_parameter,
-                                       bool printFlag = false);
+                                       Loss_Parameter loss_parameter);
 
-  void record_scalar_loss_on_batch_end(tf::loss loss, bool printFlag = false);
+  void record_scalar_loss_on_batch_end(tf::loss loss);
 
   void record_tensor_loss_on_batch_end(tf::loss loss,
-                                       Loss_Parameter loss_parameter,
-                                       bool printFlag = false);
+                                       Loss_Parameter loss_parameter);
 
   std::vector<std::vector<tf::tensor>>
   get_parameter_on_epoch_begin(Layer *const layer_ptr,
