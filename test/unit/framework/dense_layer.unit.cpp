@@ -1378,3 +1378,97 @@ TEST_F(FrameworkTest, EarlyStopping_StopsTrainingViaFit) {
       << "early stopping should end training before " << requested_epochs
       << " epochs";
 }
+
+// --- Callback registration verification tests -------------------------------
+
+TEST_F(FrameworkTest, FitWithNullCallback_DoesNotCrash) {
+  constexpr unsigned sample_size = 32;
+  constexpr unsigned batch_size = 16;
+  constexpr unsigned no_of_input_feature = 4;
+  constexpr unsigned no_of_dense_unit = 3;
+
+  tf::tensor x, input, target_output, weight, bias;
+  x.tf_create(tf_float64, no_of_input_feature, batch_size);
+  input.tf_create(tf_float64, no_of_input_feature, sample_size);
+  target_output.tf_create(tf_float64, no_of_dense_unit, sample_size);
+  weight.tf_create(tf_float64, no_of_dense_unit, no_of_input_feature);
+  bias.tf_create(tf_float64, no_of_dense_unit, 1);
+
+  input.tensor_of(0.0, 1.0);
+  target_output.tensor_of(0.0, 1.0);
+  weight.tensor_of(0.1, 0.2);
+  bias.tensor_of(0.0, 0.1);
+
+  auto dense = tf::layer::dense(no_of_dense_unit);
+  auto dense_output = dense({x});
+  dense.set_weight(weight);
+  dense.set_bias(bias);
+
+  tf::model model({x}, dense_output);
+  model.shuffle(false);
+  model.compile(OptimizerType::SGD, LossType::squared_error);
+
+  // An explicit null entry used to dereference a nullptr in the callback
+  // runners; fit must complete instead.
+  tf::history_container hist =
+      model.fit({input}, {target_output}, {nullptr}, 2, batch_size);
+
+  EXPECT_FALSE(hist.history.empty());
+}
+
+TEST_F(FrameworkTest, CallbackTrace_RejectsForeignLossRegistration) {
+  constexpr unsigned batch_size = 16;
+  constexpr unsigned no_of_input_feature = 4;
+  constexpr unsigned no_of_dense_unit = 3;
+
+  tf::tensor x1, w1, b1, x2, w2, b2;
+  x1.tf_create(tf_float64, no_of_input_feature, batch_size);
+  w1.tf_create(tf_float64, no_of_dense_unit, no_of_input_feature);
+  b1.tf_create(tf_float64, no_of_dense_unit, 1);
+  w1.tensor_of(0.1, 0.2);
+  b1.tensor_of(0.0, 0.1);
+
+  auto dense1 = tf::layer::dense(no_of_dense_unit);
+  auto dense1_output = dense1({x1});
+  dense1.set_weight(w1);
+  dense1.set_bias(b1);
+  tf::model model1({x1}, dense1_output);
+  model1.compile(OptimizerType::SGD, LossType::squared_error);
+  tf::loss own_loss = model1.get_model_loss(dense1_output[0]);
+
+  x2.tf_create(tf_float64, no_of_input_feature, batch_size);
+  w2.tf_create(tf_float64, no_of_dense_unit, no_of_input_feature);
+  b2.tf_create(tf_float64, no_of_dense_unit, 1);
+  w2.tensor_of(0.1, 0.2);
+  b2.tensor_of(0.0, 0.1);
+
+  auto dense2 = tf::layer::dense(no_of_dense_unit);
+  auto dense2_output = dense2({x2});
+  dense2.set_weight(w2);
+  dense2.set_bias(b2);
+  tf::model model2({x2}, dense2_output);
+  model2.compile(OptimizerType::SGD, LossType::squared_error);
+  tf::loss foreign_loss = model2.get_model_loss(dense2_output[0]);
+
+  tf::callback::trace valid;
+  valid.record_scalar_loss_on_batch_end(own_loss);
+  EXPECT_TRUE(valid.callback()->callOnTrainingBegin(model1));
+
+  tf::callback::trace foreign_scalar_batch;
+  foreign_scalar_batch.record_scalar_loss_on_batch_end(foreign_loss);
+  EXPECT_FALSE(foreign_scalar_batch.callback()->callOnTrainingBegin(model1));
+
+  tf::callback::trace foreign_scalar_epoch;
+  foreign_scalar_epoch.record_scalar_loss_on_epoch_end(foreign_loss);
+  EXPECT_FALSE(foreign_scalar_epoch.callback()->callOnTrainingBegin(model1));
+
+  tf::callback::trace foreign_tensor_batch;
+  foreign_tensor_batch.record_tensor_loss_on_batch_end(
+      foreign_loss, Loss_Parameter::squared_error_predicted_output);
+  EXPECT_FALSE(foreign_tensor_batch.callback()->callOnTrainingBegin(model1));
+
+  tf::callback::trace foreign_tensor_epoch;
+  foreign_tensor_epoch.record_tensor_loss_on_epoch_end(
+      foreign_loss, Loss_Parameter::squared_error_predicted_output);
+  EXPECT_FALSE(foreign_tensor_epoch.callback()->callOnTrainingBegin(model1));
+}

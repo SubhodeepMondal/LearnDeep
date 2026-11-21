@@ -69,24 +69,29 @@ private:
   void loadTrainingBatch(const std::vector<tf::tensor> &training_inputs,
                          unsigned batch_index);
 
-  bool
-  runCallbackBeforeTraining(std::vector<std::shared_ptr<Callback>> callbacks,
-                            tf::model &model);
+  bool runCallbackBeforeTraining(
+      const std::vector<std::shared_ptr<Callback>> &callbacks,
+      tf::model &model);
 
-  void
-  runCallbackAfterTraining(std::vector<std::shared_ptr<Callback>> callbacks);
+  void runCallbackAfterTraining(
+      const std::vector<std::shared_ptr<Callback>> &callbacks);
 
-  void runCallbackOnEpochBegin(std::vector<std::shared_ptr<Callback>> callback);
+  void runCallbackOnEpochBegin(
+      const std::vector<std::shared_ptr<Callback>> &callbacks);
 
-  void runCallbackOnEpochEnd(std::vector<std::shared_ptr<Callback>> callback);
+  void runCallbackOnEpochEnd(
+      const std::vector<std::shared_ptr<Callback>> &callbacks);
 
-  void runCallbackOnBatchBegin(std::vector<std::shared_ptr<Callback>> callback,
-                               unsigned const epoch_no);
+  void runCallbackOnBatchBegin(
+      const std::vector<std::shared_ptr<Callback>> &callbacks,
+      unsigned const epoch_no);
 
-  void runCallbackOnBatchEnd(std::vector<std::shared_ptr<Callback>> callback,
-                             unsigned const epoch_no);
+  void runCallbackOnBatchEnd(
+      const std::vector<std::shared_ptr<Callback>> &callbacks,
+      unsigned const epoch_no);
 
-  bool checkEarlyStopping(std::vector<std::shared_ptr<Callback>> callbacks);
+  bool checkEarlyStopping(
+      const std::vector<std::shared_ptr<Callback>> &callbacks);
 
   void setTrainingTensorsForInputLayer();
 

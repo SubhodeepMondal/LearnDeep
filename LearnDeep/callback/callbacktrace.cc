@@ -12,11 +12,6 @@
 
 CallbackTrace::CallbackTrace(unsigned callback_level) {
   this->callback_level = callback_level;
-
-  this->layers_verification_epoch_begin = false;
-  this->layers_verification_epoch_end = false;
-  this->layers_verification_batch_begin = false;
-  this->layers_verification_batch_end = false;
 }
 
 CallbackTrace::~CallbackTrace() {

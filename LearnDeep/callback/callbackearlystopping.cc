@@ -47,6 +47,7 @@ void CallbackEarlyStopping::callOnEpochEnd() {
 }
 
 bool CallbackEarlyStopping::stopEpoch() {
-  return this->patience > 0 && this->num_epochs_holding_min_delta >=
-                                   static_cast<unsigned>(this->patience);
+  return this->patience > 0 &&
+         this->num_epochs_holding_min_delta >=
+             static_cast<unsigned>(this->patience);
 }

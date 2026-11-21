@@ -116,9 +116,9 @@ void Model::loadTrainingBatch(const std::vector<tf::tensor> &training_inputs,
 }
 
 bool Model::runCallbackBeforeTraining(
-    std::vector<std::shared_ptr<Callback>> callbacks, tf::model &model) {
+    const std::vector<std::shared_ptr<Callback>> &callbacks, tf::model &model) {
   bool flag = true;
-  for (auto callback : callbacks)
+  for (const auto &callback : callbacks)
     if (callback)
       flag &= callback->callOnTrainingBegin(model);
 
@@ -126,44 +126,46 @@ bool Model::runCallbackBeforeTraining(
 }
 
 void Model::runCallbackAfterTraining(
-    std::vector<std::shared_ptr<Callback>> callbacks) {
-  for (auto callback : callbacks)
+    const std::vector<std::shared_ptr<Callback>> &callbacks) {
+  for (const auto &callback : callbacks)
     if (callback)
       callback->callOnTrainingEnd();
 }
 
 void Model::runCallbackOnEpochBegin(
-    std::vector<std::shared_ptr<Callback>> callbacks) {
-  for (auto callback : callbacks)
+    const std::vector<std::shared_ptr<Callback>> &callbacks) {
+  for (const auto &callback : callbacks)
     if (callback)
       callback->callOnEpochBegin();
 }
 
 void Model::runCallbackOnEpochEnd(
-    std::vector<std::shared_ptr<Callback>> callbacks) {
-  for (auto callback : callbacks)
+    const std::vector<std::shared_ptr<Callback>> &callbacks) {
+  for (const auto &callback : callbacks)
     if (callback)
       callback.get()->callOnEpochEnd();
 }
 
 void Model::runCallbackOnBatchBegin(
-    std::vector<std::shared_ptr<Callback>> callbacks, unsigned const epoch_no) {
-  for (auto callback : callbacks)
+    const std::vector<std::shared_ptr<Callback>> &callbacks,
+    unsigned const epoch_no) {
+  for (const auto &callback : callbacks)
     if (callback)
       callback->callOnBatchBegin(epoch_no);
 }
 
 void Model::runCallbackOnBatchEnd(
-    std::vector<std::shared_ptr<Callback>> callbacks, unsigned const epoch_no) {
-  for (auto callback : callbacks)
+    const std::vector<std::shared_ptr<Callback>> &callbacks,
+    unsigned const epoch_no) {
+  for (const auto &callback : callbacks)
     if (callback)
       callback->callOnBatchEnd(epoch_no);
 }
 
 bool Model::checkEarlyStopping(
-    std::vector<std::shared_ptr<Callback>> callbacks) {
+    const std::vector<std::shared_ptr<Callback>> &callbacks) {
   bool stop_epoch = false;
-  for (auto callback : callbacks) {
+  for (const auto &callback : callbacks) {
     if (!callback)
       continue;
     stop_epoch = callback.get()->stopEpoch();
@@ -215,6 +217,14 @@ Model::fit(tf::model &model, const std::vector<tf::tensor> &training_inputs,
 
   std::vector<std::shared_ptr<Callback>> callback(callback_ptr);
 
+  if (!this->runCallbackBeforeTraining(callback, model)) {
+    LOG(ERROR) << "Fatal! Callback verification failed. Check callback "
+                  "configuration\n";
+    this->runCallbackAfterTraining(callback);
+    this->pred_mapping = false;
+    return hist;
+  }
+
   // Training Loop
   {
     /* this sequence is very importent
@@ -226,15 +236,9 @@ Model::fit(tf::model &model, const std::vector<tf::tensor> &training_inputs,
 
     this->doDummyAndTrainingTensorMapping(); // this requireds to be within
     // graph context
-    bool verification_failed =
-        !this->runCallbackBeforeTraining(callback, model);
-    if (verification_failed)
-      LOG(ERROR) << "Fatal! Callback verification failed. Check callback "
-                    "configuration\n";
-
     bool stop_epoch = false;
     for (int i = 0; i < epochs; i++) {
-      if (!verification_failed && !stop_epoch) {
+      if (!stop_epoch) {
         this->runCallbackOnEpochBegin(callback);
 
         for (unsigned batch = 0; batch < upper_bound; batch++) {
@@ -287,10 +291,9 @@ Model::fit(tf::model &model, const std::vector<tf::tensor> &training_inputs,
         hist.record_history_on_epoch_end(epoch_level_losses);
         stop_epoch = this->checkEarlyStopping(callback);
       } else {
-        if (!verification_failed)
-          LOG(ERROR)
-              << "Early stopping has been triggered, Stopping the epoch at "
-              << i << "\n";
+        LOG(ERROR)
+            << "Early stopping has been triggered, Stopping the epoch at " << i
+            << "\n";
         break;
       }
     } // end of epoch

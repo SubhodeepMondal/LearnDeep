@@ -36,12 +36,12 @@ class CallbackTrace : public Callback {
 
   unsigned callback_level;
   bool print_callback_log;
-  bool layers_verification_epoch_begin;
-  bool layers_verification_epoch_end;
-  bool layers_verification_batch_begin;
-  bool layers_verification_batch_end;
-  bool losses_verification_epoch_end;
-  bool losses_verification_batch_end;
+  bool layers_verification_epoch_begin = false;
+  bool layers_verification_epoch_end = false;
+  bool layers_verification_batch_begin = false;
+  bool layers_verification_batch_end = false;
+  bool losses_verification_epoch_end = false;
+  bool losses_verification_batch_end = false;
   std::unordered_set<Loss *> losses_on_epoch_end;
   std::unordered_map<Loss *, std::vector<Loss_Parameter>>
       loss_parameters_on_epoch_end;
