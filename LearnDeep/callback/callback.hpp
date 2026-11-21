@@ -3,6 +3,7 @@
 
 // C++ Headers
 #include <unordered_map>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -16,7 +17,7 @@ class Loss;
 
 class Callback {
 public:
-  virtual void callOnTrainingBegin() {}
+  virtual bool callOnTrainingBegin(tf::model &model) { return true; }
 
   virtual void callOnEpochBegin() {}
 
@@ -35,12 +36,18 @@ class CallbackTrace : public Callback {
 
   unsigned callback_level;
   bool print_callback_log;
-  std::unordered_map<Loss *, bool> scaler_loss_print_option_epoch_end;
-  std::unordered_map<Loss *, std::vector<std::pair<Loss_Parameter, bool>>>
-      tensor_loss_print_option_epoch_end;
-  std::unordered_map<Loss *, bool> scaler_loss_print_option_batch_end;
-  std::unordered_map<Loss *, std::vector<std::pair<Loss_Parameter, bool>>>
-      tensor_loss_print_option_batch_end;
+  bool layers_verification_epoch_begin = false;
+  bool layers_verification_epoch_end = false;
+  bool layers_verification_batch_begin = false;
+  bool layers_verification_batch_end = false;
+  bool losses_verification_epoch_end = false;
+  bool losses_verification_batch_end = false;
+  std::unordered_set<Loss *> losses_on_epoch_end;
+  std::unordered_map<Loss *, std::vector<Loss_Parameter>>
+      loss_parameters_on_epoch_end;
+  std::unordered_set<Loss *> losses_on_batch_end;
+  std::unordered_map<Loss *, std::vector<Loss_Parameter>>
+      loss_parameters_on_batch_end;
   std::unordered_map<Loss *, std::vector<std::float64_t>> scalar_loss_epoch_end;
   std::unordered_map<Loss *,
                      std::unordered_map<Loss_Parameter,
@@ -83,6 +90,10 @@ class CallbackTrace : public Callback {
                          std::vector<std::vector<std::vector<tf::tensor *>>>>>
       layer_parameter_on_batch_end;
 
+  bool verifyLayerCallbackSetup(std::vector<Layer *> &layers);
+
+  bool verifyLossCallbackSetup(std::vector<Loss *> losses);
+
 public:
   CallbackTrace(bool print_callback_log)
       : print_callback_log(print_callback_log){};
@@ -106,17 +117,15 @@ public:
                                      Layer_Parameter trainable_parameter_no,
                                      bool print = false);
 
-  void recordScalerLossEpochEnd(Loss *const loss_ptr, bool printFlag = false);
+  void recordScalerLossEpochEnd(Loss *const loss_ptr);
 
   void recordTensorLossEpochEnd(Loss *const loss_ptr,
-                                Loss_Parameter loss_parameter,
-                                bool printFlag = false);
+                                Loss_Parameter loss_parameter);
 
-  void recordScalerLossBatchEnd(Loss *const loss_ptr, bool printFlag = false);
+  void recordScalerLossBatchEnd(Loss *const loss_ptr);
 
   void recordTensorLossBatchEnd(Loss *const loss_ptr,
-                                Loss_Parameter loss_parameter,
-                                bool printFlag = false);
+                                Loss_Parameter loss_parameter);
 
   /* --- epoch batch vector-tensor --- */
   std::vector<std::vector<tf::tensor *>>
@@ -147,13 +156,17 @@ public:
   std::vector<std::vector<std::vector<tf::tensor *>>>
   getLossParameterBatchEnd(Loss *const loss_ptr, Loss_Parameter loss_parameter);
 
-  void callOnEpochBegin();
+  bool callOnTrainingBegin(tf::model &model) override;
 
-  void callOnEpochEnd();
+  void callOnEpochBegin() override;
 
-  void callOnBatchBegin(unsigned const epoch_no);
+  void callOnEpochEnd() override;
 
-  void callOnBatchEnd(unsigned const epoch_no);
+  void callOnBatchBegin(unsigned const epoch_no) override;
+
+  void callOnBatchEnd(unsigned const epoch_no) override;
+
+  void callOnTrainingEnd() override;
 };
 
 class CallbackEarlyStopping : public Callback {

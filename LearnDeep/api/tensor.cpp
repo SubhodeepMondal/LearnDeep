@@ -703,7 +703,7 @@ tf::model::fit(const std::vector<tf::tensor> &inputs,
                const std::vector<tf::tensor> &validation_datas,
                unsigned verbose, bool training) {
 
-  return this->model_ptr->fit(inputs, outputs, validation_datas, epochs,
+  return this->model_ptr->fit(*this, inputs, outputs, validation_datas, epochs,
                               batch_size, callback_ptr, verbose, training);
 }
 
@@ -722,6 +722,16 @@ void tf::model::compile(const OptimizerType optimizerType,
 
 tf::loss tf::model::get_model_loss(tf::tensor output) const {
   return this->model_ptr->getModelLoss(output.getPtr());
+}
+
+std::vector<Layer *> &tf::model::get_layers() { return model_ptr->getLayers(); }
+
+std::vector<Loss *> tf::model::get_losses() {
+  std::vector<Loss *> losses;
+  for (tf::loss *loss : model_ptr->getLosses()) {
+    losses.push_back(loss->get_loss_ptr());
+  }
+  return losses;
 }
 // --- End Model ---
 
@@ -764,30 +774,26 @@ void tf::callback::trace::record_parameter_on_batch_end(
                                            print_flag);
 }
 
-void tf::callback::trace::record_scalar_loss_on_epoch_end(tf::loss loss,
-                                                          bool print_flag) {
+void tf::callback::trace::record_scalar_loss_on_epoch_end(tf::loss loss) {
   static_cast<CallbackTrace *>(this->callback_ptr.get())
-      ->recordScalerLossEpochEnd(loss.get_loss_ptr(), print_flag);
+      ->recordScalerLossEpochEnd(loss.get_loss_ptr());
 }
 
 void tf::callback::trace::record_tensor_loss_on_epoch_end(
-    tf::loss loss, Loss_Parameter loss_parameter, bool print_flag) {
+    tf::loss loss, Loss_Parameter loss_parameter) {
   static_cast<CallbackTrace *>(this->callback_ptr.get())
-      ->recordTensorLossEpochEnd(loss.get_loss_ptr(), loss_parameter,
-                                 print_flag);
+      ->recordTensorLossEpochEnd(loss.get_loss_ptr(), loss_parameter);
 }
 
-void tf::callback::trace::record_scalar_loss_on_batch_end(tf::loss loss,
-                                                          bool print_flag) {
+void tf::callback::trace::record_scalar_loss_on_batch_end(tf::loss loss) {
   static_cast<CallbackTrace *>(this->callback_ptr.get())
-      ->recordScalerLossBatchEnd(loss.get_loss_ptr(), print_flag);
+      ->recordScalerLossBatchEnd(loss.get_loss_ptr());
 }
 
 void tf::callback::trace::record_tensor_loss_on_batch_end(
-    tf::loss loss, Loss_Parameter loss_parameter, bool print_flag) {
+    tf::loss loss, Loss_Parameter loss_parameter) {
   static_cast<CallbackTrace *>(this->callback_ptr.get())
-      ->recordTensorLossBatchEnd(loss.get_loss_ptr(), loss_parameter,
-                                 print_flag);
+      ->recordTensorLossBatchEnd(loss.get_loss_ptr(), loss_parameter);
 }
 
 std::vector<std::vector<tf::tensor>>
