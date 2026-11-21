@@ -723,6 +723,16 @@ void tf::model::compile(const OptimizerType optimizerType,
 tf::loss tf::model::get_model_loss(tf::tensor output) const {
   return this->model_ptr->getModelLoss(output.getPtr());
 }
+
+std::vector<Layer *> &tf::model::get_layers() { return model_ptr->getLayers(); }
+
+std::vector<Loss *> tf::model::get_losses() {
+  std::vector<Loss *> losses;
+  for (tf::loss *loss : model_ptr->getLosses()) {
+    losses.push_back(loss->get_loss_ptr());
+  }
+  return losses;
+}
 // --- End Model ---
 
 // --- Callback ---

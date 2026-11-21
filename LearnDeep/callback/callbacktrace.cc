@@ -12,6 +12,11 @@
 
 CallbackTrace::CallbackTrace(unsigned callback_level) {
   this->callback_level = callback_level;
+
+  this->layers_verification_epoch_begin = false;
+  this->layers_verification_epoch_end = false;
+  this->layers_verification_batch_begin = false;
+  this->layers_verification_batch_end = false;
 }
 
 CallbackTrace::~CallbackTrace() {
@@ -418,4 +423,123 @@ void CallbackTrace::callOnBatchEnd(unsigned const epoch_no) {
       }
     }
   }
+}
+
+bool CallbackTrace::callOnTrainingBegin(tf::model &model) {
+  bool flag = this->verifyLayerCallbackSetup(model.get_layers());
+  if (flag) {
+    this->layers_verification_epoch_begin = true;
+    this->layers_verification_epoch_end = true;
+    this->layers_verification_batch_begin = true;
+    this->layers_verification_batch_end = true;
+    flag = flag && this->verifyLossCallbackSetup(model.get_losses());
+    if (flag) {
+      this->losses_verification_batch_end = true;
+      this->losses_verification_epoch_end = true;
+    }
+  }
+  return flag;
+}
+
+void CallbackTrace::callOnTrainingEnd() {
+  this->layers_verification_epoch_begin = false;
+  this->layers_verification_epoch_end = false;
+  this->layers_verification_batch_begin = false;
+  this->layers_verification_batch_end = false;
+
+  this->losses_verification_batch_end = false;
+  this->losses_verification_epoch_end = false;
+}
+
+bool CallbackTrace::verifyLayerCallbackSetup(std::vector<Layer *> &layers) {
+  bool flag = true;
+
+  // verify layers callback setup on epoch begin
+  if (flag) {
+    for (Layer *layer : std::views::keys(layers_on_epoch_begin)) {
+      auto idx = std::find(layers.begin(), layers.end(), layer);
+      if (idx == layers.end()) {
+        flag = false;
+        std::cerr
+            << "Callback set up for layers epoch begin not matching with the "
+               "model setup.\n";
+        break;
+      }
+    }
+  }
+
+  // verify layers callback setup on epoch end
+  if (flag) {
+    for (Layer *layer : std::views::keys(layers_on_epoch_end)) {
+      auto idx = std::find(layers.begin(), layers.end(), layer);
+      if (idx == layers.end()) {
+        flag = false;
+        std::cerr
+            << "Callback set up for layers at epoch end not matching with the "
+               "model setup.\n";
+        break;
+      }
+    }
+  }
+
+  // verify layers callback setup on batch begin
+  if (flag) {
+    for (Layer *layer : std::views::keys(layers_on_batch_begin)) {
+      auto idx = std::find(layers.begin(), layers.end(), layer);
+      if (idx == layers.end()) {
+        flag = false;
+        std::cerr << "Callback set up for layers at batch begin not matching "
+                     "with the "
+                     "model setup.\n";
+        break;
+      }
+    }
+  }
+
+  // verify layers callback setup on batch end
+  if (flag) {
+    for (Layer *layer : std::views::keys(layers_on_batch_end)) {
+      auto idx = std::find(layers.begin(), layers.end(), layer);
+      if (idx == layers.end()) {
+        flag = false;
+        std::cerr
+            << "Callback set up for layers at batch end not matching with the "
+               "model setup.\n";
+        break;
+      }
+    }
+  }
+  return flag;
+}
+
+bool CallbackTrace::verifyLossCallbackSetup(std::vector<Loss *> losses) {
+  bool flag = true;
+  // verify layers callback setup on epoch end
+  if (flag) {
+    for (Loss *loss : std::views::keys(scalar_loss_epoch_end)) {
+      auto idx = std::find(losses.begin(), losses.end(), loss);
+      if (idx == losses.end()) {
+        flag = false;
+        std::cerr
+            << "Callback set up for Loss at epoch end not matching with the "
+               "model setup.\n";
+        break;
+      }
+    }
+  }
+
+  // verify layers callback setup on batch end
+  if (flag) {
+    for (Loss *loss : std::views::keys(scalar_loss_batch_end)) {
+      auto idx = std::find(losses.begin(), losses.end(), loss);
+      if (idx == losses.end()) {
+        flag = false;
+        std::cerr
+            << "Callback set up for Loss at batch end not matching with the "
+               "model setup.\n";
+        break;
+      }
+    }
+  }
+  return flag;
 }

@@ -16,7 +16,7 @@ class Loss;
 
 class Callback {
 public:
-  virtual void callOnTrainingBegin() {}
+  virtual bool callOnTrainingBegin(tf::model &model) { return false; }
 
   virtual void callOnEpochBegin() {}
 
@@ -35,6 +35,12 @@ class CallbackTrace : public Callback {
 
   unsigned callback_level;
   bool print_callback_log;
+  bool layers_verification_epoch_begin;
+  bool layers_verification_epoch_end;
+  bool layers_verification_batch_begin;
+  bool layers_verification_batch_end;
+  bool losses_verification_epoch_end;
+  bool losses_verification_batch_end;
   std::unordered_map<Loss *, bool> scaler_loss_print_option_epoch_end;
   std::unordered_map<Loss *, std::vector<std::pair<Loss_Parameter, bool>>>
       tensor_loss_print_option_epoch_end;
@@ -82,6 +88,10 @@ class CallbackTrace : public Callback {
       std::unordered_map<Layer_Parameter,
                          std::vector<std::vector<std::vector<tf::tensor *>>>>>
       layer_parameter_on_batch_end;
+
+  bool verifyLayerCallbackSetup(std::vector<Layer *> &layers);
+
+  bool verifyLossCallbackSetup(std::vector<Loss *> losses);
 
 public:
   CallbackTrace(bool print_callback_log)
@@ -147,13 +157,17 @@ public:
   std::vector<std::vector<std::vector<tf::tensor *>>>
   getLossParameterBatchEnd(Loss *const loss_ptr, Loss_Parameter loss_parameter);
 
-  void callOnEpochBegin();
+  bool callOnTrainingBegin(tf::model &model) override;
 
-  void callOnEpochEnd();
+  void callOnEpochBegin() override;
 
-  void callOnBatchBegin(unsigned const epoch_no);
+  void callOnEpochEnd() override;
 
-  void callOnBatchEnd(unsigned const epoch_no);
+  void callOnBatchBegin(unsigned const epoch_no) override;
+
+  void callOnBatchEnd(unsigned const epoch_no) override;
+
+  void callOnTrainingEnd() override;
 };
 
 class CallbackEarlyStopping : public Callback {

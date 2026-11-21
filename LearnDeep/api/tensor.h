@@ -421,6 +421,10 @@ public:
 
   tf::loss get_model_loss(tf::tensor output) const;
 
+  std::vector<Layer *> &get_layers();
+
+  std::vector<Loss *> get_losses();
+
 } model;
 typedef struct optimizer {
 private:

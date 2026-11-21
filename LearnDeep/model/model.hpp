@@ -167,6 +167,10 @@ public:
   void shuffle(bool shuffle);
 
   tf::loss getModelLoss(Tensor<std::float64_t> *output_tensor);
+
+  std::vector<tf::loss *> getLosses() { return this->losses; }
+
+  std::vector<Layer *> &getLayers() { return this->layers; }
 };
 
 #endif // _TENSOR_CORE_MODEL_
