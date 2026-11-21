@@ -69,6 +69,13 @@ private:
   void loadTrainingBatch(const std::vector<tf::tensor> &training_inputs,
                          unsigned batch_index);
 
+  bool
+  runCallbackBeforeTraining(std::vector<std::shared_ptr<Callback>> callbacks,
+                            tf::model &model);
+
+  void
+  runCallbackAfterTraining(std::vector<std::shared_ptr<Callback>> callbacks);
+
   void runCallbackOnEpochBegin(std::vector<std::shared_ptr<Callback>> callback);
 
   void runCallbackOnEpochEnd(std::vector<std::shared_ptr<Callback>> callback);
@@ -147,7 +154,8 @@ public:
    * level 4: + validation loss
    * level 5: + va;odation metric */
   /** @return void */
-  tf::history_container fit(const std::vector<tf::tensor> &inputs,
+  tf::history_container fit(tf::model &model,
+                            const std::vector<tf::tensor> &inputs,
                             const std::vector<tf::tensor> &output,
                             const std::vector<tf::tensor> &valdiation_data = {},
                             unsigned epochs = 10, unsigned batch_size = 1,

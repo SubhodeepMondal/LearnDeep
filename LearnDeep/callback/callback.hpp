@@ -16,7 +16,7 @@ class Loss;
 
 class Callback {
 public:
-  virtual bool callOnTrainingBegin(tf::model &model) { return false; }
+  virtual bool callOnTrainingBegin(tf::model &model) { return true; }
 
   virtual void callOnEpochBegin() {}
 

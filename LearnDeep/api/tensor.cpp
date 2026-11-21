@@ -703,7 +703,7 @@ tf::model::fit(const std::vector<tf::tensor> &inputs,
                const std::vector<tf::tensor> &validation_datas,
                unsigned verbose, bool training) {
 
-  return this->model_ptr->fit(inputs, outputs, validation_datas, epochs,
+  return this->model_ptr->fit(*this, inputs, outputs, validation_datas, epochs,
                               batch_size, callback_ptr, verbose, training);
 }
 

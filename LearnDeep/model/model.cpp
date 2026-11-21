@@ -115,6 +115,23 @@ void Model::loadTrainingBatch(const std::vector<tf::tensor> &training_inputs,
   }
 }
 
+bool Model::runCallbackBeforeTraining(
+    std::vector<std::shared_ptr<Callback>> callbacks, tf::model &model) {
+  bool flag = true;
+  if (callbacks.size())
+    for (auto callback : callbacks)
+      flag &= callback->callOnTrainingBegin(model);
+
+  return flag;
+}
+
+void Model::runCallbackAfterTraining(
+    std::vector<std::shared_ptr<Callback>> callbacks) {
+  if (callbacks.size())
+    for (auto callback : callbacks)
+      callback->callOnTrainingEnd();
+}
+
 void Model::runCallbackOnEpochBegin(
     std::vector<std::shared_ptr<Callback>> callbacks) {
   if (callbacks.size())
@@ -159,7 +176,7 @@ bool Model::checkEarlyStopping(
 }
 
 tf::history_container
-Model::fit(const std::vector<tf::tensor> &training_inputs,
+Model::fit(tf::model &model, const std::vector<tf::tensor> &training_inputs,
            const std::vector<tf::tensor> &training_target,
            const std::vector<tf::tensor> &valdiation_data, unsigned epochs,
            unsigned batch_size,
@@ -210,9 +227,15 @@ Model::fit(const std::vector<tf::tensor> &training_inputs,
 
     this->doDummyAndTrainingTensorMapping(); // this requireds to be within
     // graph context
+    bool verification_failed =
+        !this->runCallbackBeforeTraining(callback, model);
+    if (verification_failed)
+      LOG(ERROR) << "Fatal! Callback verification failed. Check callback "
+                    "configuration\n";
+
     bool stop_epoch = false;
     for (int i = 0; i < epochs; i++) {
-      if (!stop_epoch) {
+      if (!verification_failed && !stop_epoch) {
         this->runCallbackOnEpochBegin(callback);
 
         for (unsigned batch = 0; batch < upper_bound; batch++) {
@@ -265,12 +288,14 @@ Model::fit(const std::vector<tf::tensor> &training_inputs,
         hist.record_history_on_epoch_end(epoch_level_losses);
         stop_epoch = this->checkEarlyStopping(callback);
       } else {
-        LOG(ERROR)
-            << "Early stopping has been triggered, Stopping the epoch at " << i
-            << "\n";
+        if (!verification_failed)
+          LOG(ERROR)
+              << "Early stopping has been triggered, Stopping the epoch at "
+              << i << "\n";
         break;
       }
     } // end of epoch
+    this->runCallbackAfterTraining(callback);
     this->pred_mapping = false;
   }
   return hist;
