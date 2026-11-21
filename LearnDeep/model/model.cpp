@@ -118,8 +118,8 @@ void Model::loadTrainingBatch(const std::vector<tf::tensor> &training_inputs,
 bool Model::runCallbackBeforeTraining(
     std::vector<std::shared_ptr<Callback>> callbacks, tf::model &model) {
   bool flag = true;
-  if (callbacks.size())
-    for (auto callback : callbacks)
+  for (auto callback : callbacks)
+    if (callback)
       flag &= callback->callOnTrainingBegin(model);
 
   return flag;
@@ -127,50 +127,49 @@ bool Model::runCallbackBeforeTraining(
 
 void Model::runCallbackAfterTraining(
     std::vector<std::shared_ptr<Callback>> callbacks) {
-  if (callbacks.size())
-    for (auto callback : callbacks)
+  for (auto callback : callbacks)
+    if (callback)
       callback->callOnTrainingEnd();
 }
 
 void Model::runCallbackOnEpochBegin(
     std::vector<std::shared_ptr<Callback>> callbacks) {
-  if (callbacks.size())
-    for (auto callback : callbacks)
+  for (auto callback : callbacks)
+    if (callback)
       callback->callOnEpochBegin();
 }
 
 void Model::runCallbackOnEpochEnd(
     std::vector<std::shared_ptr<Callback>> callbacks) {
-  if (callbacks.size())
-    for (auto callback : callbacks)
+  for (auto callback : callbacks)
+    if (callback)
       callback.get()->callOnEpochEnd();
 }
 
 void Model::runCallbackOnBatchBegin(
     std::vector<std::shared_ptr<Callback>> callbacks, unsigned const epoch_no) {
-  if (callbacks.size()) {
-    for (auto callback : callbacks)
+  for (auto callback : callbacks)
+    if (callback)
       callback->callOnBatchBegin(epoch_no);
-  }
 }
 
 void Model::runCallbackOnBatchEnd(
     std::vector<std::shared_ptr<Callback>> callbacks, unsigned const epoch_no) {
-  if (callbacks.size()) {
-    for (auto callback : callbacks)
+  for (auto callback : callbacks)
+    if (callback)
       callback->callOnBatchEnd(epoch_no);
-  }
 }
 
 bool Model::checkEarlyStopping(
     std::vector<std::shared_ptr<Callback>> callbacks) {
   bool stop_epoch = false;
-  if (callbacks.size())
-    for (auto callback : callbacks) {
-      stop_epoch = callback.get()->stopEpoch();
-      if (stop_epoch)
-        break;
-    }
+  for (auto callback : callbacks) {
+    if (!callback)
+      continue;
+    stop_epoch = callback.get()->stopEpoch();
+    if (stop_epoch)
+      break;
+  }
 
   return stop_epoch;
 }

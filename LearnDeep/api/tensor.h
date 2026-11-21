@@ -408,7 +408,7 @@ public:
   history_container
   fit(const std::vector<tf::tensor> &inputs,
       const std::vector<tf::tensor> &outputs,
-      std::vector<std::shared_ptr<Callback>> callbacks = {nullptr},
+      std::vector<std::shared_ptr<Callback>> callbacks = {},
       unsigned epochs = 10, unsigned batch_size = 1,
       const std::vector<tf::tensor> &validation_datas = {tf::tensor()},
       unsigned verbose = 0, bool training = true);
