@@ -1472,3 +1472,67 @@ TEST_F(FrameworkTest, CallbackTrace_RejectsForeignLossRegistration) {
       foreign_loss, Loss_Parameter::squared_error_predicted_output);
   EXPECT_FALSE(foreign_tensor_epoch.callback()->callOnTrainingBegin(model1));
 }
+
+TEST_F(FrameworkTest, CallbackTrace_RejectsForeignLayerRegistration) {
+  constexpr unsigned batch_size = 16;
+  constexpr unsigned no_of_input_feature = 4;
+  constexpr unsigned no_of_dense_unit = 3;
+
+  tf::tensor x1, w1, b1, x2, w2, b2;
+  x1.tf_create(tf_float64, no_of_input_feature, batch_size);
+  w1.tf_create(tf_float64, no_of_dense_unit, no_of_input_feature);
+  b1.tf_create(tf_float64, no_of_dense_unit, 1);
+  w1.tensor_of(0.1, 0.2);
+  b1.tensor_of(0.0, 0.1);
+
+  auto dense1 = tf::layer::dense(no_of_dense_unit);
+  auto dense1_output = dense1({x1});
+  dense1.set_weight(w1);
+  dense1.set_bias(b1);
+  tf::model model1({x1}, dense1_output);
+  model1.compile(OptimizerType::SGD, LossType::squared_error);
+
+  x2.tf_create(tf_float64, no_of_input_feature, batch_size);
+  w2.tf_create(tf_float64, no_of_dense_unit, no_of_input_feature);
+  b2.tf_create(tf_float64, no_of_dense_unit, 1);
+  w2.tensor_of(0.1, 0.2);
+  b2.tensor_of(0.0, 0.1);
+
+  auto dense2 = tf::layer::dense(no_of_dense_unit);
+  auto dense2_output = dense2({x2});
+  dense2.set_weight(w2);
+  dense2.set_bias(b2);
+  tf::model model2({x2}, dense2_output);
+  model2.compile(OptimizerType::SGD, LossType::squared_error);
+
+  Layer *own_layer = dense1.getLayerPtr();
+  Layer *foreign_layer = dense2.getLayerPtr();
+  ASSERT_NE(own_layer, foreign_layer);
+
+  // A model-owned layer must be accepted.
+  tf::callback::trace valid;
+  valid.record_parameter_on_epoch_begin(own_layer,
+                                        Layer_Parameter::dense_weight);
+  EXPECT_TRUE(valid.callback()->callOnTrainingBegin(model1));
+
+  // A layer belonging to a different model must be rejected at every hook.
+  tf::callback::trace foreign_epoch_begin;
+  foreign_epoch_begin.record_parameter_on_epoch_begin(
+      foreign_layer, Layer_Parameter::dense_weight);
+  EXPECT_FALSE(foreign_epoch_begin.callback()->callOnTrainingBegin(model1));
+
+  tf::callback::trace foreign_epoch_end;
+  foreign_epoch_end.record_parameter_on_epoch_end(
+      foreign_layer, Layer_Parameter::dense_weight);
+  EXPECT_FALSE(foreign_epoch_end.callback()->callOnTrainingBegin(model1));
+
+  tf::callback::trace foreign_batch_begin;
+  foreign_batch_begin.record_parameter_on_batch_begin(
+      foreign_layer, Layer_Parameter::dense_weight);
+  EXPECT_FALSE(foreign_batch_begin.callback()->callOnTrainingBegin(model1));
+
+  tf::callback::trace foreign_batch_end;
+  foreign_batch_end.record_parameter_on_batch_end(
+      foreign_layer, Layer_Parameter::dense_weight);
+  EXPECT_FALSE(foreign_batch_end.callback()->callOnTrainingBegin(model1));
+}
