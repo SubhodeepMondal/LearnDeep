@@ -31,7 +31,8 @@ TEST_F(FrameworkTest, GenericLayerHandleSupportsRegistryAndParameters) {
 
   tf::layer::layer dense("dense", config);
   ASSERT_EQ(dense.type(), "dense");
-  ASSERT_NE(dense.getLayerPtr(), nullptr);
+  ASSERT_TRUE(dense.valid());
+  EXPECT_TRUE(static_cast<bool>(dense));
   EXPECT_EQ(dense.identity(), static_cast<const void *>(dense.getLayerPtr()));
 
   std::unordered_set<std::string> parameter_names = dense.parameterNames();
@@ -58,7 +59,8 @@ TEST_F(FrameworkTest, GenericLayerHandleRejectsUnknownType) {
   tf::layer::layer missing("not_a_layer");
 
   EXPECT_TRUE(missing.type().empty());
-  EXPECT_EQ(missing.getLayerPtr(), nullptr);
+  EXPECT_FALSE(missing.valid());
+  EXPECT_FALSE(static_cast<bool>(missing));
   EXPECT_EQ(missing.identity(), nullptr);
   EXPECT_TRUE(missing({}).empty());
 }

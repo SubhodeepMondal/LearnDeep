@@ -33,11 +33,11 @@ REGISTER_LAYER(
         return false;
 
       Dense *dense = static_cast<Dense *>(layer);
-      if (name == "weight") {
+      if (name == tf::layer::parameter::weight) {
         dense->setWeight(*tensor);
         return true;
       }
-      if (name == "bias") {
+      if (name == tf::layer::parameter::bias) {
         dense->setBias(*tensor);
         return true;
       }
@@ -48,7 +48,7 @@ REGISTER_LAYER(
 Dense::Dense(unsigned unit)
     : no_of_unit(unit), no_of_features(1), batch_size(1),
       forwardGraphCreated(false), backwardGraphCrated(false),
-      layer_type(tf_dense), isGradRecorded(false),
+      isGradRecorded(false),
       weight_initialization_method(InitializationMethod::ZEROS),
       bias_initialization_method(InitializationMethod::ZEROS){
 
@@ -169,7 +169,7 @@ void Dense::backward(Optimizer *optimizer) {
   }
 }
 
-LayerType Dense::getLayerType() { return this->layer_type; }
+std::string_view Dense::type() const { return tf::layer::type::dense; }
 
 std::vector<const Tensor<std::float64_t> *> &Dense::getInputTensors() {
   return this->layer_inputs;
@@ -219,76 +219,101 @@ void Dense::setBias(const tf::tensor &bias_tensor) {
 }
 
 std::vector<tf::tensor *>
-Dense::getLayerParameter(Layer_Parameter layer_parameter, bool print_flag) {
+Dense::getLayerParameter(std::string_view layer_parameter, bool print_flag) {
   std::vector<tf::tensor *> layer_parameter_tensor;
-  switch (layer_parameter) {
-  case Layer_Parameter::dense_input:
+  using tf::layer::parameter::bias;
+  using tf::layer::parameter::grad_bias;
+  using tf::layer::parameter::grad_input;
+  using tf::layer::parameter::grad_weight;
+  using tf::layer::parameter::incoming_grad;
+  using tf::layer::parameter::input;
+  using tf::layer::parameter::matmul_result;
+  using tf::layer::parameter::output;
+  using tf::layer::parameter::training_bias;
+  using tf::layer::parameter::training_input;
+  using tf::layer::parameter::training_matmul_result;
+  using tf::layer::parameter::training_output;
+  using tf::layer::parameter::training_weight;
+  using tf::layer::parameter::updated_bias;
+  using tf::layer::parameter::updated_weight;
+  using tf::layer::parameter::weight;
+
+  if (layer_parameter == input) {
     LOG(INFO) << "Layer: Dense, input:\n";
-    // layer_parameter_tensor = layer_inputs;
-    break;
-  case Layer_Parameter::dense_weight:
+  } else if (layer_parameter == weight) {
     LOG(INFO) << "Layer: Dense, weight:\n";
     layer_parameter_tensor.push_back(&this->weight);
-    break;
-  case Layer_Parameter::dense_bias:
+  } else if (layer_parameter == bias) {
     LOG(INFO) << "Layer: Dense, bias:\n";
     layer_parameter_tensor.push_back(&this->bias);
-    break;
-  case Layer_Parameter::dense_output:
+  } else if (layer_parameter == matmul_result) {
+    LOG(INFO) << "Layer: Dense, matmul result:\n";
+    layer_parameter_tensor.push_back(&this->matmul_result);
+  } else if (layer_parameter == output) {
     LOG(INFO) << "Layer: Dense, output:\n";
     layer_parameter_tensor = this->layer_outputs;
-    break;
-  case Layer_Parameter::dense_training_input:
+  } else if (layer_parameter == training_input) {
     LOG(INFO) << "Layer: Dense, training input:\n";
     layer_parameter_tensor.push_back(
         const_cast<tf::tensor *>(this->training_inputs));
-    break;
-  case Layer_Parameter::dense_training_weight:
+  } else if (layer_parameter == training_weight) {
     LOG(INFO) << "Layer: Dense, training weight:\n";
     layer_parameter_tensor.push_back(&this->training_weight);
-    break;
-  case Layer_Parameter::dense_training_bias:
+  } else if (layer_parameter == training_bias) {
     LOG(INFO) << "Layer: Dense, training bias:\n";
     layer_parameter_tensor.push_back(&this->training_bias);
-    break;
-  case Layer_Parameter::dense_training_output:
+  } else if (layer_parameter == training_matmul_result) {
+    LOG(INFO) << "Layer: Dense, training matmul result:\n";
+    layer_parameter_tensor.push_back(&this->training_matmul_result);
+  } else if (layer_parameter == training_output) {
     LOG(INFO) << "Layer: Dense, training output:\n";
     for (tf::tensor *training_output_tensor : this->training_outputs)
       layer_parameter_tensor.push_back(training_output_tensor);
-    break;
-  case Layer_Parameter::dense_grad_input:
+  } else if (layer_parameter == grad_input) {
     LOG(INFO) << "Layer: Dense, grad input:\n";
     layer_parameter_tensor.push_back(&this->grad_input);
-    break;
-  case Layer_Parameter::dense_grad_weight:
+  } else if (layer_parameter == grad_weight) {
     LOG(INFO) << "Layer: Dense, grad weight:\n";
     layer_parameter_tensor.push_back(&this->grad_weight);
-    break;
-  case Layer_Parameter::dense_grad_bias:
+  } else if (layer_parameter == grad_bias) {
     LOG(INFO) << "Layer: Dense, grad bias:\n";
     layer_parameter_tensor.push_back(&this->grad_bias);
-    break;
-  case Layer_Parameter::dense_incoming_grad:
-    LOG(INFO) << "Layer: Dense, grad bias:\n";
+  } else if (layer_parameter == incoming_grad) {
+    LOG(INFO) << "Layer: Dense, incoming grad:\n";
     layer_parameter_tensor.push_back(&this->incoming_grad);
-    break;
-  case Layer_Parameter::dense_updated_weight:
-    LOG(INFO) << "Layer: Dense, grad weight:\n";
+  } else if (layer_parameter == updated_weight) {
+    LOG(INFO) << "Layer: Dense, updated weight:\n";
     layer_parameter_tensor.push_back(&this->updated_weight);
-    break;
-  case Layer_Parameter::dense_updated_bias:
-    LOG(INFO) << "Layer: Dense, grad bias:\n";
+  } else if (layer_parameter == updated_bias) {
+    LOG(INFO) << "Layer: Dense, updated bias:\n";
     layer_parameter_tensor.push_back(&this->updated_bias);
-    break;
-
-  default:
+  } else {
     LOG(ERROR) << "Sever! the selected layer parameter is not available for "
                   "dense layer.\n";
-    break;
   }
+
   if (print_flag && layer_parameter_tensor.size())
     layer_parameter_tensor[0]->print_data();
   return layer_parameter_tensor;
+}
+
+std::unordered_set<std::string> Dense::parameterNames() const {
+  return {std::string(tf::layer::parameter::input),
+          std::string(tf::layer::parameter::weight),
+          std::string(tf::layer::parameter::bias),
+          std::string(tf::layer::parameter::matmul_result),
+          std::string(tf::layer::parameter::output),
+          std::string(tf::layer::parameter::training_input),
+          std::string(tf::layer::parameter::training_weight),
+          std::string(tf::layer::parameter::training_bias),
+          std::string(tf::layer::parameter::training_matmul_result),
+          std::string(tf::layer::parameter::training_output),
+          std::string(tf::layer::parameter::grad_input),
+          std::string(tf::layer::parameter::grad_weight),
+          std::string(tf::layer::parameter::grad_bias),
+          std::string(tf::layer::parameter::incoming_grad),
+          std::string(tf::layer::parameter::updated_weight),
+          std::string(tf::layer::parameter::updated_bias)};
 }
 
 void Dense::initializeWeight() {

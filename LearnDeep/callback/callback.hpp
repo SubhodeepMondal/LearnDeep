@@ -2,6 +2,7 @@
 #define _TENSORFLOW_CALLBACK_
 
 // C++ Headers
+#include <string>
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
@@ -9,7 +10,6 @@
 
 // Library Headers
 #include <api/tensor.h>
-#include <layers/layer_enum.hpp>
 #include <losses/loss_enum.hpp>
 
 class Layer;
@@ -61,32 +61,32 @@ class CallbackTrace : public Callback {
                          std::vector<std::vector<std::vector<tf::tensor *>>>>>
       tensor_loss_batch_end;
 
-  std::unordered_map<Layer *, std::vector<std::pair<Layer_Parameter, bool>>>
+  std::unordered_map<Layer *, std::vector<std::pair<std::string, bool>>>
       layers_on_epoch_begin;
-  std::unordered_map<Layer *, std::vector<std::pair<Layer_Parameter, bool>>>
+  std::unordered_map<Layer *, std::vector<std::pair<std::string, bool>>>
       layers_on_epoch_end;
 
-  std::unordered_map<Layer *, std::vector<std::pair<Layer_Parameter, bool>>>
+  std::unordered_map<Layer *, std::vector<std::pair<std::string, bool>>>
       layers_on_batch_begin;
-  std::unordered_map<Layer *, std::vector<std::pair<Layer_Parameter, bool>>>
+  std::unordered_map<Layer *, std::vector<std::pair<std::string, bool>>>
       layers_on_batch_end;
 
   std::unordered_map<Layer *,
-                     std::unordered_map<Layer_Parameter,
+                     std::unordered_map<std::string,
                                         std::vector<std::vector<tf::tensor *>>>>
       layer_parameter_on_epoch_begin;
   std::unordered_map<Layer *,
-                     std::unordered_map<Layer_Parameter,
+                     std::unordered_map<std::string,
                                         std::vector<std::vector<tf::tensor *>>>>
       layer_parameter_on_epoch_end;
   std::unordered_map<
       Layer *,
-      std::unordered_map<Layer_Parameter,
+      std::unordered_map<std::string,
                          std::vector<std::vector<std::vector<tf::tensor *>>>>>
       layer_parameter_on_batch_begin;
   std::unordered_map<
       Layer *,
-      std::unordered_map<Layer_Parameter,
+      std::unordered_map<std::string,
                          std::vector<std::vector<std::vector<tf::tensor *>>>>>
       layer_parameter_on_batch_end;
 
@@ -100,22 +100,20 @@ public:
   CallbackTrace(unsigned callback_level);
   ~CallbackTrace();
   void onEpochBeginGetTrainableParameter(Layer *const layer,
-                                         Layer_Parameter trainable_parameter_no,
+                                         const std::string &trainable_parameter,
                                          bool print = false);
 
   void onEpochEndGetTrainableParameter(Layer *const layer,
-                                       Layer_Parameter trainable_paramter_no,
+                                       const std::string &trainable_parameter,
                                        bool print = false);
 
-  void
-  recordTrainableParameterOnBatchBegin(Layer *const layer,
-                                       Layer_Parameter trainable_parameter_no,
-                                       bool print = false);
+  void recordTrainableParameterOnBatchBegin(
+      Layer *const layer, const std::string &trainable_parameter,
+      bool print = false);
 
-  void
-  recordTrainableParameterOnBatchEnd(Layer *const layer,
-                                     Layer_Parameter trainable_parameter_no,
-                                     bool print = false);
+  void recordTrainableParameterOnBatchEnd(
+      Layer *const layer, const std::string &trainable_parameter,
+      bool print = false);
 
   void recordScalerLossEpochEnd(Loss *const loss_ptr);
 
@@ -130,20 +128,20 @@ public:
   /* --- epoch batch vector-tensor --- */
   std::vector<std::vector<tf::tensor *>>
   getTrainableParameterEpochOnBegin(Layer *const layer,
-                                    Layer_Parameter trainable_parameter_no);
+                                    const std::string &trainable_parameter);
 
   std::vector<std::vector<tf::tensor *>>
   getTrainableParameterEpochOnEnd(Layer *const layer,
-                                  Layer_Parameter trainable_parameter_no);
+                                  const std::string &trainable_parameter);
 
   /* --- epoch batch vector-tensor --- */
   std::vector<std::vector<std::vector<tf::tensor *>>>
   getTrainableParameterBatchOnBegin(Layer *const layer,
-                                    Layer_Parameter trainable_parameter_no);
+                                    const std::string &trainable_parameter);
 
   std::vector<std::vector<std::vector<tf::tensor *>>>
   getTrainableParameterBatchOnEnd(Layer *const layer,
-                                  Layer_Parameter trainable_parameter_no);
+                                  const std::string &trainable_parameter);
 
   std::vector<std::float64_t> getScalerLossEpochEnd(Loss *loss_ptr);
 

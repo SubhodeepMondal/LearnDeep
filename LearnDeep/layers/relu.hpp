@@ -14,8 +14,6 @@ class Relu : public Layer {
   bool isBackwardGraphCreated;
   bool isGradRecorded;
 
-  LayerType layer_type;
-
   const tf::tensor *training_inputs;
   tf::tensor grad_input;
   tf::tensor output;
@@ -55,10 +53,13 @@ public:
 
   const std::vector<tf::tensor *> &getOutputTrainingTensors() override;
 
-  LayerType getLayerType();
+  std::string_view type() const override;
 
-  std::vector<tf::tensor *> getLayerParameter(Layer_Parameter layer_parameter,
-                                              bool print_flag = false) override;
+  std::vector<tf::tensor *>
+  getLayerParameter(std::string_view layer_parameter,
+                    bool print_flag = false) override;
+
+  std::unordered_set<std::string> parameterNames() const override;
 
   void initializeParameters() override;
 };

@@ -14,7 +14,7 @@
 REGISTER_LAYER("relu",
                [](const LayerConfig &) -> Layer * { return new Relu(); });
 
-Relu::Relu() : layer_type(tf_relu_layer) {
+Relu::Relu() {
   this->isForwardGraphCreated = false;
   this->isBackwardGraphCreated = false;
   this->isGradRecorded = false;
@@ -89,7 +89,7 @@ void Relu::backward(Optimizer *optimiser) {
   }
 }
 
-LayerType Relu::getLayerType() { return this->layer_type; }
+std::string_view Relu::type() const { return tf::layer::type::relu; }
 
 std::vector<const Tensor<std::float64_t> *> &Relu::getInputTensors() {
   return this->layer_inputs;
@@ -108,38 +108,46 @@ const std::vector<tf::tensor *> &Relu::getOutputTrainingTensors() {
 }
 
 std::vector<tf::tensor *>
-Relu::getLayerParameter(Layer_Parameter layer_parameter, bool print_flag) {
+Relu::getLayerParameter(std::string_view layer_parameter, bool print_flag) {
   std::vector<tf::tensor *> layer_parameter_tensor;
-  switch (layer_parameter) {
-  case Layer_Parameter::relu_input:
+  using tf::layer::parameter::grad_input;
+  using tf::layer::parameter::input;
+  using tf::layer::parameter::output;
+  using tf::layer::parameter::training_input;
+  using tf::layer::parameter::training_output;
+
+  if (layer_parameter == input) {
     LOG(INFO) << "Layer: Relu, input:\n";
-    break;
-  case Layer_Parameter::relu_output:
+  } else if (layer_parameter == output) {
     LOG(INFO) << "Layer: Relu, output:\n";
     layer_parameter_tensor = this->layer_outputs;
-    break;
-  case Layer_Parameter::relu_training_input:
+  } else if (layer_parameter == training_input) {
     LOG(INFO) << "Layer: Relu, training input:\n";
     layer_parameter_tensor.push_back(
         const_cast<tf::tensor *>(this->training_inputs));
-    break;
-  case Layer_Parameter::relu_training_output:
+  } else if (layer_parameter == training_output) {
     LOG(INFO) << "Layer: Relu, training output:\n";
     for (tf::tensor *training_output_tensor : this->training_outputs)
       layer_parameter_tensor.push_back(training_output_tensor);
-    break;
-  case Layer_Parameter::relu_grad_input:
+  } else if (layer_parameter == grad_input) {
     LOG(INFO) << "Layer: Relu, grad input:\n";
     layer_parameter_tensor.push_back(&this->grad_input);
-    break;
-  default:
+  } else {
     LOG(ERROR) << "Sever! the selected layer parameter is not available for "
                   "relu layer.\n";
-    break;
   }
+
   if (print_flag && layer_parameter_tensor.size())
     layer_parameter_tensor[0]->print_data();
   return layer_parameter_tensor;
+}
+
+std::unordered_set<std::string> Relu::parameterNames() const {
+  return {std::string(tf::layer::parameter::input),
+          std::string(tf::layer::parameter::output),
+          std::string(tf::layer::parameter::training_input),
+          std::string(tf::layer::parameter::training_output),
+          std::string(tf::layer::parameter::grad_input)};
 }
 
 void Relu::initializeParameters() {};

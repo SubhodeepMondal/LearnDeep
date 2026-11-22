@@ -33,29 +33,28 @@ CallbackTrace::~CallbackTrace() {
 }
 
 void CallbackTrace::onEpochBeginGetTrainableParameter(
-    Layer *const layer, Layer_Parameter traiable_parameter_no, bool print) {
+    Layer *const layer, const std::string &trainable_parameter, bool print) {
   if (std::ranges::contains(global_layer_graph.getAllLayers(), layer)) {
-    this->layers_on_epoch_begin[layer].push_back(
-        {traiable_parameter_no, print});
+    this->layers_on_epoch_begin[layer].push_back({trainable_parameter, print});
   }
 }
 
 void CallbackTrace::onEpochEndGetTrainableParameter(
-    Layer *const layer, Layer_Parameter traiable_parameter_no, bool print) {
+    Layer *const layer, const std::string &trainable_parameter, bool print) {
   if (std::ranges::contains(global_layer_graph.getAllLayers(), layer)) {
-    this->layers_on_epoch_end[layer].push_back({traiable_parameter_no, print});
+    this->layers_on_epoch_end[layer].push_back({trainable_parameter, print});
   }
 }
 
 void CallbackTrace::recordTrainableParameterOnBatchBegin(
-    Layer *const layer, Layer_Parameter trainable_parameter, bool print) {
+    Layer *const layer, const std::string &trainable_parameter, bool print) {
   if (std::ranges::contains(global_layer_graph.getAllLayers(), layer)) {
     this->layers_on_batch_begin[layer].push_back({trainable_parameter, print});
   }
 }
 
 void CallbackTrace::recordTrainableParameterOnBatchEnd(
-    Layer *const layer, Layer_Parameter trainable_parameter, bool print) {
+    Layer *const layer, const std::string &trainable_parameter, bool print) {
   if (std::ranges::contains(global_layer_graph.getAllLayers(), layer)) {
     this->layers_on_batch_end[layer].push_back({trainable_parameter, print});
   }
@@ -81,7 +80,7 @@ void CallbackTrace::recordTensorLossBatchEnd(Loss *const loss_ptr,
 
 std::vector<std::vector<tf::tensor *>>
 CallbackTrace::getTrainableParameterEpochOnBegin(
-    Layer *const layer, Layer_Parameter trainable_parameter_no) {
+    Layer *const layer, const std::string &trainable_parameter) {
 
   std::vector<std::vector<tf::tensor *>> layer_parameter_output;
 
@@ -90,12 +89,12 @@ CallbackTrace::getTrainableParameterEpochOnBegin(
       std::views::keys(this->layer_parameter_on_epoch_begin).end());
 
   if (std::ranges::contains(layers, layer)) {
-    std::vector<Layer_Parameter> layer_parameter(
+    std::vector<std::string> layer_parameter(
         std::views::keys(this->layer_parameter_on_epoch_begin[layer]).begin(),
         std::views::keys(this->layer_parameter_on_epoch_begin[layer]).end());
-    if (std::ranges::contains(layer_parameter, trainable_parameter_no))
+    if (std::ranges::contains(layer_parameter, trainable_parameter))
       layer_parameter_output =
-          this->layer_parameter_on_epoch_begin[layer][trainable_parameter_no];
+          this->layer_parameter_on_epoch_begin[layer][trainable_parameter];
     else
       LOG(ERROR) << "Sever! this parameter was not registered for callback.\n";
   } else {
@@ -107,7 +106,7 @@ CallbackTrace::getTrainableParameterEpochOnBegin(
 
 std::vector<std::vector<tf::tensor *>>
 CallbackTrace::getTrainableParameterEpochOnEnd(
-    Layer *const layer, Layer_Parameter trainable_parameter_no) {
+    Layer *const layer, const std::string &trainable_parameter) {
 
   std::vector<std::vector<tf::tensor *>> layer_parameter_output;
 
@@ -116,12 +115,12 @@ CallbackTrace::getTrainableParameterEpochOnEnd(
       std::views::keys(this->layer_parameter_on_epoch_end).end());
 
   if (std::ranges::contains(layers, layer)) {
-    std::vector<Layer_Parameter> layer_parameter(
+    std::vector<std::string> layer_parameter(
         std::views::keys(this->layer_parameter_on_epoch_end[layer]).begin(),
         std::views::keys(this->layer_parameter_on_epoch_end[layer]).end());
-    if (std::ranges::contains(layer_parameter, trainable_parameter_no)) {
+    if (std::ranges::contains(layer_parameter, trainable_parameter)) {
       layer_parameter_output =
-          this->layer_parameter_on_epoch_end[layer][trainable_parameter_no];
+          this->layer_parameter_on_epoch_end[layer][trainable_parameter];
     } else
       LOG(ERROR) << "Sever! this parameter was not registered for callback.\n";
   } else {
@@ -133,7 +132,7 @@ CallbackTrace::getTrainableParameterEpochOnEnd(
 
 std::vector<std::vector<std::vector<tf::tensor *>>>
 CallbackTrace::getTrainableParameterBatchOnBegin(
-    Layer *const layer, Layer_Parameter trainable_parameter_no) {
+    Layer *const layer, const std::string &trainable_parameter) {
 
   std::vector<std::vector<std::vector<tf::tensor *>>> layer_parameter_output;
 
@@ -142,12 +141,12 @@ CallbackTrace::getTrainableParameterBatchOnBegin(
       std::views::keys(this->layer_parameter_on_batch_begin).end());
 
   if (std::ranges::contains(layers, layer)) {
-    std::vector<Layer_Parameter> layer_parameter(
+    std::vector<std::string> layer_parameter(
         std::views::keys(this->layer_parameter_on_batch_begin[layer]).begin(),
         std::views::keys(this->layer_parameter_on_batch_begin[layer]).end());
-    if (std::ranges::contains(layer_parameter, trainable_parameter_no))
+    if (std::ranges::contains(layer_parameter, trainable_parameter))
       layer_parameter_output =
-          this->layer_parameter_on_batch_begin[layer][trainable_parameter_no];
+          this->layer_parameter_on_batch_begin[layer][trainable_parameter];
     else
       LOG(ERROR) << "Sever! this parameter was not registered for callback.\n";
   } else {
@@ -159,7 +158,7 @@ CallbackTrace::getTrainableParameterBatchOnBegin(
 
 std::vector<std::vector<std::vector<tf::tensor *>>>
 CallbackTrace::getTrainableParameterBatchOnEnd(
-    Layer *layer, Layer_Parameter trainable_parameter_no) {
+    Layer *layer, const std::string &trainable_parameter) {
 
   std::vector<std::vector<std::vector<tf::tensor *>>> layer_parameter_output;
 
@@ -168,12 +167,12 @@ CallbackTrace::getTrainableParameterBatchOnEnd(
       std::views::keys(this->layer_parameter_on_batch_end).end());
 
   if (std::ranges::contains(layers, layer)) {
-    std::vector<Layer_Parameter> layer_parameter(
+    std::vector<std::string> layer_parameter(
         std::views::keys(this->layer_parameter_on_batch_end[layer]).begin(),
         std::views::keys(this->layer_parameter_on_batch_end[layer]).end());
-    if (std::ranges::contains(layer_parameter, trainable_parameter_no)) {
+    if (std::ranges::contains(layer_parameter, trainable_parameter)) {
       layer_parameter_output =
-          this->layer_parameter_on_batch_end[layer][trainable_parameter_no];
+          this->layer_parameter_on_batch_end[layer][trainable_parameter];
     } else
       LOG(ERROR) << "Sever! this parameter was not registered for callback.\n";
   } else {

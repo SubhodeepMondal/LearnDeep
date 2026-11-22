@@ -16,7 +16,7 @@ REGISTER_LAYER("softmax", [](const LayerConfig &config) -> Layer * {
   return new Softmax(axis ? *axis : 0u);
 });
 
-Softmax::Softmax(unsigned axis) : axis(axis), layer_type(tf_softmax_layer) {
+Softmax::Softmax(unsigned axis) : axis(axis) {
   this->isForwardGraphCreated = false;
   this->isBackwardGraphCreated = false;
   this->isGradRecorded = false;
@@ -90,7 +90,7 @@ void Softmax::backward(Optimizer *optimiser) {
   }
 }
 
-LayerType Softmax::getLayerType() { return this->layer_type; }
+std::string_view Softmax::type() const { return tf::layer::type::softmax; }
 
 std::vector<const Tensor<std::float64_t> *> &Softmax::getInputTensors() {
   return this->layer_inputs;
@@ -109,38 +109,46 @@ const std::vector<tf::tensor *> &Softmax::getOutputTrainingTensors() {
 }
 
 std::vector<tf::tensor *>
-Softmax::getLayerParameter(Layer_Parameter layer_parameter, bool print_flag) {
+Softmax::getLayerParameter(std::string_view layer_parameter, bool print_flag) {
   std::vector<tf::tensor *> layer_parameter_tensor;
-  switch (layer_parameter) {
-  case Layer_Parameter::softmax_input:
+  using tf::layer::parameter::grad_input;
+  using tf::layer::parameter::input;
+  using tf::layer::parameter::output;
+  using tf::layer::parameter::training_input;
+  using tf::layer::parameter::training_output;
+
+  if (layer_parameter == input) {
     LOG(INFO) << "Layer: Softmax, input:\n";
-    break;
-  case Layer_Parameter::softmax_output:
+  } else if (layer_parameter == output) {
     LOG(INFO) << "Layer: Softmax, output:\n";
     layer_parameter_tensor = this->layer_outputs;
-    break;
-  case Layer_Parameter::softmax_training_input:
-    LOG(INFO) << "Layer: Selu, training input:\n";
+  } else if (layer_parameter == training_input) {
+    LOG(INFO) << "Layer: Softmax, training input:\n";
     layer_parameter_tensor.push_back(
         const_cast<tf::tensor *>(this->training_inputs));
-    break;
-  case Layer_Parameter::softmax_training_output:
-    LOG(INFO) << "Layer: Selu, training output:\n";
+  } else if (layer_parameter == training_output) {
+    LOG(INFO) << "Layer: Softmax, training output:\n";
     for (tf::tensor *training_output_tensor : this->training_outputs)
       layer_parameter_tensor.push_back(training_output_tensor);
-    break;
-  case Layer_Parameter::softmax_grad_input:
+  } else if (layer_parameter == grad_input) {
     LOG(INFO) << "Layer: Softmax, grad input:\n";
     layer_parameter_tensor.push_back(&this->grad_input);
-    break;
-  default:
+  } else {
     LOG(ERROR) << "Sever! the selected layer parameter is not available for "
-                  "relu layer.\n";
-    break;
+                  "softmax layer.\n";
   }
+
   if (print_flag && layer_parameter_tensor.size())
     layer_parameter_tensor[0]->print_data();
   return layer_parameter_tensor;
+}
+
+std::unordered_set<std::string> Softmax::parameterNames() const {
+  return {std::string(tf::layer::parameter::input),
+          std::string(tf::layer::parameter::output),
+          std::string(tf::layer::parameter::training_input),
+          std::string(tf::layer::parameter::training_output),
+          std::string(tf::layer::parameter::grad_input)};
 }
 
 void Softmax::initializeParameters() {};

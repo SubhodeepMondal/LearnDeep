@@ -60,60 +60,6 @@ LayerConfig config_with(const std::string &key, unsigned value) {
   return config;
 }
 
-const std::unordered_map<std::string,
-                         std::unordered_map<std::string, Layer_Parameter>> &
-layer_parameter_maps() {
-  static const std::unordered_map<
-      std::string, std::unordered_map<std::string, Layer_Parameter>>
-      maps = {
-          {"dense",
-           {{"input", Layer_Parameter::dense_input},
-            {"weight", Layer_Parameter::dense_weight},
-            {"bias", Layer_Parameter::dense_bias},
-            {"matmul_result", Layer_Parameter::dense_matmul_result},
-            {"output", Layer_Parameter::dense_output},
-            {"training_input", Layer_Parameter::dense_training_input},
-            {"training_weight", Layer_Parameter::dense_training_weight},
-            {"training_bias", Layer_Parameter::dense_training_bias},
-            {"training_matmul_result",
-             Layer_Parameter::dense_training_matmul_result},
-            {"training_output", Layer_Parameter::dense_training_output},
-            {"grad_input", Layer_Parameter::dense_grad_input},
-            {"grad_weight", Layer_Parameter::dense_grad_weight},
-            {"grad_bias", Layer_Parameter::dense_grad_bias},
-            {"incoming_grad", Layer_Parameter::dense_incoming_grad},
-            {"updated_weight", Layer_Parameter::dense_updated_weight},
-            {"updated_bias", Layer_Parameter::dense_updated_bias}}},
-          {"relu",
-           {{"grad_input", Layer_Parameter::relu_grad_input},
-            {"input", Layer_Parameter::relu_input},
-            {"output", Layer_Parameter::relu_output},
-            {"training_input", Layer_Parameter::relu_training_input},
-            {"training_output", Layer_Parameter::relu_training_output}}},
-          {"softmax",
-           {{"grad_input", Layer_Parameter::softmax_grad_input},
-            {"input", Layer_Parameter::softmax_input},
-            {"output", Layer_Parameter::softmax_output},
-            {"training_input", Layer_Parameter::softmax_training_input},
-            {"training_output", Layer_Parameter::softmax_training_output}}}};
-
-  return maps;
-}
-
-std::optional<Layer_Parameter> layer_parameter_for(const std::string &type,
-                                                   const std::string &name) {
-  const auto &maps = layer_parameter_maps();
-  auto type_it = maps.find(type);
-  if (type_it == maps.end())
-    return std::nullopt;
-
-  auto parameter_it = type_it->second.find(name);
-  if (parameter_it == type_it->second.end())
-    return std::nullopt;
-
-  return parameter_it->second;
-}
-
 } // namespace
 
 // --- Default Constructor
@@ -643,14 +589,13 @@ void tf::graph_context::compute_gradient() {
 
 tf::layer::layer::layer() = default;
 
-tf::layer::layer::layer(const std::string &type_name)
+tf::layer::layer::layer(std::string_view type_name)
     : layer(type_name, LayerConfig{}) {}
 
-tf::layer::layer::layer(const std::string &type_name,
-                        const LayerConfig &config)
+tf::layer::layer::layer(std::string_view type_name, const LayerConfig &config)
     : type_name_(type_name) {
   std::unique_ptr<Layer> created =
-      LayerRegistry::instance().create(type_name, config);
+      LayerRegistry::instance().create(std::string(type_name), config);
   if (!created) {
     this->type_name_.clear();
     return;
@@ -710,44 +655,37 @@ void tf::layer::layer::initialize_parameters() {
 }
 
 std::unordered_set<std::string> tf::layer::layer::parameterNames() const {
-  const auto &maps = layer_parameter_maps();
-  auto type_it = maps.find(this->type_name_);
-  if (type_it == maps.end())
-    return {};
-
-  std::unordered_set<std::string> names;
-  for (const auto &parameter : type_it->second)
-    names.insert(parameter.first);
-  return names;
-}
-
-std::vector<tf::tensor>
-tf::layer::layer::getParameter(const std::string &name) const {
   if (!this->layer_ptr)
     return {};
 
-  auto parameter = layer_parameter_for(this->type_name_, name);
-  if (!parameter) {
-    LOG(ERROR) << "Fatal! Parameter '" << name
-               << "' is not available for layer type '" << this->type_name_
-               << "'.\n";
-    return {};
-  }
-
-  return copy_output_tensors(
-      this->layer_ptr->getLayerParameter(*parameter));
+  return this->layer_ptr->parameterNames();
 }
 
-void tf::layer::layer::setParameter(const std::string &name,
+std::vector<tf::tensor>
+tf::layer::layer::getParameter(std::string_view name) const {
+  if (!this->layer_ptr)
+    return {};
+
+  return copy_output_tensors(this->layer_ptr->getLayerParameter(name));
+}
+
+void tf::layer::layer::setParameter(std::string_view name,
                                     const LayerParameterValue &value) {
   if (!this->layer_ptr)
     return;
 
   LayerRegistry::instance().setParameter(this->type_name_,
-                                         this->layer_ptr.get(), name, value);
+                                         this->layer_ptr.get(),
+                                         std::string(name), value);
 }
 
-std::string tf::layer::layer::type() const { return this->type_name_; }
+std::string_view tf::layer::layer::type() const { return this->type_name_; }
+
+tf::layer::layer::operator bool() const {
+  return static_cast<bool>(this->layer_ptr);
+}
+
+bool tf::layer::layer::valid() const { return static_cast<bool>(*this); }
 
 Layer *tf::layer::layer::getLayerPtr() const { return this->layer_ptr.get(); }
 
@@ -760,7 +698,7 @@ const void *tf::layer::layer::identity() const {
 // --- Dense ---
 
 tf::layer::dense::dense(unsigned unit)
-    : layer("dense", config_with("units", unit)) {}
+    : layer(tf::layer::type::dense, config_with("units", unit)) {}
 
 tf::layer::dense::~dense() = default;
 
@@ -769,15 +707,15 @@ std::vector<const tf::tensor *> tf::layer::dense::get_input_tensors() {
 }
 
 std::vector<tf::tensor> tf::layer::dense::get_output_tensors() {
-  return this->getParameter("output");
+  return this->getParameter(tf::layer::parameter::output);
 }
 
 std::vector<tf::tensor> tf::layer::dense::get_output_training_tensor() {
-  return this->getParameter("training_output");
+  return this->getParameter(tf::layer::parameter::training_output);
 }
 
 std::vector<tf::tensor> tf::layer::dense::get_output_training_weight() {
-  return this->getParameter("training_weight");
+  return this->getParameter(tf::layer::parameter::training_weight);
 }
 
 void tf::layer::dense::set_weight(const tf::tensor &weight_tensor) {
@@ -786,7 +724,7 @@ void tf::layer::dense::set_weight(const tf::tensor &weight_tensor) {
     return;
   }
 
-  this->setParameter("weight", weight_tensor);
+  this->setParameter(tf::layer::parameter::weight, weight_tensor);
 }
 
 void tf::layer::dense::set_bias(const tf::tensor &bias_tensor) {
@@ -795,14 +733,14 @@ void tf::layer::dense::set_bias(const tf::tensor &bias_tensor) {
     return;
   }
 
-  this->setParameter("bias", bias_tensor);
+  this->setParameter(tf::layer::parameter::bias, bias_tensor);
 }
 
 // --- End of Dense ---
 
 // --- Relu ---
 
-tf::layer::relu::relu() : layer("relu") {}
+tf::layer::relu::relu() : layer(tf::layer::type::relu) {}
 
 tf::layer::relu::~relu() = default;
 
@@ -811,7 +749,7 @@ std::vector<const tf::tensor *> tf::layer::relu::get_input_tensors() {
 }
 
 std::vector<tf::tensor> tf::layer::relu::get_output_tensors() {
-  return this->getParameter("output");
+  return this->getParameter(tf::layer::parameter::output);
 }
 
 // --- End of Relu ---
@@ -819,7 +757,7 @@ std::vector<tf::tensor> tf::layer::relu::get_output_tensors() {
 // --- Softmax ---
 
 tf::layer::softmax::softmax(unsigned axis)
-    : layer("softmax", config_with("axis", axis)) {}
+    : layer(tf::layer::type::softmax, config_with("axis", axis)) {}
 
 tf::layer::softmax::~softmax() = default;
 
@@ -828,7 +766,7 @@ std::vector<const tf::tensor *> tf::layer::softmax::get_input_tensors() {
 }
 
 std::vector<tf::tensor> tf::layer::softmax::get_output_tensors() {
-  return this->getParameter("output");
+  return this->getParameter(tf::layer::parameter::output);
 }
 
 // --- End of Softmax ---
@@ -891,34 +829,34 @@ tf::callback::trace::trace() {
 tf::callback::trace::~trace() {}
 
 void tf::callback::trace::record_parameter_on_epoch_begin(
-    Layer *const layer_ptr, Layer_Parameter trainable_parameter_no,
+    Layer *const layer_ptr, const std::string &trainable_parameter,
     bool print_flag) {
   static_cast<CallbackTrace *>(this->callback_ptr.get())
-      ->onEpochBeginGetTrainableParameter(layer_ptr, trainable_parameter_no,
+      ->onEpochBeginGetTrainableParameter(layer_ptr, trainable_parameter,
                                           print_flag);
 }
 
 void tf::callback::trace::record_parameter_on_epoch_end(
-    Layer *const layer_ptr, Layer_Parameter trainable_parameter_no,
+    Layer *const layer_ptr, const std::string &trainable_parameter,
     bool print_flag) {
   static_cast<CallbackTrace *>(this->callback_ptr.get())
-      ->onEpochEndGetTrainableParameter(layer_ptr, trainable_parameter_no,
+      ->onEpochEndGetTrainableParameter(layer_ptr, trainable_parameter,
                                         print_flag);
 }
 
 void tf::callback::trace::record_parameter_on_batch_begin(
-    Layer *const layer_ptr, Layer_Parameter trainable_parameter_no,
+    Layer *const layer_ptr, const std::string &trainable_parameter,
     bool print_flag) {
   static_cast<CallbackTrace *>(this->callback_ptr.get())
-      ->recordTrainableParameterOnBatchBegin(layer_ptr, trainable_parameter_no,
+      ->recordTrainableParameterOnBatchBegin(layer_ptr, trainable_parameter,
                                              print_flag);
 }
 
 void tf::callback::trace::record_parameter_on_batch_end(
-    Layer *const layer_ptr, Layer_Parameter trainable_parameter_no,
+    Layer *const layer_ptr, const std::string &trainable_parameter,
     bool print_flag) {
   static_cast<CallbackTrace *>(this->callback_ptr.get())
-      ->recordTrainableParameterOnBatchEnd(layer_ptr, trainable_parameter_no,
+      ->recordTrainableParameterOnBatchEnd(layer_ptr, trainable_parameter,
                                            print_flag);
 }
 
@@ -946,13 +884,13 @@ void tf::callback::trace::record_tensor_loss_on_batch_end(
 
 std::vector<std::vector<tf::tensor>>
 tf::callback::trace::get_parameter_on_epoch_begin(
-    Layer *const layer_ptr, Layer_Parameter trainable_parameter_no) {
+    Layer *const layer_ptr, const std::string &trainable_parameter) {
   std::vector<std::vector<tf::tensor>> trainable_parametes_on_epoch_begin;
 
   std::vector<std::vector<tf::tensor *>> vector_vector_tensors =
       static_cast<CallbackTrace *>(this->callback_ptr.get())
           ->getTrainableParameterEpochOnBegin(layer_ptr,
-                                              trainable_parameter_no);
+                                              trainable_parameter);
 
   trainable_parametes_on_epoch_begin.resize(vector_vector_tensors.size());
 
@@ -967,12 +905,12 @@ tf::callback::trace::get_parameter_on_epoch_begin(
 
 std::vector<std::vector<tf::tensor>>
 tf::callback::trace::get_parameter_on_epoch_end(
-    Layer *const layer_ptr, Layer_Parameter trainable_parameter_no) {
+    Layer *const layer_ptr, const std::string &trainable_parameter) {
   std::vector<std::vector<tf::tensor>> trainable_parametes_on_epoch_end;
 
   std::vector<std::vector<tf::tensor *>> vector_vector_tensors =
       static_cast<CallbackTrace *>(this->callback_ptr.get())
-          ->getTrainableParameterEpochOnEnd(layer_ptr, trainable_parameter_no);
+          ->getTrainableParameterEpochOnEnd(layer_ptr, trainable_parameter);
 
   trainable_parametes_on_epoch_end.resize(vector_vector_tensors.size());
 
@@ -988,14 +926,14 @@ tf::callback::trace::get_parameter_on_epoch_end(
 
 std::vector<std::vector<std::vector<tf::tensor>>>
 tf::callback::trace::get_parameter_on_batch_begin(
-    Layer *const layer_ptr, Layer_Parameter trainable_parameter_no) {
+    Layer *const layer_ptr, const std::string &trainable_parameter) {
   std::vector<std::vector<std::vector<tf::tensor>>>
       trainable_parametes_on_batch_begin;
 
   std::vector<std::vector<std::vector<tf::tensor *>>> vector_vector_tensors =
       static_cast<CallbackTrace *>(this->callback_ptr.get())
           ->getTrainableParameterBatchOnBegin(layer_ptr,
-                                              trainable_parameter_no);
+                                              trainable_parameter);
 
   trainable_parametes_on_batch_begin.resize(vector_vector_tensors.size());
 
@@ -1013,13 +951,13 @@ tf::callback::trace::get_parameter_on_batch_begin(
 
 std::vector<std::vector<std::vector<tf::tensor>>>
 tf::callback::trace::get_parameter_on_batch_end(
-    Layer *const layer_ptr, Layer_Parameter trainable_parameter_no) {
+    Layer *const layer_ptr, const std::string &trainable_parameter) {
   std::vector<std::vector<std::vector<tf::tensor>>>
       trainable_parametes_on_batch_end;
 
   std::vector<std::vector<std::vector<tf::tensor *>>> vector_vector_tensors =
       static_cast<CallbackTrace *>(this->callback_ptr.get())
-          ->getTrainableParameterBatchOnEnd(layer_ptr, trainable_parameter_no);
+          ->getTrainableParameterBatchOnEnd(layer_ptr, trainable_parameter);
 
   trainable_parametes_on_batch_end.resize(vector_vector_tensors.size());
 

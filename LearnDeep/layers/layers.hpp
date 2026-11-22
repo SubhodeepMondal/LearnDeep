@@ -4,10 +4,11 @@
 // C++ Headers
 #include <stdfloat>
 #include <string>
+#include <string_view>
+#include <unordered_set>
 #include <vector>
 
 // Library Headers
-#include "layer_enum.hpp"
 #include <api/tensor.h>
 
 class Optimizer;
@@ -38,11 +39,13 @@ public:
 
   virtual const std::vector<tf::tensor *> &getOutputTrainingTensors() = 0;
 
-  virtual LayerType getLayerType() = 0;
+  virtual std::string_view type() const = 0;
 
   virtual std::vector<tf::tensor *>
-  getLayerParameter(Layer_Parameter layer_parameter,
+  getLayerParameter(std::string_view layer_parameter,
                     bool print_flag = false) = 0;
+
+  virtual std::unordered_set<std::string> parameterNames() const { return {}; }
 
   virtual void initializeParameters() = 0;
 };
