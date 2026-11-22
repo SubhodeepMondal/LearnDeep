@@ -1,9 +1,5 @@
 #include "scaled_squared_error.hpp"
 
-#include <core/graph/graph_framework.hpp>
-#include <core/graph/graph_manager.hpp>
-#include <losses/loss_registry.hpp>
-
 #include <iostream>
 #include <limits>
 #include <memory>
@@ -16,147 +12,121 @@ extern "C" void ld_custom_losses_load() {}
 
 namespace {
 
-bool configureScale(const LossRegistry::LossHandle &loss,
-                    const std::string &parameter,
+bool configureScale(tf::loss::behavior &behavior, std::string_view parameter,
                     const tf::LossParameterValue &value) {
   if (parameter != kCustomScaleParameter)
     return false;
 
   // LossParameterValue stores `double`, not std::float64_t.
   const double *scale = std::get_if<double>(&value);
-  if (!scale || *scale <= 0.0)
+  auto *loss = dynamic_cast<ScaledSquaredError *>(&behavior);
+  if (!scale || *scale <= 0.0 || !loss)
     return false;
 
-  if (auto scaled = std::dynamic_pointer_cast<ScaledSquaredError>(loss)) {
-    scaled->setScale(*scale);
-    return true;
-  }
-  return false;
+  loss->setScale(*scale);
+  return true;
 }
 
 } // namespace
 
-REGISTER_LOSS(
-    std::string(kCustomScaledMseType),
-    [](const LossConfig &config) -> std::unique_ptr<Loss> {
-      const double *scale =
-          config.getAs<double>(std::string(kCustomScaleParameter));
-      return std::make_unique<ScaledSquaredError>(
-          lossInputs(config), lossName(config, "custom_scaled_mse"),
-          scale ? *scale : 2.0);
-    },
-    configureScale);
+REGISTER_LOSS(std::string(kCustomScaledMseType),
+              [](const tf::loss::config &config)
+                  -> std::unique_ptr<tf::loss::behavior> {
+                return std::make_unique<ScaledSquaredError>(config);
+              },
+              configureScale);
 
-ScaledSquaredError::ScaledSquaredError(
-    std::vector<Tensor<std::float64_t> *> input_preds, std::string loss_name,
-    std::float64_t scale)
-    : Loss() {
-  this->loss_name = loss_name + "_" + std::to_string(id());
-  // A standalone generic handle may be created without inputs; model.compile
-  // always supplies the single output tensor it is attached to.
-  if (input_preds.size() > 1) {
-    throw std::invalid_argument(
-        "custom_scaled_mse expects at most one input tensor");
+ScaledSquaredError::ScaledSquaredError(const tf::loss::config &config) {
+  const auto *inputs = config.getAs<std::vector<Tensor<std::float64_t> *>>(
+      std::string(tf::loss::parameter::inputs));
+  if (inputs && inputs->size() == 1 && (*inputs)[0]) {
+    tf::tensor alias;
+    alias.dt_type = tf_float64;
+    alias.assign_ptr((*inputs)[0]); // non-owning alias
+    this->training_input_aliases.push_back(alias);
   }
-  if (input_preds.size() == 1)
-    this->recordInputs(input_preds);
-  this->setScale(scale);
-}
 
-ScaledSquaredError::~ScaledSquaredError() {
-  for (tf::tensor *tensor : this->target_outputs)
-    delete tensor;
-  delete this->differences;
-  delete this->loss_tensor_batch;
-  delete this->loss_tensor;
+  const double *scale =
+      config.getAs<double>(std::string(kCustomScaleParameter));
+  this->setScale(scale ? *scale : 2.0);
 }
 
 void ScaledSquaredError::setScale(std::float64_t scale) {
   this->scale_ = scale;
-  this->scale_tensor_.tf_create(tf_float64, 1u);
-  this->scale_tensor_.tensor_of(scale, scale);
+  this->scale_tensor.tf_create(tf_float64, 1u);
+  this->scale_tensor.tensor_of(scale, scale);
 }
 
 void ScaledSquaredError::forward(std::vector<tf::tensor *> inputs,
                                  const unsigned batch_size) {
-  if (inputs.size() != 1) {
+  if (inputs.size() != 1 || !inputs[0])
     throw std::invalid_argument(
         "custom_scaled_mse expects exactly one forward input");
-  }
 
-  this->training_inputs.push_back(inputs[0]);
+  // tf::tensor copies are non-owning aliases; reserve avoids reallocation
+  // moving them and changing tensor_nodes ownership bookkeeping.
+  this->training_input_aliases.clear();
+  this->training_input_aliases.reserve(1);
+  this->training_input_aliases.push_back(*inputs[0]);
+  tf::tensor &training_input = this->training_input_aliases[0];
 
   std::vector<unsigned> dims;
   const unsigned feature_dimension_count =
-      this->training_inputs[0]->getNoOfDimensions() - 1;
+      training_input.getNoOfDimensions() - 1;
   for (unsigned i = 0; i < feature_dimension_count; ++i)
-    dims.push_back(this->training_inputs[0]->getDimensions()[i]);
+    dims.push_back(training_input.getDimensions()[i]);
 
-  this->loss_tensor_batch = new tf::tensor();
-  this->loss_tensor_batch->tf_create(dims, this->training_inputs[0]->dt_type);
+  this->loss_tensor_batch.tf_create(dims, training_input.dt_type);
 
   dims.push_back(batch_size);
-  this->target_outputs.push_back(new tf::tensor());
-  this->target_outputs[0]->tf_create(dims, this->training_inputs[0]->dt_type);
+  this->target_tensors.clear();
+  this->target_tensors.reserve(1);
+  this->target_tensors.emplace_back().tf_create(dims, training_input.dt_type);
+  this->differences.tf_create(dims, training_input.dt_type);
+  this->loss_tensor.tf_create({1}, training_input.dt_type);
 
-  this->differences = new tf::tensor();
-  this->differences->tf_create(dims, this->training_inputs[0]->dt_type);
-
-  this->loss_tensor = new tf::tensor();
-  this->loss_tensor->tf_create({1}, this->training_inputs[0]->dt_type);
-
-  *(this->differences) =
-      this->training_inputs[0]->sub(*(this->target_outputs[0]));
-  *(this->loss_tensor_batch) = this->differences->pow(2);
+  this->differences = training_input.sub(this->target_tensors[0]);
+  this->loss_tensor_batch = this->differences.pow(2);
 
   this->loss_reduction_intermediates.clear();
   this->loss_reduction_intermediates.push_back(
-      this->loss_tensor_batch->mean(feature_dimension_count));
+      this->loss_tensor_batch.mean(feature_dimension_count));
 
   for (unsigned i = 0; i < feature_dimension_count; ++i) {
     tf::tensor reduced = this->loss_reduction_intermediates.back().mean(0);
-    if (i + 1 == feature_dimension_count) {
-      *(this->loss_tensor) = std::move(reduced);
-    } else {
+    if (i + 1 == feature_dimension_count)
+      this->loss_tensor = std::move(reduced);
+    else
       this->loss_reduction_intermediates.push_back(std::move(reduced));
-    }
   }
   if (feature_dimension_count == 0)
-    *(this->loss_tensor) =
+    this->loss_tensor =
         std::move(this->loss_reduction_intermediates.back());
 
-  this->scaled_loss_tensor_ = this->loss_tensor->scale(this->scale_);
-  this->scaled_loss_tensor_.dt_type = tf_float64;
+  this->scaled_loss_tensor = this->loss_tensor.scale(this->scale_);
 }
 
 void ScaledSquaredError::backward() {
-  if (this->isGradRecorded)
+  if (this->is_grad_recorded)
     return;
+  this->is_grad_recorded = true;
 
-  this->isGradRecorded = true;
-  Graph *graph = GraphManager::instance().getCurrentGraph();
-  if (graph)
-    this->grad_training_inputs = tf::tensor(
-        this->training_inputs[0]->dt_type,
-        graph->getGradientTensor(this->training_inputs[0]->getPtr()));
-}
-
-void ScaledSquaredError::setPredictedOutput(
-    const std::vector<tf::tensor *> &output_targets) {
-  // Predictions are wired directly through forward() during graph construction.
+  if (!this->training_input_aliases.empty())
+    this->grad_training_input =
+        tf::loss::gradient_of(this->training_input_aliases[0]);
 }
 
 void ScaledSquaredError::setTargetOutput(
-    const std::vector<tf::tensor> output_targets) {
-  if (!this->target_outputs.empty() &&
-      output_targets.size() == this->target_outputs.size())
-    this->target_outputs[0]->tensor_of(output_targets[0].getData());
+    const std::vector<tf::tensor> &targets) {
+  if (!this->target_tensors.empty() &&
+      targets.size() == this->target_tensors.size())
+    this->target_tensors[0].tensor_of(targets[0].getData());
 }
 
-std::float64_t const ScaledSquaredError::getScalerLoss() {
-  if (this->scaled_loss_tensor_.getPtr())
-    return this->scaled_loss_tensor_.getData()[0];
-  return std::numeric_limits<std::float64_t>::max();
+std::float64_t ScaledSquaredError::getScalerLoss() {
+  if (!this->scaled_loss_tensor.getPtr())
+    return std::numeric_limits<std::float64_t>::max();
+  return this->scaled_loss_tensor.getData()[0];
 }
 
 std::float64_t
@@ -180,18 +150,23 @@ ScaledSquaredError::calculate(std::vector<tf::tensor> &predicted_output,
 }
 
 std::vector<tf::tensor *>
-ScaledSquaredError::getLossParameter(std::string_view loss_parameter) {
-  if (loss_parameter == kCustomScaleParameter)
-    return {&this->scale_tensor_};
+ScaledSquaredError::getParameter(std::string_view name) {
+  if (name == kCustomScaleParameter)
+    return {&this->scale_tensor};
 
-  if (loss_parameter == kCustomScaledMseLossParameter)
-    return {&this->scaled_loss_tensor_};
+  if (name == kCustomScaledMseLossParameter) {
+    if (this->scaled_loss_tensor.getPtr())
+      return {&this->scaled_loss_tensor};
+    return {};
+  }
 
-  if (loss_parameter == kCustomScaledMseGradParameter)
-    return {&this->grad_training_inputs};
+  if (name == kCustomScaledMseGradParameter) {
+    if (this->grad_training_input.getPtr())
+      return {&this->grad_training_input};
+    return {};
+  }
 
-  std::cerr << "Unknown parameter '" << loss_parameter
-            << "' for custom_scaled_mse.\n";
+  std::cerr << "Unknown parameter '" << name << "' for custom_scaled_mse.\n";
   return {};
 }
 

@@ -18,38 +18,6 @@
 
 class Loss;
 
-struct LossConfig {
-  std::unordered_map<std::string, tf::LossParameterValue> values;
-
-  bool empty() const { return values.empty(); }
-
-  bool has(const std::string &key) const { return values.count(key) != 0; }
-
-  const tf::LossParameterValue *get(const std::string &key) const {
-    auto it = values.find(key);
-    return it == values.end() ? nullptr : &it->second;
-  }
-
-  tf::LossParameterValue *get(const std::string &key) {
-    auto it = values.find(key);
-    return it == values.end() ? nullptr : &it->second;
-  }
-
-  void set(std::string key, tf::LossParameterValue value) {
-    values.insert_or_assign(std::move(key), std::move(value));
-  }
-
-  template <typename T> const T *getAs(const std::string &key) const {
-    const tf::LossParameterValue *value = get(key);
-    return value ? std::get_if<T>(value) : nullptr;
-  }
-
-  LossConfig &with(std::string key, tf::LossParameterValue value) {
-    set(std::move(key), std::move(value));
-    return *this;
-  }
-};
-
 // The only component that knows the internal Loss ABI. API handles, Model,
 // Callback and history all route through this facade.
 class LossRegistry {
@@ -63,6 +31,11 @@ public:
 
   bool registerLoss(const std::string &name, Factory factory,
                     ParameterSetter setter = {});
+
+  // Public behavior API entry point: adapts a plugin to the internal Loss ABI.
+  bool registerBehavior(const std::string &name,
+                        tf::loss::behavior_factory factory,
+                        tf::loss::behavior_setter setter = {});
 
   LossHandle create(const std::string &name, const LossConfig &config = {});
 
@@ -151,7 +124,7 @@ inline std::string lossName(const LossConfig &config,
 #define LD_LOSS_CONCAT_INNER(a, b) a##b
 #define LD_LOSS_CONCAT(a, b) LD_LOSS_CONCAT_INNER(a, b)
 
-#define REGISTER_LOSS(name, ...)                                               \
+#define REGISTER_INTERNAL_LOSS(name, ...)                                      \
   namespace {                                                                  \
   [[maybe_unused]] const bool LD_LOSS_CONCAT(loss_registration_, __LINE__) =     \
       [] {                                                                     \

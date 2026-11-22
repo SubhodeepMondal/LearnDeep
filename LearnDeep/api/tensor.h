@@ -5,9 +5,11 @@
 #include <algorithm>
 #include <cstddef>
 #include <cstdint>
+#include <functional>
 #include <iostream>
 #include <iterator>
 #include <memory>
+#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <unordered_map>
@@ -28,7 +30,6 @@ class Loss;
 class Model;
 class Optimizer;
 struct LayerConfig;
-struct LossConfig;
 
 namespace tf {
 class tensor {
@@ -163,7 +164,7 @@ using LayerParameterValue =
 
 using LossParameterValue =
     std::variant<unsigned, double, std::string, tf::tensor,
-                 std::vector<Tensor<std::float64_t> *>>;
+                 std::vector<Tensor<std::float64_t> *>, std::vector<double>>;
 
 typedef struct graph_context {
 private:
@@ -330,6 +331,101 @@ inline constexpr std::string_view categorical_cross_entropy_input_grad{
 inline constexpr std::string_view categorical_cross_entropy_target_output{
     "categorical_cross_entropy_target_output"};
 } // namespace parameter
+
+// Public loss configuration. This is the canonical type used by both the
+// internal registry and out-of-tree loss plugins.
+struct config {
+  std::unordered_map<std::string, LossParameterValue> values;
+
+  bool empty() const { return values.empty(); }
+
+  bool has(const std::string &key) const { return values.count(key) != 0; }
+
+  const LossParameterValue *get(const std::string &key) const {
+    auto it = values.find(key);
+    return it == values.end() ? nullptr : &it->second;
+  }
+
+  LossParameterValue *get(const std::string &key) {
+    auto it = values.find(key);
+    return it == values.end() ? nullptr : &it->second;
+  }
+
+  void set(std::string key, LossParameterValue value) {
+    values.insert_or_assign(std::move(key), std::move(value));
+  }
+
+  template <typename T> const T *getAs(const std::string &key) const {
+    const LossParameterValue *value = get(key);
+    return value ? std::get_if<T>(value) : nullptr;
+  }
+
+  config &with(std::string key, LossParameterValue value) {
+    set(std::move(key), std::move(value));
+    return *this;
+  }
+};
+
+// Public behavior contract for out-of-tree losses. A plugin implements this
+// interface and calls registerBehavior(); the framework adapts it to the
+// internal Loss ABI, so no framework-internal header is needed.
+class behavior {
+public:
+  virtual ~behavior() = default;
+
+  virtual std::string_view type() const = 0;
+  virtual void forward(std::vector<tf::tensor *> inputs,
+                       unsigned batch_size) = 0;
+  virtual void backward() = 0;
+  virtual void setTargetOutput(const std::vector<tf::tensor> &targets) = 0;
+  virtual std::float64_t
+  calculate(std::vector<tf::tensor> &predicted_output,
+            std::vector<tf::tensor> &target_output) = 0;
+  virtual std::float64_t getScalerLoss() = 0;
+  virtual std::float64_t getEpochEndScalerLoss() { return getScalerLoss(); }
+  virtual std::vector<tf::tensor *> getParameter(std::string_view name) = 0;
+  virtual std::unordered_set<std::string> parameterNames() const = 0;
+  virtual unsigned getNoOfInputs() const = 0;
+};
+
+using behavior_factory =
+    std::function<std::unique_ptr<behavior>(const config &)>;
+using behavior_setter = std::function<bool(
+    behavior &, std::string_view, const LossParameterValue &)>;
+
+bool registerBehavior(std::string_view name, behavior_factory factory,
+                      behavior_setter setter = {});
+
+// Public helper for exposing an input's autodiff gradient from a plugin without
+// including the internal graph headers.
+tf::tensor gradient_of(tf::tensor &input);
+
+} // namespace loss
+} // namespace tf
+
+// Public self-registration macro. A plugin supplies a behavior_factory (and
+// optionally a behavior_setter); the framework adapts it to the internal Loss
+// ABI. The name REGISTER_LOSS is intentionally the same one used by in-tree
+// losses, but its argument types belong entirely to the public API.
+#define LD_LOSS_REGISTRATION_CONCAT_INNER(a, b) a##b
+#define LD_LOSS_REGISTRATION_CONCAT(a, b)                                      \
+  LD_LOSS_REGISTRATION_CONCAT_INNER(a, b)
+
+#define REGISTER_LOSS(name, ...)                                               \
+  namespace {                                                                  \
+  [[maybe_unused]] const bool LD_LOSS_REGISTRATION_CONCAT(                     \
+      ld_loss_registration_, __LINE__) = [] {                                  \
+    const std::string loss_name{name};                                         \
+    if (!tf::loss::registerBehavior(loss_name, __VA_ARGS__))                   \
+      throw std::runtime_error("Failed to register loss: " + loss_name);       \
+    return true;                                                               \
+  }();                                                                         \
+  } // namespace
+
+using LossConfig = tf::loss::config;
+
+namespace tf {
+namespace loss {
 
 class loss {
 private:

@@ -1,8 +1,8 @@
 # CMakeLists.txt for the loss library
 #
 # Zero-edit onboarding: every *.cpp in this directory is compiled into the
-# `loss` library. A loss registers itself through REGISTER_LOSS's static
-# initializer, so adding a header + source here needs no CMake change.
+# `loss` library. A loss registers itself through REGISTER_INTERNAL_LOSS's
+# static initializer, so adding a header + source here needs no CMake change.
 #
 # Out-of-tree losses are supported through two hooks:
 #   -DEXTRA_LOSS_SOURCES="/path/to/a.cpp;/path/to/b.cpp"

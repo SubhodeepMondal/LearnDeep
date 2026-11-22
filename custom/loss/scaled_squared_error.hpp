@@ -1,12 +1,11 @@
 #ifndef LD_CUSTOM_SCALED_SQUARED_ERROR_HPP
 #define LD_CUSTOM_SCALED_SQUARED_ERROR_HPP
 
-// Internal extension headers: like custom layers, out-of-tree losses are
-// compiled against the framework's C++ ABI. The public tests do NOT include
-// this header; they create the loss through the registry key string.
-#include <losses/loss.hpp>
+// Public-API-only custom loss. This plugin includes no framework-internal
+// headers; REGISTER_LOSS adapts the behavior contract to the internal Loss ABI.
+#include <api/tensor.h>
 
-#include <string>
+#include <limits>
 #include <string_view>
 #include <unordered_set>
 #include <vector>
@@ -18,56 +17,54 @@ inline constexpr std::string_view kCustomScaledMseLossParameter{
 inline constexpr std::string_view kCustomScaledMseGradParameter{
     "custom_scaled_mse_grad"};
 
-// Example out-of-tree loss: the usual mean squared error multiplied by a
-// configurable positive scale. The graph forward pass scales the terminal loss
-// tensor so reverse-mode autodiff scales the gradient as well.
-class ScaledSquaredError : public Loss {
-  std::vector<tf::tensor *> training_inputs;
-  std::vector<tf::tensor *> target_outputs;
-  tf::tensor grad_training_inputs;
-  tf::tensor *differences{nullptr};
-  tf::tensor *loss_tensor_batch{nullptr};
-  tf::tensor *loss_tensor{nullptr};
-  std::vector<tf::tensor> loss_reduction_intermediates;
-
-  std::float64_t scale_{2.0};
-  tf::tensor scale_tensor_;
-  tf::tensor scaled_loss_tensor_;
-
+// Mean squared error multiplied by a configurable scale. Scaling the terminal
+// graph tensor scales the gradient recorded by reverse-mode autodiff as well.
+class ScaledSquaredError final : public tf::loss::behavior {
 public:
-  ScaledSquaredError(std::vector<Tensor<std::float64_t> *> input_preds,
-                     std::string loss_name = "custom_scaled_mse",
-                     std::float64_t scale = 2.0);
-
-  ~ScaledSquaredError() override;
+  explicit ScaledSquaredError(const tf::loss::config &config);
 
   std::string_view type() const override { return kCustomScaledMseType; }
 
-  void forward(std::vector<tf::tensor *> inputs, unsigned batch_size) override;
+  void forward(std::vector<tf::tensor *> inputs,
+               unsigned batch_size) override;
 
   void backward() override;
 
-  void setTargetOutput(const std::vector<tf::tensor> output_predicts) override;
-
-  void setPredictedOutput(
-      const std::vector<tf::tensor *> &output_targets) override;
-
-  std::float64_t const getScalerLoss() override;
+  void setTargetOutput(const std::vector<tf::tensor> &targets) override;
 
   std::float64_t calculate(std::vector<tf::tensor> &predicted_output,
                            std::vector<tf::tensor> &target_output) override;
 
-  std::vector<tf::tensor *>
-  getLossParameter(std::string_view loss_parameter) override;
+  std::float64_t getScalerLoss() override;
+
+  std::float64_t getEpochEndScalerLoss() override {
+    return this->prev_loss_value;
+  }
+
+  std::vector<tf::tensor *> getParameter(std::string_view name) override;
 
   std::unordered_set<std::string> parameterNames() const override;
 
-  unsigned getNoOfInputs() override { return 1; }
-
-  std::string getLossName() override { return this->loss_name; }
+  unsigned getNoOfInputs() const override { return 1; }
 
   void setScale(std::float64_t scale);
-  std::float64_t scale() const { return scale_; }
+  std::float64_t scale() const { return this->scale_; }
+
+private:
+  std::vector<tf::tensor> training_input_aliases;
+  std::vector<tf::tensor> target_tensors;
+
+  tf::tensor grad_training_input;
+  tf::tensor differences;
+  tf::tensor loss_tensor_batch;
+  tf::tensor loss_tensor;
+  tf::tensor scaled_loss_tensor;
+  tf::tensor scale_tensor;
+  std::vector<tf::tensor> loss_reduction_intermediates;
+
+  std::float64_t scale_{2.0};
+  std::float64_t prev_loss_value{std::numeric_limits<std::float64_t>::max()};
+  bool is_grad_recorded{false};
 };
 
 #endif // LD_CUSTOM_SCALED_SQUARED_ERROR_HPP

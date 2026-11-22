@@ -11,7 +11,7 @@
 #include <core/graph/graph_framework.hpp>
 #include <core/graph/graph_manager.hpp>
 
-REGISTER_LOSS(
+REGISTER_INTERNAL_LOSS(
     "squared_error",
     [](const LossConfig &config) -> std::unique_ptr<Loss> {
       return std::make_unique<SquaredError>(

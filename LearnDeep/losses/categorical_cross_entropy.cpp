@@ -10,7 +10,7 @@
 #include <core/graph/graph_framework.hpp>
 #include <core/graph/graph_manager.hpp>
 
-REGISTER_LOSS(
+REGISTER_INTERNAL_LOSS(
     "categorical_cross_entropy",
     [](const LossConfig &config) -> std::unique_ptr<Loss> {
       return std::make_unique<CategoricalCrossEntropy>(

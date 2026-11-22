@@ -3,8 +3,75 @@
 #include <absl/log/log.h>
 
 #include <limits>
+#include <utility>
 
 #include "loss.hpp"
+#include <core/graph/graph_framework.hpp>
+#include <core/graph/graph_manager.hpp>
+
+namespace {
+
+// Adapts the public behavior interface to the internal Loss ABI. This is the
+// only place where a plugin-created loss crosses that boundary.
+class BehaviorAdapter final : public Loss {
+public:
+  BehaviorAdapter(std::string name, std::unique_ptr<tf::loss::behavior> impl)
+      : Loss(), name_(std::move(name)), impl_(std::move(impl)) {}
+
+  std::string_view type() const override { return impl_->type(); }
+
+  void forward(std::vector<tf::tensor *> inputs,
+               const unsigned batch_size) override {
+    impl_->forward(std::move(inputs), batch_size);
+  }
+
+  void backward() override { impl_->backward(); }
+
+  void setTargetOutput(const std::vector<tf::tensor> output_predicts) override {
+    impl_->setTargetOutput(output_predicts);
+  }
+
+  void setPredictedOutput(
+      const std::vector<tf::tensor *> &output_targets) override {
+    // Prediction inputs are supplied through forward(); the public behavior
+    // contract does not need a separate setter.
+    (void)output_targets;
+  }
+
+  std::float64_t const getScalerLoss() override {
+    return impl_->getScalerLoss();
+  }
+
+  std::float64_t const getEpochEndScalerLoss() override {
+    return impl_->getEpochEndScalerLoss();
+  }
+
+  std::float64_t calculate(std::vector<tf::tensor> &predicted_value,
+                           std::vector<tf::tensor> &target_output) override {
+    return impl_->calculate(predicted_value, target_output);
+  }
+
+  std::vector<tf::tensor *>
+  getLossParameter(std::string_view loss_parameter) override {
+    return impl_->getParameter(loss_parameter);
+  }
+
+  std::unordered_set<std::string> parameterNames() const override {
+    return impl_->parameterNames();
+  }
+
+  unsigned getNoOfInputs() override { return impl_->getNoOfInputs(); }
+
+  std::string getLossName() override { return name_; }
+
+  tf::loss::behavior &impl() { return *impl_; }
+
+private:
+  std::string name_;
+  std::unique_ptr<tf::loss::behavior> impl_;
+};
+
+} // namespace
 
 LossRegistry &LossRegistry::instance() {
   // Intentionally never destroyed: live-loss deleters may run during static
@@ -30,6 +97,27 @@ bool LossRegistry::registerLoss(const std::string &name, Factory factory,
   if (setter)
     parameter_setters_.insert_or_assign(name, std::move(setter));
   return true;
+}
+
+bool LossRegistry::registerBehavior(const std::string &name,
+                                     tf::loss::behavior_factory factory,
+                                     tf::loss::behavior_setter setter) {
+  return registerLoss(
+      name,
+      [name, factory](const LossConfig &config) -> std::unique_ptr<Loss> {
+        std::unique_ptr<tf::loss::behavior> impl = factory(config);
+        if (!impl)
+          return nullptr;
+        return std::make_unique<BehaviorAdapter>(::lossName(config, name),
+                                                 std::move(impl));
+      },
+      [setter](const LossHandle &loss, const std::string &parameter,
+               const tf::LossParameterValue &value) {
+        auto *adapter = dynamic_cast<BehaviorAdapter *>(loss.get());
+        if (!adapter || !setter)
+          return false;
+        return setter(adapter->impl(), parameter, value);
+      });
 }
 
 LossRegistry::LossHandle
@@ -158,3 +246,25 @@ std::unordered_set<std::string>
 LossRegistry::lossParameterNames(const LossHandle &loss) const {
   return loss ? loss->parameterNames() : std::unordered_set<std::string>{};
 }
+
+namespace tf {
+namespace loss {
+
+bool registerBehavior(std::string_view name, behavior_factory factory,
+                      behavior_setter setter) {
+  return LossRegistry::instance().registerBehavior(
+      std::string(name), std::move(factory), std::move(setter));
+}
+
+tf::tensor gradient_of(tf::tensor &input) {
+  Graph *graph = GraphManager::instance().getCurrentGraph();
+  if (!graph || !input.getPtr())
+    return tf::tensor{};
+  Tensor<std::float64_t> *gradient = graph->getGradientTensor(input.getPtr());
+  if (!gradient)
+    return tf::tensor{};
+  return tf::tensor(input.dt_type, gradient);
+}
+
+} // namespace loss
+} // namespace tf

@@ -1059,7 +1059,7 @@ void tf::optimizer::execute_optimizer() {
 tf::loss::loss::loss(std::string_view type_name)
     : loss(type_name, LossConfig{}) {}
 
-tf::loss::loss::loss(std::string_view type_name, const LossConfig &config)
+tf::loss::loss::loss(std::string_view type_name, const tf::loss::config &config)
     : loss_ptr_(
           LossRegistry::instance().create(std::string(type_name), config)) {}
 
