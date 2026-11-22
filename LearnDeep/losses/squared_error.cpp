@@ -8,8 +8,20 @@
 // Library Header
 #include "loss.hpp"
 #include "loss_enum.hpp"
+#include "loss_registry.hpp"
 #include <core/graph/graph_framework.hpp>
 #include <core/graph/graph_manager.hpp>
+
+REGISTER_LOSS(
+    "squared_error",
+    [](const LossConfig &config) -> std::unique_ptr<Loss> {
+      return std::make_unique<SquaredError>(
+          lossInputs(config), lossName(config, "mean_squared_loss"));
+    });
+
+std::string_view SquaredError::type() const {
+  return tf::loss::type::squared_error;
+}
 
 SquaredError::~SquaredError() {}
 

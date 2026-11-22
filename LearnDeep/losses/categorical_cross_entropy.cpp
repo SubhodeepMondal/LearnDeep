@@ -7,8 +7,20 @@
 // Library Header
 #include "loss.hpp"
 #include "loss_enum.hpp"
+#include "loss_registry.hpp"
 #include <core/graph/graph_framework.hpp>
 #include <core/graph/graph_manager.hpp>
+
+REGISTER_LOSS(
+    "categorical_cross_entropy",
+    [](const LossConfig &config) -> std::unique_ptr<Loss> {
+      return std::make_unique<CategoricalCrossEntropy>(
+          lossInputs(config), lossName(config, "categorical_cross_entropy"));
+    });
+
+std::string_view CategoricalCrossEntropy::type() const {
+  return tf::loss::type::categorical_cross_entropy;
+}
 
 CategoricalCrossEntropy::~CategoricalCrossEntropy() {}
 

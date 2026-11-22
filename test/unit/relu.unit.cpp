@@ -196,7 +196,7 @@ TEST_F(FrameworkTest, ReluLayer_Test_1) {
   mymodel.compile(OptimizerType::SGD, LossType::squared_error);
   /* --- end model creation --- */
 
-  tf::loss loss_sgd = mymodel.get_model_loss(relu_output[0]);
+  tf::loss::loss loss_sgd = mymodel.get_model_loss(relu_output[0]);
   call_back.record_tensor_loss_on_batch_end(
       loss_sgd, Loss_Parameter::squared_error_predicted_output);
 

@@ -57,7 +57,7 @@ void Model::initializeTrainingMappings() {
     this->layer_training_input_mappings[id].assign(
         this->layer_input_mappings[id].size(), nullptr);
 
-  for (tf::loss *loss : this->losses)
+  for (tf::loss::loss *loss : this->losses)
     this->loss_training_input_mappings[loss].assign(
         loss_input_mappings[loss].size(), nullptr);
 }
@@ -95,7 +95,7 @@ Model::getEpochlevelLosses(std::vector<tf::tensor> &predicted_output,
                            const std::vector<tf::tensor> &target_ouput) {
 
   std::unordered_map<std::string, std::float64_t> temp_losses;
-  for (tf::loss *loss : this->losses) {
+  for (tf::loss::loss *loss : this->losses) {
     std::vector<tf::tensor> predicted, target;
     for (unsigned j = 0; j < loss->get_no_of_inputs(); j++) {
       auto it = std::find(this->outputs.begin(), this->outputs.end(),
@@ -273,7 +273,7 @@ Model::fit(tf::model &model, const std::vector<tf::tensor> &training_inputs,
                 if (std::shared_ptr<Layer> layer = this->lockLayer(id))
                   layer->backward(optimizer.getPtr());
 
-              for (tf::loss *loss : this->losses)
+              for (tf::loss::loss *loss : this->losses)
                 loss->backward();
 
               this->auto_grad_created = true;
@@ -481,7 +481,7 @@ void Model::doDummyAndTrainingTensorMapping() {
           training_layers.push(downstream_id);
       }
       /* map training layer output with loss training input */
-      for (tf::loss *loss : this->losses) {
+      for (tf::loss::loss *loss : this->losses) {
         unsigned i = 0;
         for (const tf::tensor *this_layer_output :
              this->layer_output_mappings[id]) {
@@ -503,7 +503,7 @@ void Model::doDummyAndTrainingTensorMapping() {
   }
 
   /* Call forward on loss to create forward graph on loss.*/
-  for (tf::loss *loss : this->losses) {
+  for (tf::loss::loss *loss : this->losses) {
     if (!std::ranges::contains(this->loss_training_input_mappings[loss],
                                nullptr))
       loss->forward(this->loss_training_input_mappings[loss], this->batch_size);
@@ -608,19 +608,19 @@ void Model::compile(const OptimizerType optimizer_type,
   this->optimizer = tf::optimizer(optimizer_type);
   int mse_count, cce_count;
   mse_count = cce_count = 0;
-  tf::loss *temp_loss = nullptr;
+  tf::loss::loss *temp_loss = nullptr;
   for (unsigned i = 0; i < outputs.size(); i++) {
     switch (loss_type) {
     case (LossType::squared_error): {
       mse_count++;
       temp_loss =
-          new tf::loss(loss_type, {outputs[i]},
+          new tf::loss::loss(loss_type, {outputs[i]},
                        "mean_squared_loss_" + std::to_string(mse_count));
       break;
     }
     case (LossType::categorical_cross_entropy): {
       cce_count++;
-      temp_loss = new tf::loss(loss_type, {outputs[i]},
+      temp_loss = new tf::loss::loss(loss_type, {outputs[i]},
                                "categorical_cross_entropy_" +
                                    std::to_string(cce_count));
       break;
@@ -635,9 +635,9 @@ void Model::compile(const OptimizerType optimizer_type,
   }
 }
 
-tf::loss Model::getModelLoss(Tensor<std::float64_t> *output_tensor) {
-  tf::loss *loss = nullptr;
-  for (tf::loss *temp_loss : losses) {
+tf::loss::loss Model::getModelLoss(Tensor<std::float64_t> *output_tensor) {
+  tf::loss::loss *loss = nullptr;
+  for (tf::loss::loss *temp_loss : losses) {
     if (std::ranges::contains(this->loss_input_mappings[temp_loss],
                               output_tensor))
       loss = temp_loss;
@@ -654,7 +654,7 @@ void Model::setTargetOutputForLoss(
     const std::vector<tf::tensor> &training_target,
     std::vector<tf::tensor> &local_temp_outputs, unsigned data_index) {
 
-  for (tf::loss *loss : this->losses) {
+  for (tf::loss::loss *loss : this->losses) {
     std::vector<tf::tensor> temp_tensor(this->loss_input_mappings[loss].size());
     unsigned index = 0;
     for (Tensor<std::float64_t> *tensor : this->loss_input_mappings[loss]) {

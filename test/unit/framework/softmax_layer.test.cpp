@@ -152,7 +152,7 @@ TEST_F(FrameworkTest, SoftmaxLayer_CategoricalClassification_Test_1) {
   mymodel.shuffle(false);
   mymodel.compile(OptimizerType::SGD, LossType::categorical_cross_entropy);
 
-  tf::loss cce = mymodel.get_model_loss(softmax_out[0]);
+  tf::loss::loss cce = mymodel.get_model_loss(softmax_out[0]);
 
   auto history = mymodel.fit({input}, {output}, {}, epoches, batch_size);
 

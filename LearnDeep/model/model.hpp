@@ -46,12 +46,12 @@ private:
   std::shared_ptr<Layer> lockLayer(tf::layer::layer_id id) const;
 
   tf::optimizer optimizer;
-  std::vector<tf::loss *> losses;
-  std::unordered_map<tf::loss *,
+  std::vector<tf::loss::loss *> losses;
+  std::unordered_map<tf::loss::loss *,
                      std::vector<Tensor<std::float64_t> *>>
       loss_input_mappings; // this maps loss and all the input tensor(aka target
                            // output) that is feed
-  std::unordered_map<tf::loss *, std::vector<tf::tensor *>>
+  std::unordered_map<tf::loss::loss *, std::vector<tf::tensor *>>
       loss_training_input_mappings;
   //   tf::metric metric;
 
@@ -129,8 +129,8 @@ public:
   /** @param Loss loss to be used */
   /** @param Metric metric to be used */
   /** @return void */
-  // void compile(tf::optimizer = tf::optimizer(), tf::loss = tf::loss(),
-  //              tf::metric = tf::metric());
+  // void compile(tf::optimizer = tf::optimizer(),
+  //              tf::loss::loss = tf::loss::loss(), tf::metric = tf::metric());
 
   /** @file model.hpp basic model implementation */
   /** @brief Updates hyperparamers for training */
@@ -180,9 +180,9 @@ public:
 
   void shuffle(bool shuffle);
 
-  tf::loss getModelLoss(Tensor<std::float64_t> *output_tensor);
+  tf::loss::loss getModelLoss(Tensor<std::float64_t> *output_tensor);
 
-  std::vector<tf::loss *> getLosses() { return this->losses; }
+  std::vector<tf::loss::loss *> getLosses() { return this->losses; }
 
   std::vector<tf::layer::layer_id> getLayers() const { return this->layers; }
 };

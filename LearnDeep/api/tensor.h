@@ -29,9 +29,9 @@ class Loss;
 class Model;
 class Optimizer;
 struct LayerConfig;
+struct LossConfig;
 
 namespace tf {
-typedef struct loss loss;
 class tensor {
   // mutable std::vector<Ops *> opsPtr;
   Tensor<std::float64_t> *ptr{nullptr};
@@ -161,6 +161,10 @@ extern std::unordered_set<Tensor<std::float64_t> *> tensor_to_be_spared;
 
 using LayerParameterValue =
     std::variant<unsigned, double, std::string, tf::tensor>;
+
+using LossParameterValue =
+    std::variant<unsigned, double, std::string, tf::tensor,
+                 std::vector<Tensor<std::float64_t> *>>;
 
 typedef struct graph_context {
 private:
@@ -293,6 +297,99 @@ struct softmax : public layer {
 
 } // namespace layer
 
+namespace loss {
+
+using loss_id = std::uint64_t;
+inline constexpr loss_id invalid_loss_id = 0;
+
+namespace type {
+inline constexpr std::string_view squared_error{"squared_error"};
+inline constexpr std::string_view categorical_cross_entropy{
+    "categorical_cross_entropy"};
+} // namespace type
+
+namespace parameter {
+// Construction/config keys.
+inline constexpr std::string_view inputs{"inputs"};
+inline constexpr std::string_view name{"name"};
+
+// Canonical parameter keys. These preserve the spellings of the removed
+// Loss_Parameter enumerators so existing callback registrations keep working.
+inline constexpr std::string_view squared_error_predicted_output{
+    "squared_error_predicted_output"};
+inline constexpr std::string_view squared_error_target_output{
+    "squared_error_target_output"};
+inline constexpr std::string_view squared_error_grad_predicted_output{
+    "squared_error_grad_predicted_output"};
+inline constexpr std::string_view categorical_cross_entropy_error{
+    "categorical_cross_entropy_error"};
+inline constexpr std::string_view mean_categorical_cross_entropy_error{
+    "mean_categorical_cross_entropy_error"};
+inline constexpr std::string_view mean_absolute_categorical_cross_entropy_error{
+    "mean_absolute_categorical_cross_entropy_error"};
+inline constexpr std::string_view categorical_cross_entropy_input_grad{
+    "categorical_cross_entropy_input_grad"};
+inline constexpr std::string_view categorical_cross_entropy_target_output{
+    "categorical_cross_entropy_target_output"};
+} // namespace parameter
+
+class loss {
+private:
+  std::shared_ptr<Loss> loss_ptr_;
+
+public:
+  loss() = default;
+
+  loss(std::string_view type_name);
+
+  loss(std::string_view type_name, const LossConfig &config);
+
+  // Compatibility bridge used until the enum is removed in the next phase.
+  loss(LossType loss_type, std::vector<Tensor<std::float64_t> *> input_preds,
+       std::string loss_name);
+
+  virtual ~loss() = default;
+
+  void forward(std::vector<tf::tensor *> inputs, unsigned batch_size);
+
+  void backward();
+
+  std::float64_t calculate(std::vector<tf::tensor> &predicted_output,
+                           std::vector<tf::tensor> &target_output);
+
+  const std::float64_t get_loss();
+
+  std::string get_loss_name();
+
+  unsigned get_no_of_inputs();
+
+  void set_target_output(std::vector<tf::tensor> target_output);
+
+  std::string_view type() const;
+
+  loss_id id() const;
+
+  bool valid() const;
+
+  explicit operator bool() const;
+
+  // Compatibility accessor; removed once all callers use the handle only.
+  Loss *const get_loss_ptr();
+};
+
+struct squared_error : public loss {
+  squared_error(std::vector<Tensor<std::float64_t> *> input_preds,
+                std::string loss_name = "mean_squared_loss");
+};
+
+struct categorical_cross_entropy : public loss {
+  categorical_cross_entropy(
+      std::vector<Tensor<std::float64_t> *> input_preds,
+      std::string loss_name = "categorical_cross_entropy");
+};
+
+} // namespace loss
+
 namespace callback {
 typedef struct trace {
 private:
@@ -319,14 +416,14 @@ public:
       const tf::layer::layer &layer_handle,
       const std::string &trainable_parameter, bool print_flag = false);
 
-  void record_scalar_loss_on_epoch_end(tf::loss loss);
+  void record_scalar_loss_on_epoch_end(tf::loss::loss loss);
 
-  void record_tensor_loss_on_epoch_end(tf::loss loss,
+  void record_tensor_loss_on_epoch_end(tf::loss::loss loss,
                                        Loss_Parameter loss_parameter);
 
-  void record_scalar_loss_on_batch_end(tf::loss loss);
+  void record_scalar_loss_on_batch_end(tf::loss::loss loss);
 
-  void record_tensor_loss_on_batch_end(tf::loss loss,
+  void record_tensor_loss_on_batch_end(tf::loss::loss loss,
                                        Loss_Parameter loss_parameter);
 
   std::vector<std::vector<tf::tensor>>
@@ -345,16 +442,17 @@ public:
   get_parameter_on_batch_end(const tf::layer::layer &layer_handle,
                              const std::string &trainable_parameter);
 
-  std::vector<std::float64_t> get_scaler_loss_on_epoch_end(tf::loss loss);
+  std::vector<std::float64_t> get_scaler_loss_on_epoch_end(tf::loss::loss loss);
 
-  std::vector<std::vector<tf::tensor>>
-  get_tensor_loss_on_epoch_end(tf::loss loss, Loss_Parameter loss_parameter);
+  std::vector<std::vector<tf::tensor>> get_tensor_loss_on_epoch_end(
+      tf::loss::loss loss, Loss_Parameter loss_parameter);
 
   std::vector<std::vector<std::float64_t>>
-  get_scaler_loss_on_batch_end(tf::loss loss);
+  get_scaler_loss_on_batch_end(tf::loss::loss loss);
 
   std::vector<std::vector<std::vector<tf::tensor>>>
-  get_tensor_loss_on_batch_end(tf::loss loss, Loss_Parameter loss_parameter);
+  get_tensor_loss_on_batch_end(tf::loss::loss loss,
+                               Loss_Parameter loss_parameter);
 
   std::shared_ptr<Callback> callback() const;
 
@@ -365,7 +463,8 @@ private:
   std::shared_ptr<Callback> callback_ptr;
 
 public:
-  earlystopping(tf::loss loss, int patience, float min_delta, bool minimize);
+  earlystopping(tf::loss::loss loss, int patience, float min_delta,
+                bool minimize);
   ~earlystopping() = default;
 
   std::shared_ptr<Callback> callback() const;
@@ -388,7 +487,7 @@ typedef struct history_container {
       history;
 
   void record_history_on_batch_end(unsigned const epoch_no,
-                                   std::vector<tf::loss *> losses);
+                                   std::vector<tf::loss::loss *> losses);
 
   void record_history_on_epoch_end(
       std::unordered_map<std::string, std::float64_t> epoch_loss);
@@ -424,8 +523,8 @@ public:
   /** @param Loss loss to be used */
   /** @param Metric metric to be used */
   /** @return void */
-  // void compile(tf::optimizer = tf::optimizer(), tf::loss = tf::loss(),
-  //              tf::metric = tf::metric());
+  // void compile(tf::optimizer = tf::optimizer(),
+  //              tf::loss::loss = tf::loss::loss(), tf::metric = tf::metric());
 
   /** @file model.hpp basic model implementation */
   /** @brief Updates hyperparamers for training */
@@ -468,7 +567,7 @@ public:
 
   void shuffle(bool shuffle);
 
-  tf::loss get_model_loss(tf::tensor output) const;
+  tf::loss::loss get_model_loss(tf::tensor output) const;
 
   std::vector<layer::layer_id> get_layers();
 
@@ -494,38 +593,6 @@ public:
 typedef struct metric {
 
 } metric;
-
-typedef struct loss {
-
-private:
-  LossType loss_type;
-  Loss *loss_ptr;
-
-public:
-  loss() = default;
-
-  loss(const LossType lossType,
-       std::vector<Tensor<std::float64_t> *> input_preds,
-       std::string loss_name);
-
-  void forward(std::vector<tf::tensor *> inputs, const unsigned batch_size);
-
-  void backward();
-
-  std::float64_t calculate(std::vector<tf::tensor> &predicted_ouput,
-                           std::vector<tf::tensor> &target_output);
-
-  const std::float64_t get_loss();
-
-  std::string get_loss_name();
-
-  unsigned get_no_of_inputs();
-
-  void set_target_output(std::vector<tf::tensor> target_output);
-
-  Loss *const get_loss_ptr();
-
-} loss;
 
 } // namespace tf
 

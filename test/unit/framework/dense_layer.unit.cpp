@@ -94,7 +94,7 @@ TEST_F(FrameworkTest, DenseLayer_Test_1) {
   mymodel.compile(OptimizerType::SGD, LossType::squared_error);
   /* --- end model creation --- */
 
-  tf::loss loss_sgd = mymodel.get_model_loss(dense_output[0]);
+  tf::loss::loss loss_sgd = mymodel.get_model_loss(dense_output[0]);
   call_back.record_tensor_loss_on_batch_end(
       loss_sgd, Loss_Parameter::squared_error_predicted_output);
 
@@ -251,7 +251,7 @@ TEST_F(FrameworkTest, DenseLayer_Test_2) {
   mymodel.compile(OptimizerType::SGD, LossType::squared_error);
   /* --- end model creation --- */
 
-  tf::loss loss_sgd = mymodel.get_model_loss(dense_output[0]);
+  tf::loss::loss loss_sgd = mymodel.get_model_loss(dense_output[0]);
   call_back.record_tensor_loss_on_batch_end(
       loss_sgd, Loss_Parameter::squared_error_predicted_output);
 
@@ -541,7 +541,7 @@ TEST_F(FrameworkTest, DenseLayer_Test_3) {
   mymodel.compile(OptimizerType::SGD, LossType::squared_error);
   /* --- end model creation --- */
 
-  tf::loss loss_sgd = mymodel.get_model_loss(dense_output[0]);
+  tf::loss::loss loss_sgd = mymodel.get_model_loss(dense_output[0]);
 
   /* --- training the model ----*/
   unsigned epoches = 8;
@@ -798,7 +798,7 @@ TEST_F(FrameworkTest, Quadratic_Func_Fit_Test) {
   mymodel.shuffle(false);
   mymodel.compile(OptimizerType::SGD, LossType::squared_error);
 
-  tf::loss loss_sgd = mymodel.get_model_loss(predicted_output[0]);
+  tf::loss::loss loss_sgd = mymodel.get_model_loss(predicted_output[0]);
   call_back.record_tensor_loss_on_batch_end(
       loss_sgd, Loss_Parameter::squared_error_target_output);
   call_back.record_scalar_loss_on_batch_end(loss_sgd);
@@ -978,7 +978,7 @@ TEST_F(FrameworkTest, Cubic_Func_Fit_Test) {
   mymodel.shuffle(false);
   mymodel.compile(OptimizerType::SGD, LossType::squared_error);
 
-  tf::loss loss_sgd = mymodel.get_model_loss(predicted_output[0]);
+  tf::loss::loss loss_sgd = mymodel.get_model_loss(predicted_output[0]);
   call_back.record_tensor_loss_on_batch_end(
       loss_sgd, Loss_Parameter::squared_error_target_output);
   call_back.record_scalar_loss_on_batch_end(loss_sgd);
@@ -1204,7 +1204,7 @@ TEST_F(FrameworkTest, Sin_x_Func_Fit_Test) {
   mymodel.shuffle(false);
   mymodel.compile(OptimizerType::SGD, LossType::squared_error);
 
-  tf::loss loss_sgd = mymodel.get_model_loss(predicted_output[0]);
+  tf::loss::loss loss_sgd = mymodel.get_model_loss(predicted_output[0]);
   tf::callback::trace call_back;
   call_back.record_scalar_loss_on_batch_end(loss_sgd);
 
@@ -1362,7 +1362,7 @@ TEST_F(FrameworkTest, EarlyStopping_StopsTrainingViaFit) {
   tf::model model({x}, dense_output);
   model.shuffle(false);
   model.compile(OptimizerType::SGD, LossType::squared_error);
-  tf::loss loss = model.get_model_loss(dense_output[0]);
+  tf::loss::loss loss = model.get_model_loss(dense_output[0]);
 
   // A very large min_delta makes every post-baseline epoch a "stall", so with
   // patience 2 the fit loop must break after 3 epochs regardless of the data.
@@ -1434,7 +1434,7 @@ TEST_F(FrameworkTest, CallbackTrace_RejectsForeignLossRegistration) {
   dense1.set_bias(b1);
   tf::model model1({x1}, dense1_output);
   model1.compile(OptimizerType::SGD, LossType::squared_error);
-  tf::loss own_loss = model1.get_model_loss(dense1_output[0]);
+  tf::loss::loss own_loss = model1.get_model_loss(dense1_output[0]);
 
   x2.tf_create(tf_float64, no_of_input_feature, batch_size);
   w2.tf_create(tf_float64, no_of_dense_unit, no_of_input_feature);
@@ -1448,7 +1448,7 @@ TEST_F(FrameworkTest, CallbackTrace_RejectsForeignLossRegistration) {
   dense2.set_bias(b2);
   tf::model model2({x2}, dense2_output);
   model2.compile(OptimizerType::SGD, LossType::squared_error);
-  tf::loss foreign_loss = model2.get_model_loss(dense2_output[0]);
+  tf::loss::loss foreign_loss = model2.get_model_loss(dense2_output[0]);
 
   tf::callback::trace valid;
   valid.record_scalar_loss_on_batch_end(own_loss);

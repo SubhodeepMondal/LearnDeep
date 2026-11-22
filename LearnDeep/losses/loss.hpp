@@ -4,6 +4,7 @@
 // C++ Headers
 #include <iostream>
 #include <limits>
+#include <string_view>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
@@ -15,7 +16,12 @@
 enum class LossParameter { output_predict, output_target, loss };
 
 class Loss {
+private:
+  tf::loss::loss_id id_;
+
 protected:
+  Loss();
+
   std::vector<Tensor<std::float64_t> *> input_predicts; // not owning
   std::float64_t prev_loss_value = std::numeric_limits<double>::max();
   std::float64_t loss_value = std::numeric_limits<double>::max();
@@ -23,6 +29,14 @@ protected:
   bool isGradRecorded{false};
 
 public:
+  virtual ~Loss() = default;
+
+  tf::loss::loss_id id() const noexcept { return id_; }
+
+  // Canonical registry key. Concrete losses override this; test doubles may
+  // leave the default empty value.
+  virtual std::string_view type() const { return {}; }
+
   virtual void forward(std::vector<tf::tensor *> inputs,
                        const unsigned batch_size) = 0;
 
@@ -68,6 +82,8 @@ public:
 
   ~SquaredError();
 
+  std::string_view type() const override;
+
   void forward(std::vector<tf::tensor *> inputs,
                const unsigned batch_size) override;
 
@@ -108,6 +124,8 @@ public:
                           std::string loss_name = "categorical_cross_entropy");
 
   ~CategoricalCrossEntropy();
+
+  std::string_view type() const override;
 
   void forward(std::vector<tf::tensor *> inputs,
                const unsigned batch_size) override;
