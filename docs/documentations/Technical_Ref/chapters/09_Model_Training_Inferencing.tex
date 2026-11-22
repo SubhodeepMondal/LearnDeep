@@ -43,8 +43,9 @@ the Model class.
     label={lst:model_class}
 ]
 class Model {
-  void compile(const OptimizerType optimizer_type,
-               const std::string_view loss_type);
+  void compile(std::string_view optimizer_type, std::string_view loss_type);
+  void compile(const tf::optimizer::optimizer& optimizer,
+               std::string_view loss_type);
 
   tf::history_container fit(
       const std::vector<tf::tensor>& inputs,
@@ -101,7 +102,7 @@ tf::model mymodel({x}, dense_output);
 
 mymodel.shuffle(false);
 
-mymodel.compile(OptimizerType::SGD,
+mymodel.compile(tf::optimizer::type::sgd,
                 tf::loss::type::squared_error);
 \end{lstlisting}
 

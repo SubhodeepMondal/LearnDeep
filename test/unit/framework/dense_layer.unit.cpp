@@ -93,7 +93,7 @@ TEST_F(FrameworkTest, DenseLayer_Test_1) {
   /* --- model creation --- */
   tf::model mymodel({x}, dense_output);
   mymodel.shuffle(false);
-  mymodel.compile(OptimizerType::SGD, tf::loss::type::squared_error);
+  mymodel.compile(tf::optimizer::type::sgd, tf::loss::type::squared_error);
   /* --- end model creation --- */
 
   auto loss_sgd = mymodel.get_model_loss(dense_output[0]);
@@ -250,7 +250,7 @@ TEST_F(FrameworkTest, DenseLayer_Test_2) {
   /* --- model creation --- */
   tf::model mymodel({x}, dense_output);
   mymodel.shuffle(false);
-  mymodel.compile(OptimizerType::SGD, tf::loss::type::squared_error);
+  mymodel.compile(tf::optimizer::type::sgd, tf::loss::type::squared_error);
   /* --- end model creation --- */
 
   auto loss_sgd = mymodel.get_model_loss(dense_output[0]);
@@ -540,7 +540,7 @@ TEST_F(FrameworkTest, DenseLayer_Test_3) {
   /* --- model creation --- */
   tf::model mymodel({x}, dense_output);
   mymodel.shuffle(false);
-  mymodel.compile(OptimizerType::SGD, tf::loss::type::squared_error);
+  mymodel.compile(tf::optimizer::type::sgd, tf::loss::type::squared_error);
   /* --- end model creation --- */
 
   auto loss_sgd = mymodel.get_model_loss(dense_output[0]);
@@ -798,7 +798,7 @@ TEST_F(FrameworkTest, Quadratic_Func_Fit_Test) {
 
   tf::model mymodel({x}, predicted_output);
   mymodel.shuffle(false);
-  mymodel.compile(OptimizerType::SGD, tf::loss::type::squared_error);
+  mymodel.compile(tf::optimizer::type::sgd, tf::loss::type::squared_error);
 
   auto loss_sgd = mymodel.get_model_loss(predicted_output[0]);
   call_back.record_tensor_loss_on_batch_end(
@@ -978,7 +978,7 @@ TEST_F(FrameworkTest, Cubic_Func_Fit_Test) {
 
   tf::model mymodel({x}, predicted_output);
   mymodel.shuffle(false);
-  mymodel.compile(OptimizerType::SGD, tf::loss::type::squared_error);
+  mymodel.compile(tf::optimizer::type::sgd, tf::loss::type::squared_error);
 
   auto loss_sgd = mymodel.get_model_loss(predicted_output[0]);
   call_back.record_tensor_loss_on_batch_end(
@@ -1204,7 +1204,7 @@ TEST_F(FrameworkTest, Sin_x_Func_Fit_Test) {
 
   tf::model mymodel({x}, predicted_output);
   mymodel.shuffle(false);
-  mymodel.compile(OptimizerType::SGD, tf::loss::type::squared_error);
+  mymodel.compile(tf::optimizer::type::sgd, tf::loss::type::squared_error);
 
   auto loss_sgd = mymodel.get_model_loss(predicted_output[0]);
   tf::callback::trace call_back;
@@ -1395,7 +1395,7 @@ TEST_F(FrameworkTest, EarlyStopping_StopsTrainingViaFit) {
 
   tf::model model({x}, dense_output);
   model.shuffle(false);
-  model.compile(OptimizerType::SGD, tf::loss::type::squared_error);
+  model.compile(tf::optimizer::type::sgd, tf::loss::type::squared_error);
   auto loss = model.get_model_loss(dense_output[0]);
 
   // A very large min_delta makes every post-baseline epoch a "stall", so with
@@ -1440,7 +1440,7 @@ TEST_F(FrameworkTest, FitWithNullCallback_DoesNotCrash) {
 
   tf::model model({x}, dense_output);
   model.shuffle(false);
-  model.compile(OptimizerType::SGD, tf::loss::type::squared_error);
+  model.compile(tf::optimizer::type::sgd, tf::loss::type::squared_error);
 
   // An explicit null entry used to dereference a nullptr in the callback
   // runners; fit must complete instead.
@@ -1467,7 +1467,7 @@ TEST_F(FrameworkTest, CallbackTrace_RejectsForeignLossRegistration) {
   dense1.set_weight(w1);
   dense1.set_bias(b1);
   tf::model model1({x1}, dense1_output);
-  model1.compile(OptimizerType::SGD, tf::loss::type::squared_error);
+  model1.compile(tf::optimizer::type::sgd, tf::loss::type::squared_error);
   auto own_loss = model1.get_model_loss(dense1_output[0]);
 
   x2.tf_create(tf_float64, no_of_input_feature, batch_size);
@@ -1481,7 +1481,7 @@ TEST_F(FrameworkTest, CallbackTrace_RejectsForeignLossRegistration) {
   dense2.set_weight(w2);
   dense2.set_bias(b2);
   tf::model model2({x2}, dense2_output);
-  model2.compile(OptimizerType::SGD, tf::loss::type::squared_error);
+  model2.compile(tf::optimizer::type::sgd, tf::loss::type::squared_error);
   auto foreign_loss = model2.get_model_loss(dense2_output[0]);
 
   tf::callback::trace valid;
@@ -1524,7 +1524,7 @@ TEST_F(FrameworkTest, CallbackTrace_RejectsForeignLayerRegistration) {
   dense1.set_weight(w1);
   dense1.set_bias(b1);
   tf::model model1({x1}, dense1_output);
-  model1.compile(OptimizerType::SGD, tf::loss::type::squared_error);
+  model1.compile(tf::optimizer::type::sgd, tf::loss::type::squared_error);
 
   x2.tf_create(tf_float64, no_of_input_feature, batch_size);
   w2.tf_create(tf_float64, no_of_dense_unit, no_of_input_feature);
@@ -1537,7 +1537,7 @@ TEST_F(FrameworkTest, CallbackTrace_RejectsForeignLayerRegistration) {
   dense2.set_weight(w2);
   dense2.set_bias(b2);
   tf::model model2({x2}, dense2_output);
-  model2.compile(OptimizerType::SGD, tf::loss::type::squared_error);
+  model2.compile(tf::optimizer::type::sgd, tf::loss::type::squared_error);
 
   ASSERT_NE(dense1.id(), dense2.id());
 

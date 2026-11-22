@@ -12,6 +12,7 @@
 #include <layers/layer_graph.hpp>
 #include <layers/layers.hpp>
 #include <losses/loss_registry.hpp>
+#include <optimizers/optimizer_registry.hpp>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -619,9 +620,23 @@ void Model::setTrainingTensorsForInputLayer() {
 
 void Model::shuffle(bool shuffle) { this->shuffle_input = shuffle; }
 
-void Model::compile(const OptimizerType optimizer_type,
-                    const std::string_view loss_type) {
-  this->optimizer = tf::optimizer::optimizer(optimizer_type);
+void Model::compile(std::string_view optimizer_type,
+                    std::string_view loss_type) {
+  const std::string optimizer_name(optimizer_type);
+  if (!OptimizerRegistry::instance().contains(optimizer_name)) {
+    LOG(ERROR) << "Unknown optimizer type '" << optimizer_name << "'.\n";
+    throw std::invalid_argument("Unknown optimizer type: " + optimizer_name);
+  }
+
+  this->compile(tf::optimizer::optimizer(optimizer_type), loss_type);
+}
+
+void Model::compile(const tf::optimizer::optimizer &optimizer,
+                    std::string_view loss_type) {
+  if (!optimizer.valid())
+    throw std::invalid_argument("Invalid optimizer handle");
+
+  this->optimizer = optimizer;
 
   const std::string type_name(loss_type);
   if (!LossRegistry::instance().contains(type_name)) {

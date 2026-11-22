@@ -82,6 +82,33 @@ TEST(OptimizerRegistryTest, HandleExposesStringParameterNames) {
       sgd.getParameter(tf::optimizer::parameter::learning_rate).empty());
 }
 
+TEST(OptimizerRegistryTest, CompileUsesStringOptimizerType) {
+  tf::tensor x;
+  x.tf_create(tf_float64, 3, 2);
+
+  auto dense = tf::layer::dense(2);
+  const std::vector<tf::tensor> dense_output = dense({x});
+  tf::model model({x}, dense_output);
+
+  model.compile(tf::optimizer::type::sgd, tf::loss::type::squared_error);
+  EXPECT_TRUE(model.get_model_loss(dense_output[0]).valid());
+
+  tf::model unknown_model({x}, dense_output);
+  EXPECT_THROW(unknown_model.compile("not_an_optimizer",
+                                     tf::loss::type::squared_error),
+               std::invalid_argument);
+
+  tf::optimizer::optimizer configured(tf::optimizer::type::sgd);
+  tf::model configured_model({x}, dense_output);
+  configured_model.compile(configured, tf::loss::type::squared_error);
+  EXPECT_TRUE(configured_model.get_model_loss(dense_output[0]).valid());
+
+  tf::optimizer::optimizer invalid;
+  tf::model invalid_model({x}, dense_output);
+  EXPECT_THROW(invalid_model.compile(invalid, tf::loss::type::squared_error),
+               std::invalid_argument);
+}
+
 TEST(OptimizerRegistryTest, HandleDestructionReleasesRegistryId) {
   tf::optimizer::optimizer_id id = tf::optimizer::invalid_optimizer_id;
   {

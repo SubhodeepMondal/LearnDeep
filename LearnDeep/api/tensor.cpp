@@ -44,16 +44,6 @@ LayerConfig config_with(const std::string &key, unsigned value) {
   return config;
 }
 
-std::string_view optimizerTypeKey(OptimizerType optimizer_type) {
-  switch (optimizer_type) {
-  case OptimizerType::sgd:
-  case OptimizerType::SGD:
-    return tf::optimizer::type::sgd;
-  default:
-    throw std::invalid_argument("Unsupported optimizer type");
-  }
-}
-
 } // namespace
 
 // --- Default Constructor
@@ -786,9 +776,14 @@ tf::model::predict(const std::vector<tf::tensor> inputs) {
 
 void tf::model::shuffle(bool shuffle) { model_ptr->shuffle(shuffle); }
 
-void tf::model::compile(const OptimizerType optimizerType,
-                        const std::string_view loss_type) {
-  this->model_ptr->compile(optimizerType, loss_type);
+void tf::model::compile(std::string_view optimizer_type,
+                        std::string_view loss_type) {
+  this->model_ptr->compile(optimizer_type, loss_type);
+}
+
+void tf::model::compile(const tf::optimizer::optimizer &optimizer,
+                        std::string_view loss_type) {
+  this->model_ptr->compile(optimizer, loss_type);
 }
 
 tf::loss::loss tf::model::get_model_loss(tf::tensor output) const {
@@ -1057,9 +1052,6 @@ tf::optimizer::optimizer::optimizer(std::string_view type_name,
                                     const config &cfg)
     : optimizer(
           OptimizerRegistry::instance().create(std::string(type_name), cfg)) {}
-
-tf::optimizer::optimizer::optimizer(OptimizerType optimizer_type)
-    : optimizer(optimizerTypeKey(optimizer_type)) {}
 
 tf::optimizer::optimizer::optimizer(std::shared_ptr<Optimizer> owned)
     : optimizer_ptr_(std::move(owned)) {}

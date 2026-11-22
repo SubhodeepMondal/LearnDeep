@@ -62,7 +62,7 @@ The plugin implements `tf::loss::behavior`, uses `tf::loss::config` for
 construction parameters, and the framework adapts that object to the internal
 `Loss` ABI inside `libloss.so`. Its third argument is a public parameter setter,
 so `tf::loss::loss::setParameter("scale", 3.0)` works for the generic handle.
-`model.compile(OptimizerType::SGD, "custom_scaled_mse")` creates the loss by its
+`model.compile(tf::optimizer::type::sgd, "custom_scaled_mse")` creates the loss by its
 registry key, and callbacks refer to it only by `loss_id`.
 
 `custom/test/custom_layer_test.cpp`, `custom/test/custom_loss_test.cpp`, and
@@ -90,7 +90,7 @@ the static initializer would never run.
   provided by `tf::loss::gradient_of()` instead of internal graph headers.
 - The public header itself includes internal headers
   (`core/framework/MathLibrary.h`, `core/graph/graph_context.hpp`,
-  `core/ops/opskernel.h`, `optimizers/optimizer_type.hpp`), so "public header
+  `core/ops/opskernel.h`), so "public header
   only" still requires the
   framework's source-tree include directory at compile time.
 - There is no install/export package yet; `custom/CMakeLists.txt` locates

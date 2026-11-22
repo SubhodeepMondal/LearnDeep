@@ -21,7 +21,6 @@
 #include <core/framework/MathLibrary.h>
 #include <core/graph/graph_context.hpp>
 #include <core/ops/opskernel.h>
-#include <optimizers/optimizer_type.hpp>
 
 class Callback;
 class Dense;
@@ -407,6 +406,8 @@ tf::tensor gradient_of(tf::tensor &input);
 
 namespace optimizer {
 
+class optimizer;
+
 using optimizer_id = std::uint64_t;
 inline constexpr optimizer_id invalid_optimizer_id = 0;
 
@@ -672,7 +673,7 @@ public:
   /** @param Loss loss to be used */
   /** @param Metric metric to be used */
   /** @return void */
-  // void compile(tf::optimizer = tf::optimizer(),
+  // void compile(tf::optimizer::optimizer = tf::optimizer::optimizer(),
   //              tf::loss::loss = tf::loss::loss(), tf::metric = tf::metric());
 
   /** @file model.hpp basic model implementation */
@@ -681,8 +682,10 @@ public:
   /** @param Loss loss to be used */
   /** @param Metric metric to be used */
   /** @return void */
-  void compile(const OptimizerType optimizerType,
-               const std::string_view loss_type);
+  void compile(std::string_view optimizer_type, std::string_view loss_type);
+
+  void compile(const tf::optimizer::optimizer &optimizer,
+               std::string_view loss_type);
 
   /** @file tensor.cpp basic model implementation */
   /** @brief Runs the training loop and updates the gradients */
@@ -738,10 +741,6 @@ public:
   // String-key construction is the canonical entry point.
   optimizer(std::string_view type_name);
   optimizer(std::string_view type_name, const config &cfg);
-
-  // Temporary bridge kept for Phase 1 so existing enum call sites continue to
-  // compile. It will be removed when OptimizerType is migrated in Phase 2.
-  optimizer(OptimizerType optimizer_type);
 
   // Internal: wrap a registry-owned optimizer without creating a new instance.
   explicit optimizer(std::shared_ptr<Optimizer> owned);

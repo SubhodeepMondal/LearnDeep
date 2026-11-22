@@ -139,17 +139,19 @@ public:
   /** @param Loss loss to be used */
   /** @param Metric metric to be used */
   /** @return void */
-  // void compile(tf::optimizer = tf::optimizer(),
+  // void compile(tf::optimizer::optimizer = tf::optimizer::optimizer(),
   //              tf::loss::loss = tf::loss::loss(), tf::metric = tf::metric());
 
   /** @file model.hpp basic model implementation */
   /** @brief Updates hyperparamers for training */
-  /** @param Optimizer class will be used for optimization */
+  /** @param Optimizer string key of the optimizer to construct */
   /** @param Loss loss to be used */
-  /** @param Metric metric to be used */
   /** @return void */
-  void compile(const OptimizerType optimizer_type,
-               const std::string_view loss_type);
+  void compile(std::string_view optimizer_type, std::string_view loss_type);
+
+  /** @brief Compile with a preconfigured optimizer handle. */
+  void compile(const tf::optimizer::optimizer &optimizer,
+               std::string_view loss_type);
 
   /** @file model.hpp basic model implementation */
   /** @brief Runs the training loop and updates the gradients */

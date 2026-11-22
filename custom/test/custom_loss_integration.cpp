@@ -87,7 +87,7 @@ int main() {
 
   tf::model model({x}, custom_output);
   model.shuffle(false);
-  model.compile(OptimizerType::SGD, "custom_scaled_mse");
+  model.compile(tf::optimizer::type::sgd, "custom_scaled_mse");
 
   auto loss = model.get_model_loss(custom_output[0]);
   check(loss.valid(), "custom loss was created by model.compile");

@@ -86,7 +86,7 @@ int main() {
   const std::vector<tf::tensor> output = dense({x});
   tf::model model({x}, output);
   model.shuffle(false);
-  model.compile(OptimizerType::SGD, kTypeName);
+  model.compile(tf::optimizer::type::sgd, kTypeName);
 
   tf::loss::loss model_loss = model.get_model_loss(output[0]);
   check(model_loss.valid(), "compiled model exposes the custom loss");

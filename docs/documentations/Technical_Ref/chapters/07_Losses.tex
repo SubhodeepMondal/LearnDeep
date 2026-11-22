@@ -153,7 +153,7 @@ auto se = tf::loss::loss(tf::loss::type::squared_error);
 auto value = se.calculate(predictions, targets);
 
 tf::model model({x}, dense_output);
-model.compile(OptimizerType::SGD, "custom_scaled_mse");
+model.compile(tf::optimizer::type::sgd, "custom_scaled_mse");
 \end{lstlisting}
 
 A standalone handle owns its loss instance, while callbacks and a compiled
