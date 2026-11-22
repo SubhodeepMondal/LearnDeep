@@ -1,7 +1,7 @@
 // Library Headers
 #include "softmax_layer.hpp"
 #include "layer_enum.hpp"
-#include "layer_graph.hpp"
+#include "layer_registry.hpp"
 #include "layers.hpp"
 #include <core/graph/graph_framework.hpp>
 #include <core/graph/graph_manager.hpp>
@@ -10,26 +10,27 @@
 // Third party
 #include <absl/log/log.h>
 
-Softmax::Softmax(unsigned axis) : axis(axis), layer_type(tf_softmax_layer) {
+REGISTER_LAYER("softmax",
+               [](const LayerConfig &config) -> std::unique_ptr<Layer> {
+                 const unsigned *axis = config.getAs<unsigned>("axis");
+                 return std::make_unique<Softmax>(axis ? *axis : 0u);
+               });
+
+Softmax::Softmax(unsigned axis) : axis(axis) {
   this->isForwardGraphCreated = false;
   this->isBackwardGraphCreated = false;
   this->isGradRecorded = false;
 }
 
 // --- Destructor
-Softmax::~Softmax() {
-  this->layer_inputs.clear();
-  this->layer_outputs.clear();
-}
+Softmax::~Softmax() { this->layer_outputs.clear(); }
 
 const std::vector<tf::tensor *> &
 Softmax::operator()(std::vector<tf::tensor> input_tensors) {
 
-  this->axis = axis;
   // do a lazy initialization
+  this->recordInputTensors(input_tensors);
   if (input_tensors.size() == 1) {
-    this->layer_inputs.push_back(input_tensors[0].getPtr());
-
     std::vector<unsigned> dims;
     for (unsigned i = 0; i < input_tensors[0].getNoOfDimensions(); i++)
       dims.push_back(input_tensors[0].getDimensions()[i]);
@@ -45,14 +46,14 @@ Softmax::operator()(std::vector<tf::tensor> input_tensors) {
 
 const std::vector<tf::tensor *> &
 Softmax::forward(std::vector<const tf::tensor *> &input, unsigned batch_size) {
-  if (input.size() == 1) {
+  (void)batch_size;
+  this->recordTrainingInputs(input);
+  if (input.size() == 1 && !this->training_input_aliases.empty()) {
 
+    tf::tensor *training_inputs = &this->training_input_aliases.front();
     std::vector<unsigned> input_dims;
-    for (unsigned i = 0;
-         i < const_cast<tf::tensor *>(input[0])->getNoOfDimensions(); i++)
-      input_dims.push_back(input[0]->getDimensions()[i]);
-
-    this->training_inputs = input[0];
+    for (unsigned i = 0; i < training_inputs->getNoOfDimensions(); i++)
+      input_dims.push_back(training_inputs->getDimensions()[i]);
 
     this->training_output = training_inputs->softmax(this->axis);
     this->training_outputs.push_back(&training_output);
@@ -75,28 +76,25 @@ std::vector<tf::tensor> Softmax::calculate(std::vector<tf::tensor> inputs) {
 
 void Softmax::backward(Optimizer *optimiser) {
 
-  if (!this->isGradRecorded) {
+  if (!this->isGradRecorded && !this->training_input_aliases.empty()) {
 
+    tf::tensor *training_inputs = &this->training_input_aliases.front();
     Graph *g = GraphManager::instance().getCurrentGraph();
     this->grad_input =
-        tf::tensor(this->training_inputs->dt_type,
-                   g->getGradientTensor(this->training_inputs->getPtr()));
+        tf::tensor(training_inputs->dt_type,
+                   g->getGradientTensor(training_inputs->getPtr()));
     this->isGradRecorded = true;
   }
 }
 
-LayerType Softmax::getLayerType() { return this->layer_type; }
-
-std::vector<const Tensor<std::float64_t> *> &Softmax::getInputTensors() {
-  return this->layer_inputs;
-}
+std::string_view Softmax::type() const { return tf::layer::type::softmax; }
 
 const std::vector<tf::tensor *> &Softmax::getOutputTensors() {
   return this->layer_outputs;
 }
 
 std::vector<const tf::tensor *> Softmax::getInputTrainingTensors() {
-  return {this->training_inputs};
+  return this->getTrainingInputAliases();
 }
 
 const std::vector<tf::tensor *> &Softmax::getOutputTrainingTensors() {
@@ -104,38 +102,46 @@ const std::vector<tf::tensor *> &Softmax::getOutputTrainingTensors() {
 }
 
 std::vector<tf::tensor *>
-Softmax::getLayerParameter(Layer_Parameter layer_parameter, bool print_flag) {
+Softmax::getLayerParameter(std::string_view layer_parameter, bool print_flag) {
   std::vector<tf::tensor *> layer_parameter_tensor;
-  switch (layer_parameter) {
-  case Layer_Parameter::softmax_input:
+  using tf::layer::parameter::grad_input;
+  using tf::layer::parameter::input;
+  using tf::layer::parameter::output;
+  using tf::layer::parameter::training_input;
+  using tf::layer::parameter::training_output;
+
+  if (layer_parameter == input) {
     LOG(INFO) << "Layer: Softmax, input:\n";
-    break;
-  case Layer_Parameter::softmax_output:
+  } else if (layer_parameter == output) {
     LOG(INFO) << "Layer: Softmax, output:\n";
     layer_parameter_tensor = this->layer_outputs;
-    break;
-  case Layer_Parameter::softmax_training_input:
-    LOG(INFO) << "Layer: Selu, training input:\n";
-    layer_parameter_tensor.push_back(
-        const_cast<tf::tensor *>(this->training_inputs));
-    break;
-  case Layer_Parameter::softmax_training_output:
-    LOG(INFO) << "Layer: Selu, training output:\n";
+  } else if (layer_parameter == training_input) {
+    LOG(INFO) << "Layer: Softmax, training input:\n";
+    for (const tf::tensor *training_input : this->getTrainingInputAliases())
+      layer_parameter_tensor.push_back(const_cast<tf::tensor *>(training_input));
+  } else if (layer_parameter == training_output) {
+    LOG(INFO) << "Layer: Softmax, training output:\n";
     for (tf::tensor *training_output_tensor : this->training_outputs)
       layer_parameter_tensor.push_back(training_output_tensor);
-    break;
-  case Layer_Parameter::softmax_grad_input:
+  } else if (layer_parameter == grad_input) {
     LOG(INFO) << "Layer: Softmax, grad input:\n";
     layer_parameter_tensor.push_back(&this->grad_input);
-    break;
-  default:
+  } else {
     LOG(ERROR) << "Sever! the selected layer parameter is not available for "
-                  "relu layer.\n";
-    break;
+                  "softmax layer.\n";
   }
+
   if (print_flag && layer_parameter_tensor.size())
     layer_parameter_tensor[0]->print_data();
   return layer_parameter_tensor;
+}
+
+std::unordered_set<std::string> Softmax::parameterNames() const {
+  return {std::string(tf::layer::parameter::input),
+          std::string(tf::layer::parameter::output),
+          std::string(tf::layer::parameter::training_input),
+          std::string(tf::layer::parameter::training_output),
+          std::string(tf::layer::parameter::grad_input)};
 }
 
 void Softmax::initializeParameters() {};

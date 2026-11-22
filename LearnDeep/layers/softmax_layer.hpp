@@ -11,10 +11,8 @@ class Softmax : public Layer {
   bool isBackwardGraphCreated;
   bool isGradRecorded;
 
-  LayerType layer_type;
   unsigned axis;
 
-  const tf::tensor *training_inputs;
   tf::tensor grad_input;
   tf::tensor output;
   tf::tensor training_output;
@@ -44,18 +42,19 @@ public:
 
   void backward(Optimizer *optimizer) override;
 
-  std::vector<const Tensor<std::float64_t> *> &getInputTensors() override;
-
   const std::vector<tf::tensor *> &getOutputTensors() override;
 
   std::vector<const tf::tensor *> getInputTrainingTensors() override;
 
   const std::vector<tf::tensor *> &getOutputTrainingTensors() override;
 
-  LayerType getLayerType();
+  std::string_view type() const override;
 
-  std::vector<tf::tensor *> getLayerParameter(Layer_Parameter layer_parameter,
-                                              bool print_flag = false) override;
+  std::vector<tf::tensor *>
+  getLayerParameter(std::string_view layer_parameter,
+                    bool print_flag = false) override;
+
+  std::unordered_set<std::string> parameterNames() const override;
 
   void initializeParameters() override;
 };

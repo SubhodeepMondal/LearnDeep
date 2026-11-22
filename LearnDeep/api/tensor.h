@@ -4,19 +4,21 @@
 // C++ Headers
 #include <algorithm>
 #include <cstddef>
+#include <cstdint>
 #include <iostream>
 #include <iterator>
 #include <memory>
 #include <string>
+#include <string_view>
 #include <unordered_map>
 #include <unordered_set>
+#include <variant>
 #include <vector>
 
 // Library Headers
 #include <core/framework/MathLibrary.h>
 #include <core/graph/graph_context.hpp>
 #include <core/ops/opskernel.h>
-#include <layers/layer_enum.hpp>
 #include <losses/loss_enum.hpp>
 #include <optimizers/optimizer_type.hpp>
 
@@ -26,6 +28,7 @@ class Layer;
 class Loss;
 class Model;
 class Optimizer;
+struct LayerConfig;
 
 namespace tf {
 typedef struct loss loss;
@@ -34,7 +37,7 @@ class tensor {
   Tensor<std::float64_t> *ptr{nullptr};
 
 public:
-  bool activateGraphSession;
+  bool activateGraphSession{false};
   DataType dt_type;
 
   // --- Default constructor
@@ -156,6 +159,9 @@ public:
 extern std::unordered_map<Tensor<std::float64_t> *, tensor *> tensor_nodes;
 extern std::unordered_set<Tensor<std::float64_t> *> tensor_to_be_spared;
 
+using LayerParameterValue =
+    std::variant<unsigned, double, std::string, tf::tensor>;
+
 typedef struct graph_context {
 private:
   GraphContext *graph_ctx;
@@ -178,16 +184,79 @@ public:
 
 namespace layer {
 
-typedef struct dense {
+using layer_id = std::uint64_t;
+inline constexpr layer_id invalid_layer_id = 0;
+
+namespace type {
+inline constexpr std::string_view dense{"dense"};
+inline constexpr std::string_view relu{"relu"};
+inline constexpr std::string_view softmax{"softmax"};
+} // namespace type
+
+namespace parameter {
+inline constexpr std::string_view input{"input"};
+inline constexpr std::string_view weight{"weight"};
+inline constexpr std::string_view bias{"bias"};
+inline constexpr std::string_view matmul_result{"matmul_result"};
+inline constexpr std::string_view output{"output"};
+inline constexpr std::string_view training_input{"training_input"};
+inline constexpr std::string_view training_weight{"training_weight"};
+inline constexpr std::string_view training_bias{"training_bias"};
+inline constexpr std::string_view training_matmul_result{
+    "training_matmul_result"};
+inline constexpr std::string_view training_output{"training_output"};
+inline constexpr std::string_view grad_input{"grad_input"};
+inline constexpr std::string_view grad_weight{"grad_weight"};
+inline constexpr std::string_view grad_bias{"grad_bias"};
+inline constexpr std::string_view incoming_grad{"incoming_grad"};
+inline constexpr std::string_view updated_weight{"updated_weight"};
+inline constexpr std::string_view updated_bias{"updated_bias"};
+} // namespace parameter
+
+class layer {
 private:
-  Layer *dense_layer;
+  std::shared_ptr<Layer> layer_ptr;
+
+protected:
+  // Pointers into the owning layer's alias storage. The handle itself keeps no
+  // input state, so these cannot dangle and cannot go stale during training.
+  std::vector<const tf::tensor *> input_tensor_aliases() const;
 
 public:
-  dense(unsigned unit);
-
-  ~dense();
+  layer();
+  layer(std::string_view type_name);
+  layer(std::string_view type_name, const LayerConfig &config);
+  virtual ~layer();
 
   std::vector<tf::tensor> operator()(const std::vector<tf::tensor> &inputs);
+
+  std::vector<tf::tensor> forward(const std::vector<tf::tensor> &inputs,
+                                  unsigned batch_size);
+
+  std::vector<tf::tensor> calculate(std::vector<tf::tensor> inputs);
+
+  void initialize_parameters();
+
+  std::unordered_set<std::string> parameterNames() const;
+
+  std::vector<tf::tensor> getParameter(std::string_view name) const;
+
+  void setParameter(std::string_view name, const LayerParameterValue &value);
+
+  std::string_view type() const;
+
+  // True when registry construction succeeded. Invalid handles are safe no-ops.
+  explicit operator bool() const;
+
+  bool valid() const;
+
+  layer_id id() const;
+};
+
+struct dense : public layer {
+  dense(unsigned unit);
+
+  ~dense() override;
 
   std::vector<const tf::tensor *> get_input_tensors();
 
@@ -200,45 +269,27 @@ public:
   void set_weight(const tf::tensor &weight_tensor);
 
   void set_bias(const tf::tensor &bias_tensor);
+};
 
-  Layer *getLayerPtr() const;
-} dense;
-
-typedef struct relu {
-private:
-  Layer *relu_layer;
-
-public:
+struct relu : public layer {
   relu();
 
-  ~relu();
-
-  std::vector<tf::tensor> operator()(const std::vector<tf::tensor> &inputs);
+  ~relu() override;
 
   std::vector<const tf::tensor *> get_input_tensors();
 
   std::vector<tf::tensor> get_output_tensors();
+};
 
-  Layer *getLayerPtr() const;
-} relu;
-
-typedef struct softmax {
-private:
-  Layer *softmax_layer;
-
-public:
+struct softmax : public layer {
   softmax(unsigned axis = 0);
 
-  ~softmax();
-
-  std::vector<tf::tensor> operator()(const std::vector<tf::tensor> &inputs);
+  ~softmax() override;
 
   std::vector<const tf::tensor *> get_input_tensors();
 
   std::vector<tf::tensor> get_output_tensors();
-
-  Layer *getLayerPtr() const;
-} softmax;
+};
 
 } // namespace layer
 
@@ -252,21 +303,21 @@ public:
 
   ~trace();
 
-  void record_parameter_on_epoch_begin(Layer *const layer_ptr,
-                                       Layer_Parameter trainable_parameter_no,
-                                       bool print_flag = false);
+  void record_parameter_on_epoch_begin(
+      const tf::layer::layer &layer_handle,
+      const std::string &trainable_parameter, bool print_flag = false);
 
-  void record_parameter_on_epoch_end(Layer *const layer_ptr,
-                                     Layer_Parameter trainable_parameter_no,
-                                     bool print_flag = false);
+  void record_parameter_on_epoch_end(
+      const tf::layer::layer &layer_handle,
+      const std::string &trainable_parameter, bool print_flag = false);
 
-  void record_parameter_on_batch_begin(Layer *const layer_ptr,
-                                       Layer_Parameter trainable_parameter_no,
-                                       bool print_flag = false);
+  void record_parameter_on_batch_begin(
+      const tf::layer::layer &layer_handle,
+      const std::string &trainable_parameter, bool print_flag = false);
 
-  void record_parameter_on_batch_end(Layer *const layer_ptr,
-                                     Layer_Parameter trainable_parameter_no,
-                                     bool print_flag = false);
+  void record_parameter_on_batch_end(
+      const tf::layer::layer &layer_handle,
+      const std::string &trainable_parameter, bool print_flag = false);
 
   void record_scalar_loss_on_epoch_end(tf::loss loss);
 
@@ -279,20 +330,20 @@ public:
                                        Loss_Parameter loss_parameter);
 
   std::vector<std::vector<tf::tensor>>
-  get_parameter_on_epoch_begin(Layer *const layer_ptr,
-                               Layer_Parameter trainable_parameter_no);
+  get_parameter_on_epoch_begin(const tf::layer::layer &layer_handle,
+                               const std::string &trainable_parameter);
 
   std::vector<std::vector<tf::tensor>>
-  get_parameter_on_epoch_end(Layer *const layer_ptr,
-                             Layer_Parameter trainable_parameter_no);
+  get_parameter_on_epoch_end(const tf::layer::layer &layer_handle,
+                             const std::string &trainable_parameter);
 
   std::vector<std::vector<std::vector<tf::tensor>>>
-  get_parameter_on_batch_begin(Layer *const layer_ptr,
-                               Layer_Parameter trainable_parameter_no);
+  get_parameter_on_batch_begin(const tf::layer::layer &layer_handle,
+                               const std::string &trainable_parameter);
 
   std::vector<std::vector<std::vector<tf::tensor>>>
-  get_parameter_on_batch_end(Layer *const layer_ptr,
-                             Layer_Parameter trainable_parameter_no);
+  get_parameter_on_batch_end(const tf::layer::layer &layer_handle,
+                             const std::string &trainable_parameter);
 
   std::vector<std::float64_t> get_scaler_loss_on_epoch_end(tf::loss loss);
 
@@ -419,7 +470,7 @@ public:
 
   tf::loss get_model_loss(tf::tensor output) const;
 
-  std::vector<Layer *> &get_layers();
+  std::vector<layer::layer_id> get_layers();
 
   std::vector<Loss *> get_losses();
 

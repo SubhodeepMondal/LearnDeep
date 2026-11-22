@@ -10,6 +10,23 @@
 #include <losses/loss.hpp>
 #include <vector>
 
+namespace {
+
+using LayerRegistrationMap =
+    std::unordered_map<tf::layer::layer_id,
+                       std::vector<std::pair<std::string, bool>>>;
+
+void eraseDeadLayerIds(LayerRegistrationMap &registrations) {
+  for (auto it = registrations.begin(); it != registrations.end();) {
+    if (!global_layer_graph.contains(it->first))
+      it = registrations.erase(it);
+    else
+      ++it;
+  }
+}
+
+} // namespace
+
 CallbackTrace::CallbackTrace(unsigned callback_level) {
   this->callback_level = callback_level;
 }
@@ -30,34 +47,65 @@ CallbackTrace::~CallbackTrace() {
             for (auto tensor_vector : tensor_vector_vector)
               delete tensor_vector;
   }
+  {
+    for (auto layer : this->layer_parameter_on_epoch_begin)
+      for (auto layer_param : layer.second)
+        for (auto tensor_vector : layer_param.second)
+          for (auto tensor : tensor_vector)
+            delete tensor;
+    for (auto layer : this->layer_parameter_on_epoch_end)
+      for (auto layer_param : layer.second)
+        for (auto tensor_vector : layer_param.second)
+          for (auto tensor : tensor_vector)
+            delete tensor;
+    for (auto layer : this->layer_parameter_on_batch_begin)
+      for (auto layer_param : layer.second)
+        for (auto epoch : layer_param.second)
+          for (auto tensor_vector : epoch)
+            for (auto tensor : tensor_vector)
+              delete tensor;
+    for (auto layer : this->layer_parameter_on_batch_end)
+      for (auto layer_param : layer.second)
+        for (auto epoch : layer_param.second)
+          for (auto tensor_vector : epoch)
+            for (auto tensor : tensor_vector)
+              delete tensor;
+  }
 }
 
 void CallbackTrace::onEpochBeginGetTrainableParameter(
-    Layer *const layer, Layer_Parameter traiable_parameter_no, bool print) {
-  if (std::ranges::contains(global_layer_graph.getAllLayers(), layer)) {
-    this->layers_on_epoch_begin[layer].push_back(
-        {traiable_parameter_no, print});
+    const tf::layer::layer &layer_handle,
+    const std::string &trainable_parameter, bool print) {
+  const tf::layer::layer_id id = layer_handle.id();
+  if (layer_handle.valid() && global_layer_graph.contains(id)) {
+    this->layers_on_epoch_begin[id].push_back({trainable_parameter, print});
   }
 }
 
 void CallbackTrace::onEpochEndGetTrainableParameter(
-    Layer *const layer, Layer_Parameter traiable_parameter_no, bool print) {
-  if (std::ranges::contains(global_layer_graph.getAllLayers(), layer)) {
-    this->layers_on_epoch_end[layer].push_back({traiable_parameter_no, print});
+    const tf::layer::layer &layer_handle,
+    const std::string &trainable_parameter, bool print) {
+  const tf::layer::layer_id id = layer_handle.id();
+  if (layer_handle.valid() && global_layer_graph.contains(id)) {
+    this->layers_on_epoch_end[id].push_back({trainable_parameter, print});
   }
 }
 
 void CallbackTrace::recordTrainableParameterOnBatchBegin(
-    Layer *const layer, Layer_Parameter trainable_parameter, bool print) {
-  if (std::ranges::contains(global_layer_graph.getAllLayers(), layer)) {
-    this->layers_on_batch_begin[layer].push_back({trainable_parameter, print});
+    const tf::layer::layer &layer_handle,
+    const std::string &trainable_parameter, bool print) {
+  const tf::layer::layer_id id = layer_handle.id();
+  if (layer_handle.valid() && global_layer_graph.contains(id)) {
+    this->layers_on_batch_begin[id].push_back({trainable_parameter, print});
   }
 }
 
 void CallbackTrace::recordTrainableParameterOnBatchEnd(
-    Layer *const layer, Layer_Parameter trainable_parameter, bool print) {
-  if (std::ranges::contains(global_layer_graph.getAllLayers(), layer)) {
-    this->layers_on_batch_end[layer].push_back({trainable_parameter, print});
+    const tf::layer::layer &layer_handle,
+    const std::string &trainable_parameter, bool print) {
+  const tf::layer::layer_id id = layer_handle.id();
+  if (layer_handle.valid() && global_layer_graph.contains(id)) {
+    this->layers_on_batch_end[id].push_back({trainable_parameter, print});
   }
 }
 
@@ -81,106 +129,82 @@ void CallbackTrace::recordTensorLossBatchEnd(Loss *const loss_ptr,
 
 std::vector<std::vector<tf::tensor *>>
 CallbackTrace::getTrainableParameterEpochOnBegin(
-    Layer *const layer, Layer_Parameter trainable_parameter_no) {
+    const tf::layer::layer &layer_handle,
+    const std::string &trainable_parameter) {
 
-  std::vector<std::vector<tf::tensor *>> layer_parameter_output;
-
-  std::vector<Layer *> layers(
-      std::views::keys(this->layer_parameter_on_epoch_begin).begin(),
-      std::views::keys(this->layer_parameter_on_epoch_begin).end());
-
-  if (std::ranges::contains(layers, layer)) {
-    std::vector<Layer_Parameter> layer_parameter(
-        std::views::keys(this->layer_parameter_on_epoch_begin[layer]).begin(),
-        std::views::keys(this->layer_parameter_on_epoch_begin[layer]).end());
-    if (std::ranges::contains(layer_parameter, trainable_parameter_no))
-      layer_parameter_output =
-          this->layer_parameter_on_epoch_begin[layer][trainable_parameter_no];
-    else
-      LOG(ERROR) << "Sever! this parameter was not registered for callback.\n";
-  } else {
+  const tf::layer::layer_id id = layer_handle.id();
+  auto layer = this->layer_parameter_on_epoch_begin.find(id);
+  if (layer == this->layer_parameter_on_epoch_begin.end()) {
     LOG(ERROR) << "Sever! Layer was not registered for callback.\n";
+    return {};
   }
 
-  return layer_parameter_output;
+  auto parameter = layer->second.find(trainable_parameter);
+  if (parameter == layer->second.end()) {
+    LOG(ERROR) << "Sever! this parameter was not registered for callback.\n";
+    return {};
+  }
+  return parameter->second;
 }
 
 std::vector<std::vector<tf::tensor *>>
 CallbackTrace::getTrainableParameterEpochOnEnd(
-    Layer *const layer, Layer_Parameter trainable_parameter_no) {
+    const tf::layer::layer &layer_handle,
+    const std::string &trainable_parameter) {
 
-  std::vector<std::vector<tf::tensor *>> layer_parameter_output;
-
-  std::vector<Layer *> layers(
-      std::views::keys(this->layer_parameter_on_epoch_end).begin(),
-      std::views::keys(this->layer_parameter_on_epoch_end).end());
-
-  if (std::ranges::contains(layers, layer)) {
-    std::vector<Layer_Parameter> layer_parameter(
-        std::views::keys(this->layer_parameter_on_epoch_end[layer]).begin(),
-        std::views::keys(this->layer_parameter_on_epoch_end[layer]).end());
-    if (std::ranges::contains(layer_parameter, trainable_parameter_no)) {
-      layer_parameter_output =
-          this->layer_parameter_on_epoch_end[layer][trainable_parameter_no];
-    } else
-      LOG(ERROR) << "Sever! this parameter was not registered for callback.\n";
-  } else {
+  const tf::layer::layer_id id = layer_handle.id();
+  auto layer = this->layer_parameter_on_epoch_end.find(id);
+  if (layer == this->layer_parameter_on_epoch_end.end()) {
     LOG(ERROR) << "Sever! Layer was not registered for callback.\n";
+    return {};
   }
 
-  return layer_parameter_output;
+  auto parameter = layer->second.find(trainable_parameter);
+  if (parameter == layer->second.end()) {
+    LOG(ERROR) << "Sever! this parameter was not registered for callback.\n";
+    return {};
+  }
+  return parameter->second;
 }
 
 std::vector<std::vector<std::vector<tf::tensor *>>>
 CallbackTrace::getTrainableParameterBatchOnBegin(
-    Layer *const layer, Layer_Parameter trainable_parameter_no) {
+    const tf::layer::layer &layer_handle,
+    const std::string &trainable_parameter) {
 
-  std::vector<std::vector<std::vector<tf::tensor *>>> layer_parameter_output;
-
-  std::vector<Layer *> layers(
-      std::views::keys(this->layer_parameter_on_batch_begin).begin(),
-      std::views::keys(this->layer_parameter_on_batch_begin).end());
-
-  if (std::ranges::contains(layers, layer)) {
-    std::vector<Layer_Parameter> layer_parameter(
-        std::views::keys(this->layer_parameter_on_batch_begin[layer]).begin(),
-        std::views::keys(this->layer_parameter_on_batch_begin[layer]).end());
-    if (std::ranges::contains(layer_parameter, trainable_parameter_no))
-      layer_parameter_output =
-          this->layer_parameter_on_batch_begin[layer][trainable_parameter_no];
-    else
-      LOG(ERROR) << "Sever! this parameter was not registered for callback.\n";
-  } else {
+  const tf::layer::layer_id id = layer_handle.id();
+  auto layer = this->layer_parameter_on_batch_begin.find(id);
+  if (layer == this->layer_parameter_on_batch_begin.end()) {
     LOG(ERROR) << "Sever! Layer was not registered for callback.\n";
+    return {};
   }
 
-  return layer_parameter_output;
+  auto parameter = layer->second.find(trainable_parameter);
+  if (parameter == layer->second.end()) {
+    LOG(ERROR) << "Sever! this parameter was not registered for callback.\n";
+    return {};
+  }
+  return parameter->second;
 }
 
 std::vector<std::vector<std::vector<tf::tensor *>>>
 CallbackTrace::getTrainableParameterBatchOnEnd(
-    Layer *layer, Layer_Parameter trainable_parameter_no) {
+    const tf::layer::layer &layer_handle,
+    const std::string &trainable_parameter) {
 
-  std::vector<std::vector<std::vector<tf::tensor *>>> layer_parameter_output;
-
-  std::vector<Layer *> layers(
-      std::views::keys(this->layer_parameter_on_batch_end).begin(),
-      std::views::keys(this->layer_parameter_on_batch_end).end());
-
-  if (std::ranges::contains(layers, layer)) {
-    std::vector<Layer_Parameter> layer_parameter(
-        std::views::keys(this->layer_parameter_on_batch_end[layer]).begin(),
-        std::views::keys(this->layer_parameter_on_batch_end[layer]).end());
-    if (std::ranges::contains(layer_parameter, trainable_parameter_no)) {
-      layer_parameter_output =
-          this->layer_parameter_on_batch_end[layer][trainable_parameter_no];
-    } else
-      LOG(ERROR) << "Sever! this parameter was not registered for callback.\n";
-  } else {
+  const tf::layer::layer_id id = layer_handle.id();
+  auto layer = this->layer_parameter_on_batch_end.find(id);
+  if (layer == this->layer_parameter_on_batch_end.end()) {
     LOG(ERROR) << "Sever! Layer was not registered for callback.\n";
+    return {};
   }
 
-  return layer_parameter_output;
+  auto parameter = layer->second.find(trainable_parameter);
+  if (parameter == layer->second.end()) {
+    LOG(ERROR) << "Sever! this parameter was not registered for callback.\n";
+    return {};
+  }
+  return parameter->second;
 }
 
 std::vector<std::float64_t> CallbackTrace::getScalerLossEpochEnd(Loss *loss) {
@@ -207,10 +231,15 @@ CallbackTrace::getLossParameterBatchEnd(Loss *loss,
 void CallbackTrace::callOnEpochBegin() {
   if (this->print_callback_log)
     std::cout << "Callback before Epoch Begin: \n";
-  std::vector<Layer *> layers(std::views::keys(layers_on_epoch_begin).begin(),
-                              std::views::keys(layers_on_epoch_begin).end());
-  for (Layer *layer : layers) {
-    for (auto [layer_parameter, flag] : layers_on_epoch_begin[layer]) {
+  std::vector<tf::layer::layer_id> layer_ids(
+      std::views::keys(layers_on_epoch_begin).begin(),
+      std::views::keys(layers_on_epoch_begin).end());
+  for (tf::layer::layer_id id : layer_ids) {
+    std::shared_ptr<Layer> layer = global_layer_graph.lock(id);
+    if (!layer)
+      continue;
+
+    for (auto [layer_parameter, flag] : layers_on_epoch_begin[id]) {
       std::vector<tf::tensor *> epoch_begin_tensors;
       for (tf::tensor *tensor :
            layer->getLayerParameter(layer_parameter, flag)) {
@@ -222,7 +251,7 @@ void CallbackTrace::callOnEpochBegin() {
         epoch_begin_tensors.back()->tf_create(dims, tensor->dt_type);
         epoch_begin_tensors.back()->tensor_of(tensor->getData());
       }
-      layer_parameter_on_epoch_begin[layer][layer_parameter].push_back(
+      layer_parameter_on_epoch_begin[id][layer_parameter].push_back(
           epoch_begin_tensors);
     }
   }
@@ -233,11 +262,16 @@ void CallbackTrace::callOnEpochEnd() {
   /* --- layer parameters*/
   if (this->print_callback_log)
     std::cout << "Callback after Epoch End: \n";
-  std::vector<Layer *> layers(std::views::keys(layers_on_epoch_end).begin(),
-                              std::views::keys(layers_on_epoch_end).end());
+  std::vector<tf::layer::layer_id> layer_ids(
+      std::views::keys(layers_on_epoch_end).begin(),
+      std::views::keys(layers_on_epoch_end).end());
 
-  for (Layer *layer : layers) {
-    for (auto [layer_parameter, flag] : layers_on_epoch_end[layer]) {
+  for (tf::layer::layer_id id : layer_ids) {
+    std::shared_ptr<Layer> layer = global_layer_graph.lock(id);
+    if (!layer)
+      continue;
+
+    for (auto [layer_parameter, flag] : layers_on_epoch_end[id]) {
       std::vector<tf::tensor *> epoch_end_tensors;
       for (tf::tensor *tensor :
            layer->getLayerParameter(layer_parameter, flag)) {
@@ -250,7 +284,7 @@ void CallbackTrace::callOnEpochEnd() {
         epoch_end_tensors.back()->tf_create(dims, tensor->dt_type);
         epoch_end_tensors.back()->tensor_of(tensor->getData());
       }
-      this->layer_parameter_on_epoch_end[layer][layer_parameter].push_back(
+      this->layer_parameter_on_epoch_end[id][layer_parameter].push_back(
           epoch_end_tensors);
     }
   }
@@ -290,10 +324,15 @@ void CallbackTrace::callOnBatchBegin(unsigned const epoch_no) {
 
   if (this->print_callback_log)
     std::cout << "Callback before Epoch Begin: \n";
-  std::vector<Layer *> layers(std::views::keys(layers_on_batch_begin).begin(),
-                              std::views::keys(layers_on_batch_begin).end());
-  for (Layer *layer : layers) {
-    for (auto [layer_parameter, flag] : layers_on_batch_begin[layer]) {
+  std::vector<tf::layer::layer_id> layer_ids(
+      std::views::keys(layers_on_batch_begin).begin(),
+      std::views::keys(layers_on_batch_begin).end());
+  for (tf::layer::layer_id id : layer_ids) {
+    std::shared_ptr<Layer> layer = global_layer_graph.lock(id);
+    if (!layer)
+      continue;
+
+    for (auto [layer_parameter, flag] : layers_on_batch_begin[id]) {
       std::vector<tf::tensor *> batch_begin_tensors;
       for (tf::tensor *tensor :
            layer->getLayerParameter(layer_parameter, flag)) {
@@ -306,13 +345,12 @@ void CallbackTrace::callOnBatchBegin(unsigned const epoch_no) {
         batch_begin_tensors.back()->tensor_of(tensor->getData());
       }
 
-      if (layer_parameter_on_batch_begin[layer][layer_parameter].size() ==
+      if (layer_parameter_on_batch_begin[id][layer_parameter].size() ==
           epoch_no)
-        layer_parameter_on_batch_begin[layer][layer_parameter].resize(epoch_no +
-                                                                      1);
+        layer_parameter_on_batch_begin[id][layer_parameter].resize(epoch_no + 1);
 
-      layer_parameter_on_batch_begin[layer][layer_parameter][epoch_no]
-          .push_back(batch_begin_tensors);
+      layer_parameter_on_batch_begin[id][layer_parameter][epoch_no].push_back(
+          batch_begin_tensors);
     }
   }
 }
@@ -321,11 +359,16 @@ void CallbackTrace::callOnBatchEnd(unsigned const epoch_no) {
   /* --- layer parameters*/
   if (this->print_callback_log)
     std::cout << "Callback after Epoch End: \n";
-  std::vector<Layer *> layers(std::views::keys(layers_on_batch_end).begin(),
-                              std::views::keys(layers_on_batch_end).end());
+  std::vector<tf::layer::layer_id> layer_ids(
+      std::views::keys(layers_on_batch_end).begin(),
+      std::views::keys(layers_on_batch_end).end());
 
-  for (Layer *layer : layers) {
-    for (auto [layer_parameter, flag] : layers_on_batch_end[layer]) {
+  for (tf::layer::layer_id id : layer_ids) {
+    std::shared_ptr<Layer> layer = global_layer_graph.lock(id);
+    if (!layer)
+      continue;
+
+    for (auto [layer_parameter, flag] : layers_on_batch_end[id]) {
       std::vector<tf::tensor *> batch_end_tensors;
       for (tf::tensor *tensor :
            layer->getLayerParameter(layer_parameter, flag)) {
@@ -339,12 +382,10 @@ void CallbackTrace::callOnBatchEnd(unsigned const epoch_no) {
         batch_end_tensors.back()->tensor_of(tensor->getData());
       }
 
-      if (layer_parameter_on_batch_end[layer][layer_parameter].size() ==
-          epoch_no)
-        layer_parameter_on_batch_end[layer][layer_parameter].resize(epoch_no +
-                                                                    1);
+      if (layer_parameter_on_batch_end[id][layer_parameter].size() == epoch_no)
+        layer_parameter_on_batch_end[id][layer_parameter].resize(epoch_no + 1);
 
-      layer_parameter_on_batch_end[layer][layer_parameter][epoch_no].push_back(
+      layer_parameter_on_batch_end[id][layer_parameter][epoch_no].push_back(
           batch_end_tensors);
     }
   }
@@ -388,7 +429,18 @@ void CallbackTrace::callOnBatchEnd(unsigned const epoch_no) {
   }
 }
 
+void CallbackTrace::pruneStaleLayerIds() {
+  // Phase 3 made layer ownership shared: a handle can die after a callback
+  // recorded its id. Drop those registrations so dead layers cannot block
+  // training, while still rejecting live layers that belong to another model.
+  eraseDeadLayerIds(this->layers_on_epoch_begin);
+  eraseDeadLayerIds(this->layers_on_epoch_end);
+  eraseDeadLayerIds(this->layers_on_batch_begin);
+  eraseDeadLayerIds(this->layers_on_batch_end);
+}
+
 bool CallbackTrace::callOnTrainingBegin(tf::model &model) {
+  this->pruneStaleLayerIds();
   bool flag = this->verifyLayerCallbackSetup(model.get_layers());
   if (flag) {
     this->layers_verification_epoch_begin = true;
@@ -414,14 +466,15 @@ void CallbackTrace::callOnTrainingEnd() {
   this->losses_verification_epoch_end = false;
 }
 
-bool CallbackTrace::verifyLayerCallbackSetup(std::vector<Layer *> &layers) {
+bool CallbackTrace::verifyLayerCallbackSetup(
+    const std::vector<tf::layer::layer_id> &layer_ids) {
   bool flag = true;
 
   // verify layers callback setup on epoch begin
   if (flag) {
-    for (Layer *layer : std::views::keys(layers_on_epoch_begin)) {
-      auto idx = std::find(layers.begin(), layers.end(), layer);
-      if (idx == layers.end()) {
+    for (tf::layer::layer_id id : std::views::keys(layers_on_epoch_begin)) {
+      auto idx = std::find(layer_ids.begin(), layer_ids.end(), id);
+      if (idx == layer_ids.end()) {
         flag = false;
         std::cerr
             << "Callback set up for layers epoch begin not matching with the "
@@ -433,9 +486,9 @@ bool CallbackTrace::verifyLayerCallbackSetup(std::vector<Layer *> &layers) {
 
   // verify layers callback setup on epoch end
   if (flag) {
-    for (Layer *layer : std::views::keys(layers_on_epoch_end)) {
-      auto idx = std::find(layers.begin(), layers.end(), layer);
-      if (idx == layers.end()) {
+    for (tf::layer::layer_id id : std::views::keys(layers_on_epoch_end)) {
+      auto idx = std::find(layer_ids.begin(), layer_ids.end(), id);
+      if (idx == layer_ids.end()) {
         flag = false;
         std::cerr
             << "Callback set up for layers at epoch end not matching with the "
@@ -447,9 +500,9 @@ bool CallbackTrace::verifyLayerCallbackSetup(std::vector<Layer *> &layers) {
 
   // verify layers callback setup on batch begin
   if (flag) {
-    for (Layer *layer : std::views::keys(layers_on_batch_begin)) {
-      auto idx = std::find(layers.begin(), layers.end(), layer);
-      if (idx == layers.end()) {
+    for (tf::layer::layer_id id : std::views::keys(layers_on_batch_begin)) {
+      auto idx = std::find(layer_ids.begin(), layer_ids.end(), id);
+      if (idx == layer_ids.end()) {
         flag = false;
         std::cerr << "Callback set up for layers at batch begin not matching "
                      "with the "
@@ -461,9 +514,9 @@ bool CallbackTrace::verifyLayerCallbackSetup(std::vector<Layer *> &layers) {
 
   // verify layers callback setup on batch end
   if (flag) {
-    for (Layer *layer : std::views::keys(layers_on_batch_end)) {
-      auto idx = std::find(layers.begin(), layers.end(), layer);
-      if (idx == layers.end()) {
+    for (tf::layer::layer_id id : std::views::keys(layers_on_batch_end)) {
+      auto idx = std::find(layer_ids.begin(), layer_ids.end(), id);
+      if (idx == layer_ids.end()) {
         flag = false;
         std::cerr
             << "Callback set up for layers at batch end not matching with the "

@@ -4,6 +4,7 @@
 // C++ Headers
 
 // Library Headers
+#include "layer_enum.hpp"
 #include "layers.hpp"
 #include <api/tensor.h>
 
@@ -37,8 +38,6 @@ class Dense : public Layer {
   bool isBackwardGraphCreated;
   bool isGradRecorded;
 
-  LayerType layer_type;
-
   unsigned batch_size;
   unsigned no_of_unit;
   unsigned no_of_features;
@@ -50,7 +49,6 @@ class Dense : public Layer {
   tf::tensor bias;
   tf::tensor matmul_result;
   tf::tensor output;
-  const tf::tensor *training_inputs; // not own by dense layer
   tf::tensor training_weight;
   tf::tensor training_bias;
   tf::tensor training_matmul_result;
@@ -92,15 +90,13 @@ public:
 
   void backward(Optimizer *optimizer) override;
 
-  std::vector<const Tensor<std::float64_t> *> &getInputTensors() override;
-
   const std::vector<tf::tensor *> &getOutputTensors() override;
 
   std::vector<const tf::tensor *> getInputTrainingTensors();
 
   const std::vector<tf::tensor *> &getOutputTrainingTensors();
 
-  LayerType getLayerType();
+  std::string_view type() const override;
 
   void setWeightInitializationMethod(InitializationMethod initilization_method);
 
@@ -110,8 +106,11 @@ public:
 
   void setBias(const tf::tensor &bias_tensor);
 
-  std::vector<tf::tensor *> getLayerParameter(Layer_Parameter layer_parameter,
-                                              bool print_flag = false) override;
+  std::vector<tf::tensor *>
+  getLayerParameter(std::string_view layer_parameter,
+                    bool print_flag = false) override;
+
+  std::unordered_set<std::string> parameterNames() const override;
 
   void initializeParameters() override;
 };
