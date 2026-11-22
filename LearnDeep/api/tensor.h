@@ -166,6 +166,9 @@ using LossParameterValue =
     std::variant<unsigned, double, std::string, tf::tensor,
                  std::vector<Tensor<std::float64_t> *>, std::vector<double>>;
 
+using OptimizerParameterValue =
+    std::variant<unsigned, double, std::string, tf::tensor>;
+
 typedef struct graph_context {
 private:
   GraphContext *graph_ctx;
@@ -401,6 +404,55 @@ bool registerBehavior(std::string_view name, behavior_factory factory,
 tf::tensor gradient_of(tf::tensor &input);
 
 } // namespace loss
+
+namespace optimizer {
+
+using optimizer_id = std::uint64_t;
+inline constexpr optimizer_id invalid_optimizer_id = 0;
+
+namespace type {
+inline constexpr std::string_view sgd{"sgd"};
+} // namespace type
+
+namespace parameter {
+inline constexpr std::string_view learning_rate{"learning_rate"};
+} // namespace parameter
+
+// Public optimizer configuration. This is the canonical type used by both the
+// internal registry and future out-of-tree optimizer plugins.
+struct config {
+  std::unordered_map<std::string, OptimizerParameterValue> values;
+
+  bool empty() const { return values.empty(); }
+
+  bool has(const std::string &key) const { return values.count(key) != 0; }
+
+  const OptimizerParameterValue *get(const std::string &key) const {
+    auto it = values.find(key);
+    return it == values.end() ? nullptr : &it->second;
+  }
+
+  OptimizerParameterValue *get(const std::string &key) {
+    auto it = values.find(key);
+    return it == values.end() ? nullptr : &it->second;
+  }
+
+  void set(std::string key, OptimizerParameterValue value) {
+    values.insert_or_assign(std::move(key), std::move(value));
+  }
+
+  template <typename T> const T *getAs(const std::string &key) const {
+    const OptimizerParameterValue *value = get(key);
+    return value ? std::get_if<T>(value) : nullptr;
+  }
+
+  config &with(std::string key, OptimizerParameterValue value) {
+    set(std::move(key), std::move(value));
+    return *this;
+  }
+};
+
+} // namespace optimizer
 } // namespace tf
 
 // Public self-registration macro. A plugin supplies a behavior_factory (and
@@ -423,6 +475,7 @@ tf::tensor gradient_of(tf::tensor &input);
   } // namespace
 
 using LossConfig = tf::loss::config;
+using OptimizerConfig = tf::optimizer::config;
 
 namespace tf {
 namespace loss {
@@ -671,21 +724,58 @@ public:
   std::vector<tf::loss::loss_id> get_losses();
 
 } model;
-typedef struct optimizer {
+namespace optimizer {
+
+// Shared-owning handle to an optimizer created through OptimizerRegistry.
+// Invalid handles are safe no-ops for every operation.
+class optimizer {
 private:
-  OptimizerType optimizer_type;
-  Optimizer *optimizer_ptr;
+  std::shared_ptr<Optimizer> optimizer_ptr_;
 
 public:
   optimizer() = default;
 
+  // String-key construction is the canonical entry point.
+  optimizer(std::string_view type_name);
+  optimizer(std::string_view type_name, const config &cfg);
+
+  // Temporary bridge kept for Phase 1 so existing enum call sites continue to
+  // compile. It will be removed when OptimizerType is migrated in Phase 2.
   optimizer(OptimizerType optimizer_type);
 
-  Optimizer *getPtr();
+  // Internal: wrap a registry-owned optimizer without creating a new instance.
+  explicit optimizer(std::shared_ptr<Optimizer> owned);
 
+  virtual ~optimizer() = default;
+
+  void create_parameter_update_graph(tf::tensor param, tf::tensor &update_param,
+                                     tf::tensor gradient_param);
+
+  void execute();
+
+  // Deprecated alias retained until Model routing is migrated in Phase 3.
   void execute_optimizer();
 
-} optimizer;
+  std::unordered_set<std::string> parameterNames() const;
+
+  std::vector<tf::tensor> getParameter(std::string_view name) const;
+
+  void setParameter(std::string_view name,
+                    const OptimizerParameterValue &value);
+
+  std::string_view type() const;
+
+  optimizer_id id() const;
+
+  bool valid() const;
+
+  explicit operator bool() const;
+
+  // Temporary Phase 1 bridge for Layer::backward; removed in Phase 3.
+  Optimizer *getPtr() const;
+};
+
+} // namespace optimizer
 
 typedef struct metric {
 

@@ -621,7 +621,7 @@ void Model::shuffle(bool shuffle) { this->shuffle_input = shuffle; }
 
 void Model::compile(const OptimizerType optimizer_type,
                     const std::string_view loss_type) {
-  this->optimizer = tf::optimizer(optimizer_type);
+  this->optimizer = tf::optimizer::optimizer(optimizer_type);
 
   const std::string type_name(loss_type);
   if (!LossRegistry::instance().contains(type_name)) {

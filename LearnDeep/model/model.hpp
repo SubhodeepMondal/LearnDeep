@@ -48,7 +48,7 @@ private:
 
   std::shared_ptr<Layer> lockLayer(tf::layer::layer_id id) const;
 
-  tf::optimizer optimizer;
+  tf::optimizer::optimizer optimizer;
 
   // Losses are owned through the registry and referenced everywhere else by
   // their stable id. This removes dangling raw pointers from callbacks while

@@ -14,8 +14,9 @@
 #include <model/model.hpp>
 #include <numeric>
 #include <optional>
-#include <optimizers/optimizers.hpp>
+#include <optimizers/optimizer_registry.hpp>
 #include <unordered_map>
+#include <utility>
 
 class CallbackTrace;
 class CallbackEarlyStopping;
@@ -41,6 +42,16 @@ LayerConfig config_with(const std::string &key, unsigned value) {
   LayerConfig config;
   config.set(key, value);
   return config;
+}
+
+std::string_view optimizerTypeKey(OptimizerType optimizer_type) {
+  switch (optimizer_type) {
+  case OptimizerType::sgd:
+  case OptimizerType::SGD:
+    return tf::optimizer::type::sgd;
+  default:
+    throw std::invalid_argument("Unsupported optimizer type");
+  }
 }
 
 } // namespace
@@ -1039,19 +1050,74 @@ void tf::history_container::record_history_on_epoch_end(
 // --- End History ---
 
 // --- Optimizer ---
-tf::optimizer::optimizer(OptimizerType optimizerType) {
-  switch (optimizerType) {
-  case (OptimizerType::SGD): {
-    this->optimizer_ptr = new SGD();
-    break;
-  }
-  }
+tf::optimizer::optimizer::optimizer(std::string_view type_name)
+    : optimizer(OptimizerRegistry::instance().create(std::string(type_name))) {}
+
+tf::optimizer::optimizer::optimizer(std::string_view type_name,
+                                    const config &cfg)
+    : optimizer(
+          OptimizerRegistry::instance().create(std::string(type_name), cfg)) {}
+
+tf::optimizer::optimizer::optimizer(OptimizerType optimizer_type)
+    : optimizer(optimizerTypeKey(optimizer_type)) {}
+
+tf::optimizer::optimizer::optimizer(std::shared_ptr<Optimizer> owned)
+    : optimizer_ptr_(std::move(owned)) {}
+
+void tf::optimizer::optimizer::create_parameter_update_graph(
+    tf::tensor param, tf::tensor &update_param, tf::tensor gradient_param) {
+  OptimizerRegistry::instance().createParameterUpdateGraph(
+      this->optimizer_ptr_, std::move(param), update_param,
+      std::move(gradient_param));
 }
 
-Optimizer *tf::optimizer::getPtr() { return optimizer_ptr; }
+void tf::optimizer::optimizer::execute() {
+  OptimizerRegistry::instance().execute(this->optimizer_ptr_);
+}
 
-void tf::optimizer::execute_optimizer() {
-  this->optimizer_ptr->executeOptimizer();
+void tf::optimizer::optimizer::execute_optimizer() { this->execute(); }
+
+std::unordered_set<std::string>
+tf::optimizer::optimizer::parameterNames() const {
+  return OptimizerRegistry::instance().optimizerParameterNames(
+      this->optimizer_ptr_);
+}
+
+std::vector<tf::tensor>
+tf::optimizer::optimizer::getParameter(std::string_view name) const {
+  return OptimizerRegistry::instance().optimizerParameters(this->optimizer_ptr_,
+                                                          name);
+}
+
+void tf::optimizer::optimizer::setParameter(
+    std::string_view name, const OptimizerParameterValue &value) {
+  if (!this->optimizer_ptr_)
+    return;
+  // Dispatch on the canonical type rather than the construction key so that
+  // alias-registered optimizers find their registered setter.
+  OptimizerRegistry::instance().setParameter(std::string(this->type()),
+                                             this->optimizer_ptr_,
+                                             std::string(name), value);
+}
+
+std::string_view tf::optimizer::optimizer::type() const {
+  return OptimizerRegistry::instance().typeOf(this->optimizer_ptr_);
+}
+
+tf::optimizer::optimizer_id tf::optimizer::optimizer::id() const {
+  return OptimizerRegistry::instance().idOf(this->optimizer_ptr_);
+}
+
+bool tf::optimizer::optimizer::valid() const {
+  return static_cast<bool>(*this);
+}
+
+tf::optimizer::optimizer::operator bool() const {
+  return static_cast<bool>(this->optimizer_ptr_);
+}
+
+Optimizer *tf::optimizer::optimizer::getPtr() const {
+  return OptimizerRegistry::instance().pointer(this->optimizer_ptr_);
 }
 // --- End Optimizer ---
 
