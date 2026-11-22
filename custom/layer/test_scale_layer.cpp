@@ -20,7 +20,7 @@ void TestScaleLayer::setScale(double scale) {
 
 const std::vector<tf::tensor *> &
 TestScaleLayer::operator()(std::vector<tf::tensor> input_tensors) {
-  this->layer_inputs.clear();
+  this->recordInputTensors(input_tensors);
   this->layer_outputs.clear();
 
   if (input_tensors.size() != 1) {
@@ -28,7 +28,6 @@ TestScaleLayer::operator()(std::vector<tf::tensor> input_tensors) {
     return this->layer_outputs;
   }
 
-  this->layer_inputs.push_back(input_tensors[0].getPtr());
   std::vector<unsigned> dims;
   for (unsigned i = 0; i < input_tensors[0].getNoOfDimensions(); ++i)
     dims.push_back(input_tensors[0].getDimensions()[i]);
@@ -43,19 +42,16 @@ const std::vector<tf::tensor *> &
 TestScaleLayer::forward(std::vector<const tf::tensor *> &input,
                         unsigned batch_size) {
   (void)batch_size;
-  this->training_input_ = nullptr;
   this->training_outputs_.clear();
+  this->recordTrainingInputs(input);
 
-  if (input.size() != 1 || !input[0]) {
+  if (input.size() != 1 || this->training_input_aliases.empty()) {
     std::cerr << "TestScaleLayer expects exactly one input tensor.\n";
     return this->training_outputs_;
   }
 
-  this->training_input_ = input[0];
-  // tf::tensor::scale is non-const, while the framework hands training inputs
-  // over as const pointers (the built-in layers do the same in backward()).
-  this->training_output_ =
-      const_cast<tf::tensor *>(this->training_input_)->scale(this->scale_);
+  tf::tensor *training_input = &this->training_input_aliases.front();
+  this->training_output_ = training_input->scale(this->scale_);
   this->training_outputs_.push_back(&this->training_output_);
   return this->training_outputs_;
 }
@@ -71,21 +67,17 @@ TestScaleLayer::calculate(std::vector<tf::tensor> inputs) {
 }
 
 void TestScaleLayer::backward(Optimizer *) {
-  if (!this->training_input_)
+  if (this->training_input_aliases.empty())
     return;
 
   Graph *graph = GraphManager::instance().getCurrentGraph();
   if (!graph)
     return;
 
+  const tf::tensor *training_input = &this->training_input_aliases.front();
   this->grad_input_ =
-      tf::tensor(this->training_input_->dt_type,
-                 graph->getGradientTensor(this->training_input_->getPtr()));
-}
-
-std::vector<const Tensor<std::float64_t> *> &
-TestScaleLayer::getInputTensors() {
-  return this->layer_inputs;
+      tf::tensor(training_input->dt_type,
+                 graph->getGradientTensor(training_input->getPtr()));
 }
 
 const std::vector<tf::tensor *> &TestScaleLayer::getOutputTensors() {
@@ -93,7 +85,7 @@ const std::vector<tf::tensor *> &TestScaleLayer::getOutputTensors() {
 }
 
 std::vector<const tf::tensor *> TestScaleLayer::getInputTrainingTensors() {
-  return {this->training_input_};
+  return this->getTrainingInputAliases();
 }
 
 const std::vector<tf::tensor *> &TestScaleLayer::getOutputTrainingTensors() {
@@ -106,8 +98,12 @@ std::vector<tf::tensor *>
 TestScaleLayer::getLayerParameter(std::string_view layer_parameter, bool) {
   if (layer_parameter == "scale")
     return {&this->scale_tensor_};
-  if (layer_parameter == tf::layer::parameter::training_input)
-    return {const_cast<tf::tensor *>(this->training_input_)};
+  if (layer_parameter == tf::layer::parameter::training_input) {
+    std::vector<tf::tensor *> aliases;
+    for (const tf::tensor *alias : this->getTrainingInputAliases())
+      aliases.push_back(const_cast<tf::tensor *>(alias));
+    return aliases;
+  }
   if (layer_parameter == tf::layer::parameter::training_output)
     return this->training_outputs_;
   if (layer_parameter == tf::layer::parameter::grad_input)

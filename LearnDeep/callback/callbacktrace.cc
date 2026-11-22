@@ -10,6 +10,23 @@
 #include <losses/loss.hpp>
 #include <vector>
 
+namespace {
+
+using LayerRegistrationMap =
+    std::unordered_map<tf::layer::layer_id,
+                       std::vector<std::pair<std::string, bool>>>;
+
+void eraseDeadLayerIds(LayerRegistrationMap &registrations) {
+  for (auto it = registrations.begin(); it != registrations.end();) {
+    if (!global_layer_graph.contains(it->first))
+      it = registrations.erase(it);
+    else
+      ++it;
+  }
+}
+
+} // namespace
+
 CallbackTrace::CallbackTrace(unsigned callback_level) {
   this->callback_level = callback_level;
 }
@@ -412,7 +429,18 @@ void CallbackTrace::callOnBatchEnd(unsigned const epoch_no) {
   }
 }
 
+void CallbackTrace::pruneStaleLayerIds() {
+  // Phase 3 made layer ownership shared: a handle can die after a callback
+  // recorded its id. Drop those registrations so dead layers cannot block
+  // training, while still rejecting live layers that belong to another model.
+  eraseDeadLayerIds(this->layers_on_epoch_begin);
+  eraseDeadLayerIds(this->layers_on_epoch_end);
+  eraseDeadLayerIds(this->layers_on_batch_begin);
+  eraseDeadLayerIds(this->layers_on_batch_end);
+}
+
 bool CallbackTrace::callOnTrainingBegin(tf::model &model) {
+  this->pruneStaleLayerIds();
   bool flag = this->verifyLayerCallbackSetup(model.get_layers());
   if (flag) {
     this->layers_verification_epoch_begin = true;

@@ -51,10 +51,9 @@ std::vector<tf::layer::layer_id> LayerGraph::getLayersOfIncomingTensor(
     if (!layer)
       continue;
 
-    if (std::ranges::contains(layer->getInputTensors(), tensor)) {
+    // A tensor may feed more than one layer; every consumer must be reported.
+    if (std::ranges::contains(layer->getInputTensors(), tensor))
       layers_with_incoming_tensor.push_back(id);
-      break;
-    }
   }
   return layers_with_incoming_tensor;
 }
@@ -76,14 +75,4 @@ tf::layer::layer_id LayerGraph::getLayerOfOutgoingTensor(
       return id;
   }
   return tf::layer::invalid_layer_id;
-}
-
-std::vector<tf::layer::layer_id> LayerGraph::getAllLayerIds() {
-  this->prune();
-
-  std::vector<tf::layer::layer_id> ids;
-  ids.reserve(layers.size());
-  for (const auto &[id, weak_layer] : layers)
-    ids.push_back(id);
-  return ids;
 }

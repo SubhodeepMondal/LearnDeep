@@ -24,26 +24,6 @@ std::unordered_set<Tensor<std::float64_t> *> tf::tensor_to_be_spared;
 
 namespace {
 
-void store_input_aliases(std::vector<tf::tensor> &aliases,
-                         const std::vector<tf::tensor> &inputs) {
-  aliases.clear();
-  aliases.reserve(inputs.size());
-
-  for (const tf::tensor &input : inputs)
-    aliases.push_back(input);
-}
-
-std::vector<const tf::tensor *>
-input_alias_ptrs(const std::vector<tf::tensor> &aliases) {
-  std::vector<const tf::tensor *> inputs;
-  inputs.reserve(aliases.size());
-
-  for (const tf::tensor &alias : aliases)
-    inputs.push_back(&alias);
-
-  return inputs;
-}
-
 std::vector<tf::tensor>
 copy_output_tensors(const std::vector<tf::tensor *> &tensors) {
   std::vector<tf::tensor> copies;
@@ -594,37 +574,38 @@ tf::layer::layer::layer() = default;
 tf::layer::layer::layer(std::string_view type_name)
     : layer(type_name, LayerConfig{}) {}
 
-tf::layer::layer::layer(std::string_view type_name, const LayerConfig &config)
-    : type_name_(type_name) {
+tf::layer::layer::layer(std::string_view type_name, const LayerConfig &config) {
   this->layer_ptr =
       LayerRegistry::instance().create(std::string(type_name), config);
-  if (!this->layer_ptr)
-    this->type_name_.clear();
 }
 
 tf::layer::layer::~layer() = default;
 
+std::vector<const tf::tensor *> tf::layer::layer::input_tensor_aliases() const {
+  if (!this->layer_ptr)
+    return {};
+  return this->layer_ptr->getInputTensorAliases();
+}
+
 std::vector<tf::tensor>
 tf::layer::layer::operator()(const std::vector<tf::tensor> &inputs) {
-  store_input_aliases(this->input_aliases, inputs);
-
   if (!this->layer_ptr)
     return {};
 
+  this->layer_ptr->recordInputTensors(inputs);
   return copy_output_tensors((*this->layer_ptr)(inputs));
 }
 
 std::vector<tf::tensor>
 tf::layer::layer::forward(const std::vector<tf::tensor> &inputs,
                           unsigned batch_size) {
-  store_input_aliases(this->input_aliases, inputs);
-
   if (!this->layer_ptr)
     return {};
 
+  this->layer_ptr->recordInputTensors(inputs);
   std::vector<const tf::tensor *> raw_inputs;
-  raw_inputs.reserve(this->input_aliases.size());
-  for (const tf::tensor &input : this->input_aliases)
+  raw_inputs.reserve(inputs.size());
+  for (const tf::tensor &input : inputs)
     raw_inputs.push_back(&input);
 
   return copy_output_tensors(this->layer_ptr->forward(raw_inputs, batch_size));
@@ -632,11 +613,10 @@ tf::layer::layer::forward(const std::vector<tf::tensor> &inputs,
 
 std::vector<tf::tensor>
 tf::layer::layer::calculate(std::vector<tf::tensor> inputs) {
-  store_input_aliases(this->input_aliases, inputs);
-
   if (!this->layer_ptr)
     return {};
 
+  this->layer_ptr->recordInputTensors(inputs);
   return this->layer_ptr->calculate(inputs);
 }
 
@@ -665,11 +645,16 @@ void tf::layer::layer::setParameter(std::string_view name,
   if (!this->layer_ptr)
     return;
 
-  LayerRegistry::instance().setParameter(this->type_name_, this->layer_ptr,
-                                         std::string(name), value);
+  // Dispatch on the layer's canonical type, not the registry key used to
+  // construct the handle: aliases must still find their registered setter.
+  LayerRegistry::instance().setParameter(std::string(this->layer_ptr->type()),
+                                         this->layer_ptr, std::string(name),
+                                         value);
 }
 
-std::string_view tf::layer::layer::type() const { return this->type_name_; }
+std::string_view tf::layer::layer::type() const {
+  return this->layer_ptr ? this->layer_ptr->type() : std::string_view{};
+}
 
 tf::layer::layer::operator bool() const {
   return static_cast<bool>(this->layer_ptr);
@@ -691,7 +676,7 @@ tf::layer::dense::dense(unsigned unit)
 tf::layer::dense::~dense() = default;
 
 std::vector<const tf::tensor *> tf::layer::dense::get_input_tensors() {
-  return input_alias_ptrs(this->input_aliases);
+  return this->input_tensor_aliases();
 }
 
 std::vector<tf::tensor> tf::layer::dense::get_output_tensors() {
@@ -733,7 +718,7 @@ tf::layer::relu::relu() : layer(tf::layer::type::relu) {}
 tf::layer::relu::~relu() = default;
 
 std::vector<const tf::tensor *> tf::layer::relu::get_input_tensors() {
-  return input_alias_ptrs(this->input_aliases);
+  return this->input_tensor_aliases();
 }
 
 std::vector<tf::tensor> tf::layer::relu::get_output_tensors() {
@@ -750,7 +735,7 @@ tf::layer::softmax::softmax(unsigned axis)
 tf::layer::softmax::~softmax() = default;
 
 std::vector<const tf::tensor *> tf::layer::softmax::get_input_tensors() {
-  return input_alias_ptrs(this->input_aliases);
+  return this->input_tensor_aliases();
 }
 
 std::vector<tf::tensor> tf::layer::softmax::get_output_tensors() {

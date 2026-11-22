@@ -216,12 +216,11 @@ inline constexpr std::string_view updated_bias{"updated_bias"};
 class layer {
 private:
   std::shared_ptr<Layer> layer_ptr;
-  std::string type_name_;
 
 protected:
-  // Non-owning API-facing aliases of the most recent inputs. Pointers returned
-  // by get_input_tensors() refer to elements of this vector.
-  std::vector<tf::tensor> input_aliases;
+  // Pointers into the owning layer's alias storage. The handle itself keeps no
+  // input state, so these cannot dangle and cannot go stale during training.
+  std::vector<const tf::tensor *> input_tensor_aliases() const;
 
 public:
   layer();

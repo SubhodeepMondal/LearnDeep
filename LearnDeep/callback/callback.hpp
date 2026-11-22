@@ -93,6 +93,8 @@ class CallbackTrace : public Callback {
                          std::vector<std::vector<std::vector<tf::tensor *>>>>>
       layer_parameter_on_batch_end;
 
+  void pruneStaleLayerIds();
+
   bool
   verifyLayerCallbackSetup(const std::vector<tf::layer::layer_id> &layer_ids);
 

@@ -14,12 +14,12 @@ LayerRegistry &LayerRegistry::instance() {
 bool LayerRegistry::registerLayer(const std::string &name, Factory factory,
                                   ParameterSetter setter) {
   if (name.empty() || !factory) {
-    LOG(ERROR) << "Fatal! Layer registration requires a name and a factory.\n";
+    LOG(ERROR) << "Layer registration requires a name and a factory.\n";
     return false;
   }
 
   if (layer_names_.count(name)) {
-    LOG(ERROR) << "Fatal! Layer type '" << name << "' is already registered.\n";
+    LOG(ERROR) << "Layer type '" << name << "' is already registered.\n";
     return false;
   }
 
@@ -34,13 +34,13 @@ LayerRegistry::LayerHandle
 LayerRegistry::create(const std::string &name, const LayerConfig &config) const {
   auto factory = factories_.find(name);
   if (factory == factories_.end()) {
-    LOG(ERROR) << "Fatal! Unknown layer type '" << name << "'.\n";
+    LOG(ERROR) << "Unknown layer type '" << name << "'.\n";
     return nullptr;
   }
 
   std::unique_ptr<Layer> created = factory->second(config);
   if (!created) {
-    LOG(ERROR) << "Fatal! Failed to create layer type '" << name << "'.\n";
+    LOG(ERROR) << "Failed to create layer type '" << name << "'.\n";
     return nullptr;
   }
 
@@ -62,7 +62,7 @@ bool LayerRegistry::setParameter(const std::string &name,
   auto setter = parameter_setters_.find(name);
   if (!layer || setter == parameter_setters_.end() ||
       !setter->second(layer, parameter, value)) {
-    LOG(ERROR) << "Fatal! Parameter '" << parameter
+    LOG(ERROR) << "Parameter '" << parameter
                << "' is not settable for layer type '" << name << "'.\n";
     return false;
   }

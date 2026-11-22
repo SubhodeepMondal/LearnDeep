@@ -4,6 +4,7 @@
 // C++ Headers
 #include <functional>
 #include <memory>
+#include <stdexcept>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -82,8 +83,13 @@ private:
 
 #define REGISTER_LAYER(name, ...)                                              \
   namespace {                                                                  \
-  const bool LD_CONCAT(layer_registration_, __LINE__) =                        \
-      LayerRegistry::instance().registerLayer((name), __VA_ARGS__);            \
+  [[maybe_unused]] const bool LD_CONCAT(layer_registration_, __LINE__) =        \
+      [] {                                                                     \
+        const std::string layer_name = (name);                                 \
+        if (!LayerRegistry::instance().registerLayer(layer_name, __VA_ARGS__))  \
+          throw std::runtime_error("Failed to register layer: " + layer_name); \
+        return true;                                                           \
+      }();                                                                     \
   } // namespace
 
 #endif // _TENSORFLOW_LAYER_REGISTRY_

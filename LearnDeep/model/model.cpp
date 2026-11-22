@@ -411,7 +411,6 @@ std::vector<const Tensor<std::float64_t> *> Model::getLayersNBackTrackInputs(
   return validation_inputs;
 }
 
-void Model::initializeLayerGraph() {}
 /** this subroutine at creates a unordered map of layer-&-tensor where it
  * identifies the layers associated with inputs (i.e input layers) then creates
  * a layer-tensor map */

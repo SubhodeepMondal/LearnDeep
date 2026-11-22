@@ -58,18 +58,14 @@ Dense::Dense(unsigned unit)
       };
 
 // ---Destructor
-Dense::~Dense() {
-  this->layer_inputs.clear();
-  this->layer_outputs.clear();
-}
+Dense::~Dense() { this->layer_outputs.clear(); }
 
 const std::vector<tf::tensor *> &
 Dense::operator()(std::vector<tf::tensor> input_tensors) {
 
   // do a lazy initialization
+  this->recordInputTensors(input_tensors);
   if (input_tensors.size() == 1) {
-    this->layer_inputs.push_back(input_tensors[0].getPtr());
-
     if (input_tensors[0].getNoOfDimensions() != 2) {
       LOG(ERROR)
           << "Fatal! Dense: Layer expects rank of 2, here input has rank of "
@@ -100,12 +96,12 @@ Dense::operator()(std::vector<tf::tensor> input_tensors) {
 
 const std::vector<tf::tensor *> &
 Dense::forward(std::vector<const tf::tensor *> &input, unsigned batch_size) {
-  if (input.size() == 1) {
-    if (input[0]->getPtr()->getNoOfDimensions() == 2) {
-      this->no_of_features = input[0]->getPtr()->getDimensions()[0];
+  this->recordTrainingInputs(input);
+  if (input.size() == 1 && !this->training_input_aliases.empty()) {
+    tf::tensor *training_inputs = &this->training_input_aliases.front();
+    if (training_inputs->getPtr()->getNoOfDimensions() == 2) {
+      this->no_of_features = training_inputs->getDimensions()[0];
       this->batch_size = batch_size;
-
-      this->training_inputs = input[0];
 
       std::vector<unsigned> arr(2);
       arr[0] = this->no_of_unit;
@@ -128,7 +124,7 @@ Dense::forward(std::vector<const tf::tensor *> &input, unsigned batch_size) {
     } else {
       LOG(ERROR)
           << "Fatal! Dense: Layer expects rank of 2, here input has rank of "
-          << input[0]->getPtr()->getNoOfDimensions() << ".\n";
+          << training_inputs->getPtr()->getNoOfDimensions() << ".\n";
     }
   } else {
     LOG(ERROR) << "Fatal! Dense: Layer expects only one input tensors but here "
@@ -149,8 +145,9 @@ std::vector<tf::tensor> Dense::calculate(std::vector<tf::tensor> inputs) {
 }
 
 void Dense::backward(Optimizer *optimizer) {
-  if (!this->isGradRecorded) {
+  if (!this->isGradRecorded && !this->training_input_aliases.empty()) {
 
+    tf::tensor *training_inputs = &this->training_input_aliases.front();
     Graph *g = GraphManager::instance().getCurrentGraph();
     this->grad_weight =
         tf::tensor(this->grad_weight.dt_type,
@@ -159,10 +156,10 @@ void Dense::backward(Optimizer *optimizer) {
         tf::tensor(this->grad_bias.dt_type,
                    g->getGradientTensor(this->training_bias.getPtr()));
     this->grad_input =
-        tf::tensor(this->training_inputs->dt_type,
-                   g->getGradientTensor(this->training_inputs->getPtr()));
+        tf::tensor(training_inputs->dt_type,
+                   g->getGradientTensor(training_inputs->getPtr()));
     this->incoming_grad =
-        tf::tensor(this->training_inputs->dt_type,
+        tf::tensor(training_inputs->dt_type,
                    g->getGradientTensor(this->training_output.getPtr()));
     optimizer->createParameterUpdateGraph(
         this->training_weight, this->updated_weight, this->grad_weight);
@@ -174,16 +171,12 @@ void Dense::backward(Optimizer *optimizer) {
 
 std::string_view Dense::type() const { return tf::layer::type::dense; }
 
-std::vector<const Tensor<std::float64_t> *> &Dense::getInputTensors() {
-  return this->layer_inputs;
-}
-
 const std::vector<tf::tensor *> &Dense::getOutputTensors() {
   return this->layer_outputs;
 }
 
 std::vector<const tf::tensor *> Dense::getInputTrainingTensors() {
-  return {this->training_inputs};
+  return this->getTrainingInputAliases();
 }
 
 const std::vector<tf::tensor *> &Dense::getOutputTrainingTensors() {
@@ -257,8 +250,8 @@ Dense::getLayerParameter(std::string_view layer_parameter, bool print_flag) {
     layer_parameter_tensor = this->layer_outputs;
   } else if (layer_parameter == training_input) {
     LOG(INFO) << "Layer: Dense, training input:\n";
-    layer_parameter_tensor.push_back(
-        const_cast<tf::tensor *>(this->training_inputs));
+    for (const tf::tensor *training_input : this->getTrainingInputAliases())
+      layer_parameter_tensor.push_back(const_cast<tf::tensor *>(training_input));
   } else if (layer_parameter == training_weight) {
     LOG(INFO) << "Layer: Dense, training weight:\n";
     layer_parameter_tensor.push_back(&this->training_weight);

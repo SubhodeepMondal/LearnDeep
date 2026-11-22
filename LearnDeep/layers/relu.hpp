@@ -14,7 +14,6 @@ class Relu : public Layer {
   bool isBackwardGraphCreated;
   bool isGradRecorded;
 
-  const tf::tensor *training_inputs;
   tf::tensor grad_input;
   tf::tensor output;
   tf::tensor training_output;
@@ -44,8 +43,6 @@ public:
   std::vector<tf::tensor> calculate(std::vector<tf::tensor> inputs) override;
 
   void backward(Optimizer *optimizer) override;
-
-  std::vector<const Tensor<std::float64_t> *> &getInputTensors() override;
 
   const std::vector<tf::tensor *> &getOutputTensors() override;
 

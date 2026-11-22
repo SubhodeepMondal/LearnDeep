@@ -110,8 +110,6 @@ private:
 
   void doTensorAndLayerMappings();
 
-  void initializeLayerGraph();
-
   void
   initilizeInputsForTraining(const std::vector<tf::tensor> &training_inputs);
 

@@ -18,7 +18,6 @@ class TestScaleLayer : public Layer {
   tf::tensor training_output_;
   tf::tensor grad_input_;
   std::vector<tf::tensor *> training_outputs_;
-  const tf::tensor *training_input_{nullptr};
 
 public:
   explicit TestScaleLayer(double scale = 1.0);
@@ -36,8 +35,6 @@ public:
 
   const std::vector<tf::tensor *> &
   operator()(std::vector<tf::tensor> input_tensors) override;
-
-  std::vector<const Tensor<std::float64_t> *> &getInputTensors() override;
 
   const std::vector<tf::tensor *> &getOutputTensors() override;
 

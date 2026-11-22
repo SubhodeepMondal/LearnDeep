@@ -49,7 +49,6 @@ class Dense : public Layer {
   tf::tensor bias;
   tf::tensor matmul_result;
   tf::tensor output;
-  const tf::tensor *training_inputs; // not own by dense layer
   tf::tensor training_weight;
   tf::tensor training_bias;
   tf::tensor training_matmul_result;
@@ -90,8 +89,6 @@ public:
   std::vector<tf::tensor> calculate(std::vector<tf::tensor> inputs) override;
 
   void backward(Optimizer *optimizer) override;
-
-  std::vector<const Tensor<std::float64_t> *> &getInputTensors() override;
 
   const std::vector<tf::tensor *> &getOutputTensors() override;
 

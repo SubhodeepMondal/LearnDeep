@@ -31,8 +31,6 @@ public:
 
   tf::layer::layer_id
   getLayerOfOutgoingTensor(const Tensor<std::float64_t> *tensor);
-
-  std::vector<tf::layer::layer_id> getAllLayerIds();
 };
 
 extern LayerGraph global_layer_graph;
