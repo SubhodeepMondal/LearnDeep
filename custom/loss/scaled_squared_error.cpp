@@ -59,7 +59,7 @@ ScaledSquaredError::ScaledSquaredError(
         "custom_scaled_mse expects at most one input tensor");
   }
   if (input_preds.size() == 1)
-    this->input_predicts.push_back(input_preds[0]);
+    this->recordInputs(input_preds);
   this->setScale(scale);
 }
 

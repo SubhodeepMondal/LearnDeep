@@ -22,13 +22,10 @@ std::string_view SquaredError::type() const {
   return tf::loss::type::squared_error;
 }
 
-SquaredError::~SquaredError() {}
-
 SquaredError::SquaredError(std::vector<Tensor<std::float64_t> *> input_preds,
                            std::string loss_name) {
-  if (input_preds.size() == 1) {
-    this->input_predicts.push_back(input_preds[0]);
-  } else {
+  this->recordInputs(input_preds);
+  if (this->input_aliases.size() != 1) {
     LOG(ERROR) << "Fata! SquaredError: expects only 1 input tensor but given, "
                << input_preds.size() << ".\n";
     throw std::runtime_error(
@@ -45,57 +42,46 @@ SquaredError::SquaredError(std::vector<Tensor<std::float64_t> *> input_preds,
 
 void SquaredError::forward(std::vector<tf::tensor *> inputs,
                            const unsigned batch_size) {
+  if (inputs.size() != 1)
+    return;
 
-  if (inputs.size() == 1) {
+  this->recordTrainingInputs(inputs);
+  tf::tensor &training_input = this->training_input_aliases[0];
 
-    this->training_inputs.push_back(inputs[0]);
+  std::vector<unsigned> dims;
+  const unsigned feature_dimension_count =
+      training_input.getNoOfDimensions() - 1;
+  for (unsigned i = 0; i < feature_dimension_count; ++i)
+    dims.push_back(training_input.getDimensions()[i]);
 
-    std::vector<unsigned> dims;
+  this->loss_tensor_batch.tf_create(dims, training_input.dt_type);
 
-    for (unsigned i = 0; i < this->training_inputs[0]->getNoOfDimensions() - 1;
-         i++)
-      dims.push_back(this->training_inputs[0]->getDimensions()[i]);
+  dims.push_back(batch_size);
+  this->target_aliases.clear();
+  this->target_aliases.emplace_back();
+  this->target_aliases.back().tf_create(dims, training_input.dt_type);
+  this->differences.tf_create(dims, training_input.dt_type);
+  this->loss_tensor.tf_create({1}, training_input.dt_type);
 
-    // Allocate batch-reduced tensor
-    this->loss_tensor_batch = new tf::tensor();
-    this->loss_tensor_batch->tf_create(dims, this->training_inputs[0]->dt_type);
+  this->differences = training_input.sub(this->target_aliases[0]);
+  this->loss_tensor_batch = this->differences.pow(2);
 
-    dims.push_back(batch_size);
+  // Reduce batch first, then all remaining feature dimensions.
+  this->loss_reduction_intermediates.clear();
+  this->loss_reduction_intermediates.push_back(
+      this->loss_tensor_batch.mean(feature_dimension_count));
 
-    this->target_outputs.push_back(new tf::tensor());
-    this->target_outputs[0]->tf_create(dims, this->training_inputs[0]->dt_type);
-
-    this->differences = new tf::tensor();
-    this->differences->tf_create(dims, this->training_inputs[0]->dt_type);
-
-    // Allocate final scalar loss tensor
-    this->loss_tensor = new tf::tensor();
-    this->loss_tensor->tf_create({1}, this->training_inputs[0]->dt_type);
-
-    *(this->differences) =
-        this->training_inputs[0]->sub(*(this->target_outputs[0]));
-
-    *(this->loss_tensor_batch) = this->differences->pow(2);
-
-    // Reduce batch first, then all remaining feature dimensions.
-    const unsigned feature_dimension_count =
-        this->training_inputs[0]->getNoOfDimensions() - 1;
-    this->loss_reduction_intermediates.clear();
-    this->loss_reduction_intermediates.push_back(
-        this->loss_tensor_batch->mean(feature_dimension_count));
-
-    for (unsigned i = 0; i < feature_dimension_count; ++i) {
-      tf::tensor reduced = this->loss_reduction_intermediates.back().mean(0);
-      if (i + 1 == feature_dimension_count) {
-        *(this->loss_tensor) = std::move(reduced);
-      } else {
-        this->loss_reduction_intermediates.push_back(std::move(reduced));
-      }
+  for (unsigned i = 0; i < feature_dimension_count; ++i) {
+    tf::tensor reduced = this->loss_reduction_intermediates.back().mean(0);
+    if (i + 1 == feature_dimension_count) {
+      this->loss_tensor = std::move(reduced);
+    } else {
+      this->loss_reduction_intermediates.push_back(std::move(reduced));
     }
-    if (feature_dimension_count == 0)
-      *(this->loss_tensor) =
-          std::move(this->loss_reduction_intermediates.back());
   }
+  if (feature_dimension_count == 0)
+    this->loss_tensor =
+        std::move(this->loss_reduction_intermediates.back());
 }
 
 void SquaredError::backward() {
@@ -105,8 +91,9 @@ void SquaredError::backward() {
     Graph *g = GraphManager::instance().getCurrentGraph();
     if (g)
       this->grad_training_inputs =
-          tf::tensor(this->training_inputs[0]->dt_type,
-                     g->getGradientTensor(this->training_inputs[0]->getPtr()));
+          tf::tensor(this->training_input_aliases[0].dt_type,
+                     g->getGradientTensor(
+                         this->training_input_aliases[0].getPtr()));
   }
 }
 
@@ -141,23 +128,20 @@ SquaredError::calculate(std::vector<tf::tensor> &predicted_output,
 
 void SquaredError::setPredictedOutput(
     const std::vector<tf::tensor *> &input_predicts) {
-  // this->input_predicts = input_predicts;
+  // Predictions are recorded through recordInputs()/forward().
 }
 
 void SquaredError::setTargetOutput(
     const std::vector<tf::tensor> output_targets) {
-  unsigned idx = 0;
-  if (this->input_predicts.size() == output_targets.size()) {
-    this->target_outputs[0]->tensor_of(output_targets[0].getData());
-  } else {
-    LOG(ERROR) << "Fatal! Espected No Of target outputs are: "
-               << this->input_predicts.size()
-               << ", but got:  " << output_targets.size() << "\n";
-  }
+  if (!this->target_aliases.empty() &&
+      output_targets.size() == this->target_aliases.size())
+    this->target_aliases[0].tensor_of(output_targets[0].getData());
 }
 
 std::float64_t const SquaredError::getScalerLoss() {
-  return this->loss_tensor->getData()[0];
+  if (!this->loss_tensor.getPtr())
+    return std::numeric_limits<std::float64_t>::max();
+  return this->loss_tensor.getData()[0];
 }
 
 std::vector<tf::tensor *>
@@ -168,12 +152,14 @@ SquaredError::getLossParameter(std::string_view loss_parameter) {
   using tf::loss::parameter::squared_error_target_output;
 
   if (loss_parameter == squared_error_predicted_output) {
-    temp_tensor.push_back(this->loss_tensor);
+    if (this->loss_tensor.getPtr())
+      temp_tensor.push_back(&this->loss_tensor);
   } else if (loss_parameter == squared_error_grad_predicted_output) {
-    temp_tensor.push_back(&this->grad_training_inputs);
+    if (this->grad_training_inputs.getPtr())
+      temp_tensor.push_back(&this->grad_training_inputs);
   } else if (loss_parameter == squared_error_target_output) {
-    if (!target_outputs.empty())
-      temp_tensor.push_back(target_outputs[0]);
+    if (!target_aliases.empty() && target_aliases[0].getPtr())
+      temp_tensor.push_back(&target_aliases[0]);
   } else {
     LOG(ERROR) << "Sever! the selected loss parameter '" << loss_parameter
                << "' is not available for squared error.\n";

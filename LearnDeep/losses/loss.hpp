@@ -19,7 +19,16 @@ private:
 protected:
   Loss();
 
-  std::vector<Tensor<std::float64_t> *> input_predicts; // not owning
+  // Owned alias objects. The underlying Tensor for prediction inputs is owned
+  // by the model, but the alias objects themselves live here so pointers handed
+  // to callbacks cannot dangle. Target and forward tensors are owned values.
+  std::vector<tf::tensor> input_aliases;
+  std::vector<tf::tensor> training_input_aliases;
+  std::vector<tf::tensor> target_aliases;
+
+  void recordInputs(const std::vector<Tensor<std::float64_t> *> &inputs);
+  void recordTrainingInputs(const std::vector<tf::tensor *> &inputs);
+
   std::float64_t prev_loss_value = std::numeric_limits<double>::max();
   std::float64_t loss_value = std::numeric_limits<double>::max();
   std::string loss_name;
@@ -63,14 +72,10 @@ public:
 };
 
 class SquaredError : public Loss {
-
-  std::vector<tf::tensor *> training_inputs;
-  std::vector<tf::tensor *> target_outputs;
   tf::tensor grad_training_inputs;
-  tf::tensor *differences{nullptr};
-  tf::tensor *loss_tensor_batch{nullptr};
-  tf::tensor *loss_tensor{nullptr};
-  tf::tensor *loss_gradient{nullptr};
+  tf::tensor differences;
+  tf::tensor loss_tensor_batch;
+  tf::tensor loss_tensor;
   std::vector<tf::tensor> loss_reduction_intermediates;
 
 public:
@@ -79,7 +84,7 @@ public:
   SquaredError(std::vector<Tensor<std::float64_t> *> input_preds,
                std::string loss_name = "mean_squared_loss");
 
-  ~SquaredError();
+  ~SquaredError() override = default;
 
   std::string_view type() const override;
 
@@ -107,16 +112,13 @@ public:
 
   std::string getLossName() override { return this->loss_name; }
 };
-class CategoricalCrossEntropy : public Loss {
 
-  std::vector<tf::tensor *> training_inputs;
-  std::vector<tf::tensor *> target_outputs;
+class CategoricalCrossEntropy : public Loss {
   tf::tensor grad_training_inputs;
-  tf::tensor *log_value{nullptr};
-  tf::tensor *log_difference{nullptr};
-  tf::tensor *loss_tensor_batch{nullptr};
-  tf::tensor *loss_tensor{nullptr};
-  tf::tensor *loss_gradient{nullptr};
+  tf::tensor log_value;
+  tf::tensor log_difference;
+  tf::tensor loss_tensor_batch;
+  tf::tensor loss_tensor;
 
 public:
   CategoricalCrossEntropy() = default;
@@ -124,7 +126,7 @@ public:
   CategoricalCrossEntropy(std::vector<Tensor<std::float64_t> *> input_preds,
                           std::string loss_name = "categorical_cross_entropy");
 
-  ~CategoricalCrossEntropy();
+  ~CategoricalCrossEntropy() override = default;
 
   std::string_view type() const override;
 
