@@ -193,15 +193,15 @@ TEST_F(FrameworkTest, ReluLayer_Test_1) {
   /* --- model creation --- */
   tf::model mymodel({x}, relu_output);
   mymodel.shuffle(false);
-  mymodel.compile(OptimizerType::SGD, LossType::squared_error);
+  mymodel.compile(OptimizerType::SGD, tf::loss::type::squared_error);
   /* --- end model creation --- */
 
-  tf::loss loss_sgd = mymodel.get_model_loss(relu_output[0]);
+  auto loss_sgd = mymodel.get_model_loss(relu_output[0]);
   call_back.record_tensor_loss_on_batch_end(
-      loss_sgd, Loss_Parameter::squared_error_predicted_output);
+      loss_sgd, tf::loss::parameter::squared_error_predicted_output);
 
   call_back.record_tensor_loss_on_batch_end(
-      loss_sgd, Loss_Parameter::squared_error_grad_predicted_output);
+      loss_sgd, tf::loss::parameter::squared_error_grad_predicted_output);
 
   call_back.record_scalar_loss_on_batch_end(loss_sgd);
 
@@ -230,10 +230,10 @@ TEST_F(FrameworkTest, ReluLayer_Test_1) {
       dense_1, "updated_bias");
 
   auto training_losses = call_back.get_tensor_loss_on_batch_end(
-      loss_sgd, Loss_Parameter::squared_error_predicted_output);
+      loss_sgd, tf::loss::parameter::squared_error_predicted_output);
 
   auto grad_training_losses = call_back.get_tensor_loss_on_batch_end(
-      loss_sgd, Loss_Parameter::squared_error_grad_predicted_output);
+      loss_sgd, tf::loss::parameter::squared_error_grad_predicted_output);
 
   auto expected_dense_output =
       load_bin("test/data/ReluDense_Test_5_dense_output_data.bin",

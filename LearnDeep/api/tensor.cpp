@@ -9,7 +9,8 @@
 #include <layers/layer_graph.hpp>
 #include <layers/layer_registry.hpp>
 #include <layers/layers.hpp>
-#include <losses/loss.hpp>
+#include <limits>
+#include <losses/loss_registry.hpp>
 #include <model/model.hpp>
 #include <numeric>
 #include <optional>
@@ -775,11 +776,11 @@ tf::model::predict(const std::vector<tf::tensor> inputs) {
 void tf::model::shuffle(bool shuffle) { model_ptr->shuffle(shuffle); }
 
 void tf::model::compile(const OptimizerType optimizerType,
-                        const LossType lossType) {
-  this->model_ptr->compile(optimizerType, lossType);
+                        const std::string_view loss_type) {
+  this->model_ptr->compile(optimizerType, loss_type);
 }
 
-tf::loss tf::model::get_model_loss(tf::tensor output) const {
+tf::loss::loss tf::model::get_model_loss(tf::tensor output) const {
   return this->model_ptr->getModelLoss(output.getPtr());
 }
 
@@ -787,12 +788,8 @@ std::vector<tf::layer::layer_id> tf::model::get_layers() {
   return model_ptr->getLayers();
 }
 
-std::vector<Loss *> tf::model::get_losses() {
-  std::vector<Loss *> losses;
-  for (tf::loss *loss : model_ptr->getLosses()) {
-    losses.push_back(loss->get_loss_ptr());
-  }
-  return losses;
+std::vector<tf::loss::loss_id> tf::model::get_losses() {
+  return model_ptr->getLosses();
 }
 // --- End Model ---
 
@@ -835,26 +832,26 @@ void tf::callback::trace::record_parameter_on_batch_end(
                                            print_flag);
 }
 
-void tf::callback::trace::record_scalar_loss_on_epoch_end(tf::loss loss) {
+void tf::callback::trace::record_scalar_loss_on_epoch_end(tf::loss::loss loss) {
   static_cast<CallbackTrace *>(this->callback_ptr.get())
-      ->recordScalerLossEpochEnd(loss.get_loss_ptr());
+      ->recordScalerLossEpochEnd(loss.id());
 }
 
 void tf::callback::trace::record_tensor_loss_on_epoch_end(
-    tf::loss loss, Loss_Parameter loss_parameter) {
+    tf::loss::loss loss, std::string_view loss_parameter) {
   static_cast<CallbackTrace *>(this->callback_ptr.get())
-      ->recordTensorLossEpochEnd(loss.get_loss_ptr(), loss_parameter);
+      ->recordTensorLossEpochEnd(loss.id(), loss_parameter);
 }
 
-void tf::callback::trace::record_scalar_loss_on_batch_end(tf::loss loss) {
+void tf::callback::trace::record_scalar_loss_on_batch_end(tf::loss::loss loss) {
   static_cast<CallbackTrace *>(this->callback_ptr.get())
-      ->recordScalerLossBatchEnd(loss.get_loss_ptr());
+      ->recordScalerLossBatchEnd(loss.id());
 }
 
 void tf::callback::trace::record_tensor_loss_on_batch_end(
-    tf::loss loss, Loss_Parameter loss_parameter) {
+    tf::loss::loss loss, std::string_view loss_parameter) {
   static_cast<CallbackTrace *>(this->callback_ptr.get())
-      ->recordTensorLossBatchEnd(loss.get_loss_ptr(), loss_parameter);
+      ->recordTensorLossBatchEnd(loss.id(), loss_parameter);
 }
 
 std::vector<std::vector<tf::tensor>>
@@ -952,19 +949,19 @@ tf::callback::trace::get_parameter_on_batch_end(
 }
 
 std::vector<std::float64_t>
-tf::callback::trace::get_scaler_loss_on_epoch_end(tf::loss loss) {
+tf::callback::trace::get_scaler_loss_on_epoch_end(tf::loss::loss loss) {
   return static_cast<CallbackTrace *>(this->callback_ptr.get())
-      ->getScalerLossEpochEnd(loss.get_loss_ptr());
+      ->getScalerLossEpochEnd(loss.id());
 }
 
 std::vector<std::vector<tf::tensor>>
 tf::callback::trace::get_tensor_loss_on_epoch_end(
-    tf::loss loss, Loss_Parameter loss_parameter) {
+    tf::loss::loss loss, std::string_view loss_parameter) {
   std::vector<std::vector<tf::tensor>> tensor_losses;
 
   std::vector<std::vector<tf::tensor *>> tensor_loss_ptrs =
       static_cast<CallbackTrace *>(this->callback_ptr.get())
-          ->getLossParameterEpochEnd(loss.get_loss_ptr(), loss_parameter);
+          ->getLossParameterEpochEnd(loss.id(), loss_parameter);
 
   tensor_losses.resize(tensor_loss_ptrs.size());
   unsigned i = 0;
@@ -976,19 +973,19 @@ tf::callback::trace::get_tensor_loss_on_epoch_end(
 }
 
 std::vector<std::vector<std::float64_t>>
-tf::callback::trace::get_scaler_loss_on_batch_end(tf::loss loss) {
+tf::callback::trace::get_scaler_loss_on_batch_end(tf::loss::loss loss) {
   return static_cast<CallbackTrace *>(this->callback_ptr.get())
-      ->getScalerLossBatchEnd(loss.get_loss_ptr());
+      ->getScalerLossBatchEnd(loss.id());
 }
 
 std::vector<std::vector<std::vector<tf::tensor>>>
 tf::callback::trace::get_tensor_loss_on_batch_end(
-    tf::loss loss, Loss_Parameter loss_parameter) {
+    tf::loss::loss loss, std::string_view loss_parameter) {
   std::vector<std::vector<std::vector<tf::tensor>>> tensor_losses;
 
   std::vector<std::vector<std::vector<tf::tensor *>>> tensor_loss_ptrs =
       static_cast<CallbackTrace *>(this->callback_ptr.get())
-          ->getLossParameterBatchEnd(loss.get_loss_ptr(), loss_parameter);
+          ->getLossParameterBatchEnd(loss.id(), loss_parameter);
 
   tensor_losses.resize(tensor_loss_ptrs.size());
   for (unsigned i = 0; i < tensor_loss_ptrs.size(); i++) {
@@ -1004,10 +1001,10 @@ std::shared_ptr<Callback> tf::callback::trace::callback() const {
   return this->callback_ptr;
 }
 
-tf::callback::earlystopping::earlystopping(tf::loss loss, int patience,
+tf::callback::earlystopping::earlystopping(tf::loss::loss loss, int patience,
                                            float min_delta, bool minimize) {
   this->callback_ptr = std::make_shared<CallbackEarlyStopping>(
-      loss.get_loss_ptr(), patience, min_delta, minimize);
+      loss.id(), patience, min_delta, minimize);
 }
 
 std::shared_ptr<Callback> tf::callback::earlystopping::callback() const {
@@ -1018,14 +1015,15 @@ std::shared_ptr<Callback> tf::callback::earlystopping::callback() const {
 // --- History ---
 
 void tf::history_container::record_history_on_batch_end(
-    unsigned const epoch_no, const std::vector<tf::loss *> losses) {
+    unsigned const epoch_no, const std::vector<tf::loss::loss_id> losses) {
   std::float64_t batch_total_loss(0.0);
 
   if (this->batch_history["loss"].size() == epoch_no)
     this->batch_history["loss"].resize(epoch_no + 1);
 
-  for (auto loss_ptr : losses)
-    batch_total_loss += loss_ptr->get_loss();
+  for (tf::loss::loss_id id : losses)
+    if (LossRegistry::LossHandle loss = LossRegistry::instance().lock(id))
+      batch_total_loss += LossRegistry::instance().scalerLoss(loss);
 
   this->batch_history["loss"][epoch_no].push_back(batch_total_loss);
 }
@@ -1058,52 +1056,91 @@ void tf::optimizer::execute_optimizer() {
 // --- End Optimizer ---
 
 // --- Losses ---
-tf::loss::loss(const LossType lossType,
-               std::vector<Tensor<std::float64_t> *> input_preds,
-               std::string loss_name) {
-  switch (lossType) {
-  case (LossType::squared_error): {
-    this->loss_ptr = new SquaredError(input_preds, loss_name);
-    break;
-  }
-  case (LossType::categorical_cross_entropy): {
-    this->loss_ptr = new CategoricalCrossEntropy(input_preds, loss_name);
-    break;
-  }
-  }
+tf::loss::loss::loss(std::string_view type_name)
+    : loss(type_name, LossConfig{}) {}
+
+tf::loss::loss::loss(std::string_view type_name, const tf::loss::config &config)
+    : loss_ptr_(
+          LossRegistry::instance().create(std::string(type_name), config)) {}
+
+tf::loss::loss::loss(std::shared_ptr<Loss> owned)
+    : loss_ptr_(std::move(owned)) {}
+
+void tf::loss::loss::forward(std::vector<tf::tensor *> inputs,
+                             unsigned batch_size) {
+  LossRegistry::instance().forward(this->loss_ptr_, inputs, batch_size);
 }
 
-void tf::loss::forward(std::vector<tf::tensor *> inputs,
-                       const unsigned batch_size) {
-  if (this->loss_ptr) {
-    loss_ptr->forward(inputs, batch_size);
-  }
+void tf::loss::loss::backward() {
+  LossRegistry::instance().backward(this->loss_ptr_);
 }
 
-void tf::loss::backward() {
-  if (this->loss_ptr) {
-    loss_ptr->backward();
-  }
+std::float64_t
+tf::loss::loss::calculate(std::vector<tf::tensor> &predicted_output,
+                          std::vector<tf::tensor> &target_output) {
+  return LossRegistry::instance().calculate(this->loss_ptr_, predicted_output,
+                                            target_output);
 }
 
-std::float64_t tf::loss::calculate(std::vector<tf::tensor> &predicted_ouput,
-                                   std::vector<tf::tensor> &target_output) {
-  return this->loss_ptr->calculate(predicted_ouput, target_output);
+const std::float64_t tf::loss::loss::get_loss() {
+  return LossRegistry::instance().scalerLoss(this->loss_ptr_);
 }
 
-const std::float64_t tf::loss::get_loss() {
-  return this->loss_ptr->getScalerLoss();
+std::string tf::loss::loss::get_loss_name() {
+  return LossRegistry::instance().lossName(this->loss_ptr_);
 }
 
-std::string tf::loss::get_loss_name() { return this->loss_ptr->getLossName(); }
-
-unsigned tf::loss::get_no_of_inputs() {
-  return this->loss_ptr->getNoOfInputs();
+unsigned tf::loss::loss::get_no_of_inputs() {
+  return LossRegistry::instance().noOfInputs(this->loss_ptr_);
 }
 
-void tf::loss::set_target_output(std::vector<tf::tensor> target_output) {
-  this->loss_ptr->setTargetOutput(target_output);
+void tf::loss::loss::set_target_output(std::vector<tf::tensor> target_output) {
+  LossRegistry::instance().setTargetOutput(this->loss_ptr_,
+                                           std::move(target_output));
 }
 
-Loss *const tf::loss::get_loss_ptr() { return this->loss_ptr; }
+std::unordered_set<std::string> tf::loss::loss::parameterNames() const {
+  return LossRegistry::instance().lossParameterNames(this->loss_ptr_);
+}
+
+std::vector<tf::tensor>
+tf::loss::loss::getParameter(std::string_view name) const {
+  return copy_output_tensors(
+      LossRegistry::instance().lossParameters(this->loss_ptr_, name));
+}
+
+void tf::loss::loss::setParameter(std::string_view name,
+                                  const LossParameterValue &value) {
+  if (!this->loss_ptr_)
+    return;
+  // Dispatch on the canonical type rather than the construction key so that
+  // alias-registered losses find their registered setter.
+  LossRegistry::instance().setParameter(std::string(this->type()),
+                                        this->loss_ptr_, std::string(name),
+                                        value);
+}
+
+std::string_view tf::loss::loss::type() const {
+  return LossRegistry::instance().typeOf(this->loss_ptr_);
+}
+
+tf::loss::loss_id tf::loss::loss::id() const {
+  return LossRegistry::instance().idOf(this->loss_ptr_);
+}
+
+bool tf::loss::loss::valid() const { return static_cast<bool>(*this); }
+
+tf::loss::loss::operator bool() const {
+  return static_cast<bool>(this->loss_ptr_);
+}
+
+tf::loss::squared_error::squared_error(
+    std::vector<Tensor<std::float64_t> *> input_preds, std::string loss_name)
+    : loss(tf::loss::type::squared_error,
+           makeLossConfig(input_preds, loss_name)) {}
+
+tf::loss::categorical_cross_entropy::categorical_cross_entropy(
+    std::vector<Tensor<std::float64_t> *> input_preds, std::string loss_name)
+    : loss(tf::loss::type::categorical_cross_entropy,
+           makeLossConfig(input_preds, loss_name)) {}
 // --- End Losses --

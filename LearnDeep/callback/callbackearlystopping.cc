@@ -2,11 +2,11 @@
 #include "callback.hpp"
 #include <absl/log/log.h>
 #include <limits>
-#include <losses/loss.hpp>
+#include <losses/loss_registry.hpp>
 
-CallbackEarlyStopping::CallbackEarlyStopping(Loss *loss, int patience,
+CallbackEarlyStopping::CallbackEarlyStopping(tf::loss::loss_id id, int patience,
                                              float min_delta, bool minimize)
-    : loss_ptr(loss), patience(patience), min_delta(min_delta),
+    : loss_id(id), patience(patience), min_delta(min_delta),
       minimize(minimize), early_stopping(false),
       num_epochs_holding_min_delta(0),
       best_loss(minimize ? std::numeric_limits<std::float64_t>::max()
@@ -16,7 +16,12 @@ void CallbackEarlyStopping::callOnEpochEnd() {
 
   /* --- scalar loss --- */
 
-  const std::float64_t current_loss = loss_ptr->getEpochEndScalerLoss();
+  LossRegistry::LossHandle loss = LossRegistry::instance().lock(loss_id);
+  if (!loss)
+    return;
+
+  const std::float64_t current_loss =
+      LossRegistry::instance().epochEndScalerLoss(loss);
   this->scalar_loss.push_back(current_loss);
 
   // The first epoch establishes the baseline; there is nothing to compare yet.

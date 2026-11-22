@@ -103,13 +103,13 @@ int main() {
 
   tf::model model({x}, custom_output);
   model.shuffle(false);
-  model.compile(OptimizerType::SGD, LossType::squared_error);
+  model.compile(OptimizerType::SGD, tf::loss::type::squared_error);
 
-  tf::loss loss = model.get_model_loss(custom_output[0]);
+  auto loss = model.get_model_loss(custom_output[0]);
   call_back.record_tensor_loss_on_batch_end(
-      loss, Loss_Parameter::squared_error_predicted_output);
+      loss, tf::loss::parameter::squared_error_predicted_output);
   call_back.record_tensor_loss_on_batch_end(
-      loss, Loss_Parameter::squared_error_grad_predicted_output);
+      loss, tf::loss::parameter::squared_error_grad_predicted_output);
   call_back.record_scalar_loss_on_batch_end(loss);
 
   model.fit({input}, {target_output}, {call_back.callback()}, epochs,
@@ -120,9 +120,9 @@ int main() {
   const auto grad_inputs =
       call_back.get_parameter_on_batch_end(custom_layer, "grad_input");
   const auto predicted = call_back.get_tensor_loss_on_batch_end(
-      loss, Loss_Parameter::squared_error_predicted_output);
+      loss, tf::loss::parameter::squared_error_predicted_output);
   const auto grad_predicted = call_back.get_tensor_loss_on_batch_end(
-      loss, Loss_Parameter::squared_error_grad_predicted_output);
+      loss, tf::loss::parameter::squared_error_grad_predicted_output);
   const auto losses = call_back.get_scaler_loss_on_batch_end(loss);
 
   check(outputs.size() == epochs, "one batch of training outputs recorded");
@@ -150,8 +150,8 @@ int main() {
     check(false, "grad_input tensor is available");
   }
 
-  // Loss_Parameter::squared_error_predicted_output exposes the loss's scalar
-  // batch-loss tensor (same convention as DenseLayer_Test_1).
+  // tf::loss::parameter::squared_error_predicted_output exposes the loss's
+  // scalar batch-loss tensor (same convention as DenseLayer_Test_1).
   if (predicted.size() == epochs && !predicted.front().empty() &&
       !predicted.front().front().empty()) {
     check_near(predicted.front().front().front().getData()[0],

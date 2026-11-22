@@ -4,11 +4,14 @@
 // C++ Headers
 #include <memory>
 #include <stdfloat>
+#include <string_view>
 #include <unordered_map>
 #include <vector>
 
 // Library headers
 #include <api/tensor.h>
+
+class Loss;
 
 class Model {
 private:
@@ -46,13 +49,20 @@ private:
   std::shared_ptr<Layer> lockLayer(tf::layer::layer_id id) const;
 
   tf::optimizer optimizer;
-  std::vector<tf::loss *> losses;
-  std::unordered_map<tf::loss *,
+
+  // Losses are owned through the registry and referenced everywhere else by
+  // their stable id. This removes dangling raw pointers from callbacks while
+  // still allowing foreign-loss rejection and stale-id pruning.
+  std::vector<tf::loss::loss_id> losses;
+  std::unordered_map<tf::loss::loss_id, std::shared_ptr<Loss>> owned_losses;
+  std::unordered_map<tf::loss::loss_id,
                      std::vector<Tensor<std::float64_t> *>>
       loss_input_mappings; // this maps loss and all the input tensor(aka target
                            // output) that is feed
-  std::unordered_map<tf::loss *, std::vector<tf::tensor *>>
+  std::unordered_map<tf::loss::loss_id, std::vector<tf::tensor *>>
       loss_training_input_mappings;
+
+  std::shared_ptr<Loss> lockLoss(tf::loss::loss_id id) const;
   //   tf::metric metric;
 
   std::vector<const Tensor<std::float64_t> *> getLayersNBackTrackInputs(
@@ -129,8 +139,8 @@ public:
   /** @param Loss loss to be used */
   /** @param Metric metric to be used */
   /** @return void */
-  // void compile(tf::optimizer = tf::optimizer(), tf::loss = tf::loss(),
-  //              tf::metric = tf::metric());
+  // void compile(tf::optimizer = tf::optimizer(),
+  //              tf::loss::loss = tf::loss::loss(), tf::metric = tf::metric());
 
   /** @file model.hpp basic model implementation */
   /** @brief Updates hyperparamers for training */
@@ -138,7 +148,8 @@ public:
   /** @param Loss loss to be used */
   /** @param Metric metric to be used */
   /** @return void */
-  void compile(const OptimizerType optimizer_type, const LossType loss_type);
+  void compile(const OptimizerType optimizer_type,
+               const std::string_view loss_type);
 
   /** @file model.hpp basic model implementation */
   /** @brief Runs the training loop and updates the gradients */
@@ -180,9 +191,9 @@ public:
 
   void shuffle(bool shuffle);
 
-  tf::loss getModelLoss(Tensor<std::float64_t> *output_tensor);
+  tf::loss::loss getModelLoss(Tensor<std::float64_t> *output_tensor);
 
-  std::vector<tf::loss *> getLosses() { return this->losses; }
+  std::vector<tf::loss::loss_id> getLosses() const { return this->losses; }
 
   std::vector<tf::layer::layer_id> getLayers() const { return this->layers; }
 };

@@ -4,25 +4,45 @@
 // C++ Headers
 #include <iostream>
 #include <limits>
+#include <string_view>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
 
 // Library Headers
-#include "loss_enum.hpp"
 #include <api/tensor.h>
 
-enum class LossParameter { output_predict, output_target, loss };
-
 class Loss {
+private:
+  tf::loss::loss_id id_;
+
 protected:
-  std::vector<Tensor<std::float64_t> *> input_predicts; // not owning
+  Loss();
+
+  // Owned alias objects. The underlying Tensor for prediction inputs is owned
+  // by the model, but the alias objects themselves live here so pointers handed
+  // to callbacks cannot dangle. Target and forward tensors are owned values.
+  std::vector<tf::tensor> input_aliases;
+  std::vector<tf::tensor> training_input_aliases;
+  std::vector<tf::tensor> target_aliases;
+
+  void recordInputs(const std::vector<Tensor<std::float64_t> *> &inputs);
+  void recordTrainingInputs(const std::vector<tf::tensor *> &inputs);
+
   std::float64_t prev_loss_value = std::numeric_limits<double>::max();
   std::float64_t loss_value = std::numeric_limits<double>::max();
   std::string loss_name;
   bool isGradRecorded{false};
 
 public:
+  virtual ~Loss() = default;
+
+  tf::loss::loss_id id() const noexcept { return id_; }
+
+  // Canonical registry key. Concrete losses override this; test doubles may
+  // leave the default empty value.
+  virtual std::string_view type() const { return {}; }
+
   virtual void forward(std::vector<tf::tensor *> inputs,
                        const unsigned batch_size) = 0;
 
@@ -42,7 +62,9 @@ public:
                                    std::vector<tf::tensor> &target_output) = 0;
 
   virtual std::vector<tf::tensor *>
-  getLossParameter(Loss_Parameter loss_parameter) = 0;
+  getLossParameter(std::string_view loss_parameter) = 0;
+
+  virtual std::unordered_set<std::string> parameterNames() const { return {}; }
 
   virtual unsigned getNoOfInputs() = 0;
 
@@ -50,14 +72,10 @@ public:
 };
 
 class SquaredError : public Loss {
-
-  std::vector<tf::tensor *> training_inputs;
-  std::vector<tf::tensor *> target_outputs;
   tf::tensor grad_training_inputs;
-  tf::tensor *differences;
-  tf::tensor *loss_tensor_batch;
-  tf::tensor *loss_tensor;
-  tf::tensor *loss_gradient;
+  tf::tensor differences;
+  tf::tensor loss_tensor_batch;
+  tf::tensor loss_tensor;
   std::vector<tf::tensor> loss_reduction_intermediates;
 
 public:
@@ -66,7 +84,9 @@ public:
   SquaredError(std::vector<Tensor<std::float64_t> *> input_preds,
                std::string loss_name = "mean_squared_loss");
 
-  ~SquaredError();
+  ~SquaredError() override = default;
+
+  std::string_view type() const override;
 
   void forward(std::vector<tf::tensor *> inputs,
                const unsigned batch_size) override;
@@ -84,22 +104,21 @@ public:
   std::float64_t const getScalerLoss() override;
 
   std::vector<tf::tensor *>
-  getLossParameter(Loss_Parameter loss_parameter) override;
+  getLossParameter(std::string_view loss_parameter) override;
+
+  std::unordered_set<std::string> parameterNames() const override;
 
   unsigned getNoOfInputs() override { return 1; }
 
   std::string getLossName() override { return this->loss_name; }
 };
-class CategoricalCrossEntropy : public Loss {
 
-  std::vector<tf::tensor *> training_inputs;
-  std::vector<tf::tensor *> target_outputs;
+class CategoricalCrossEntropy : public Loss {
   tf::tensor grad_training_inputs;
-  tf::tensor *log_value;
-  tf::tensor *log_difference;
-  tf::tensor *loss_tensor_batch;
-  tf::tensor *loss_tensor;
-  tf::tensor *loss_gradient;
+  tf::tensor log_value;
+  tf::tensor log_difference;
+  tf::tensor loss_tensor_batch;
+  tf::tensor loss_tensor;
 
 public:
   CategoricalCrossEntropy() = default;
@@ -107,7 +126,9 @@ public:
   CategoricalCrossEntropy(std::vector<Tensor<std::float64_t> *> input_preds,
                           std::string loss_name = "categorical_cross_entropy");
 
-  ~CategoricalCrossEntropy();
+  ~CategoricalCrossEntropy() override = default;
+
+  std::string_view type() const override;
 
   void forward(std::vector<tf::tensor *> inputs,
                const unsigned batch_size) override;
@@ -125,7 +146,9 @@ public:
   std::float64_t const getScalerLoss() override;
 
   std::vector<tf::tensor *>
-  getLossParameter(Loss_Parameter loss_parameter) override;
+  getLossParameter(std::string_view loss_parameter) override;
+
+  std::unordered_set<std::string> parameterNames() const override;
 
   unsigned getNoOfInputs() override { return 1; }
 

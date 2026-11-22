@@ -44,7 +44,7 @@ the Model class.
 ]
 class Model {
   void compile(const OptimizerType optimizer_type,
-               const LossType loss_type);
+               const std::string_view loss_type);
 
   tf::history_container fit(
       const std::vector<tf::tensor>& inputs,
@@ -61,7 +61,7 @@ class Model {
 
   void shuffle(bool shuffle);
 
-  tf::loss getModelLoss(
+  tf::loss::loss getModelLoss(
       Tensor<std::float64_t>* output_tensor);
 }
 \end{lstlisting}
@@ -102,7 +102,7 @@ tf::model mymodel({x}, dense_output);
 mymodel.shuffle(false);
 
 mymodel.compile(OptimizerType::SGD,
-                LossType::squared_error);
+                tf::loss::type::squared_error);
 \end{lstlisting}
 
 Here, x represents the model input, while dense\_output
@@ -143,7 +143,9 @@ are evaluated against the target outputs.
 
 For example, the configuration shown above selects
 stochastic gradient descent (SGD) as the optimizer and
-squared error as the loss function.
+squared error as the loss function. The second argument is a registry key,
+so any self-registered loss works here, including a custom key such as
+\texttt{"custom\_scaled\_mse"}. Unknown keys are rejected at compile time.
 
 Based on these selections, LearnDeep creates the corresponding
 optimizer and loss instances. This separates the choice of
