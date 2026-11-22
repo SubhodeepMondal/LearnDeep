@@ -115,51 +115,69 @@ void Model::loadTrainingBatch(const std::vector<tf::tensor> &training_inputs,
   }
 }
 
+bool Model::runCallbackBeforeTraining(
+    const std::vector<std::shared_ptr<Callback>> &callbacks, tf::model &model) {
+  bool flag = true;
+  for (const auto &callback : callbacks)
+    if (callback)
+      flag &= callback->callOnTrainingBegin(model);
+
+  return flag;
+}
+
+void Model::runCallbackAfterTraining(
+    const std::vector<std::shared_ptr<Callback>> &callbacks) {
+  for (const auto &callback : callbacks)
+    if (callback)
+      callback->callOnTrainingEnd();
+}
+
 void Model::runCallbackOnEpochBegin(
-    std::vector<std::shared_ptr<Callback>> callbacks) {
-  if (callbacks.size())
-    for (auto callback : callbacks)
+    const std::vector<std::shared_ptr<Callback>> &callbacks) {
+  for (const auto &callback : callbacks)
+    if (callback)
       callback->callOnEpochBegin();
 }
 
 void Model::runCallbackOnEpochEnd(
-    std::vector<std::shared_ptr<Callback>> callbacks) {
-  if (callbacks.size())
-    for (auto callback : callbacks)
+    const std::vector<std::shared_ptr<Callback>> &callbacks) {
+  for (const auto &callback : callbacks)
+    if (callback)
       callback.get()->callOnEpochEnd();
 }
 
 void Model::runCallbackOnBatchBegin(
-    std::vector<std::shared_ptr<Callback>> callbacks, unsigned const epoch_no) {
-  if (callbacks.size()) {
-    for (auto callback : callbacks)
+    const std::vector<std::shared_ptr<Callback>> &callbacks,
+    unsigned const epoch_no) {
+  for (const auto &callback : callbacks)
+    if (callback)
       callback->callOnBatchBegin(epoch_no);
-  }
 }
 
 void Model::runCallbackOnBatchEnd(
-    std::vector<std::shared_ptr<Callback>> callbacks, unsigned const epoch_no) {
-  if (callbacks.size()) {
-    for (auto callback : callbacks)
+    const std::vector<std::shared_ptr<Callback>> &callbacks,
+    unsigned const epoch_no) {
+  for (const auto &callback : callbacks)
+    if (callback)
       callback->callOnBatchEnd(epoch_no);
-  }
 }
 
 bool Model::checkEarlyStopping(
-    std::vector<std::shared_ptr<Callback>> callbacks) {
+    const std::vector<std::shared_ptr<Callback>> &callbacks) {
   bool stop_epoch = false;
-  if (callbacks.size())
-    for (auto callback : callbacks) {
-      stop_epoch = callback.get()->stopEpoch();
-      if (stop_epoch)
-        break;
-    }
+  for (const auto &callback : callbacks) {
+    if (!callback)
+      continue;
+    stop_epoch = callback.get()->stopEpoch();
+    if (stop_epoch)
+      break;
+  }
 
   return stop_epoch;
 }
 
 tf::history_container
-Model::fit(const std::vector<tf::tensor> &training_inputs,
+Model::fit(tf::model &model, const std::vector<tf::tensor> &training_inputs,
            const std::vector<tf::tensor> &training_target,
            const std::vector<tf::tensor> &valdiation_data, unsigned epochs,
            unsigned batch_size,
@@ -198,6 +216,14 @@ Model::fit(const std::vector<tf::tensor> &training_inputs,
   int randIndex = -1;
 
   std::vector<std::shared_ptr<Callback>> callback(callback_ptr);
+
+  if (!this->runCallbackBeforeTraining(callback, model)) {
+    LOG(ERROR) << "Fatal! Callback verification failed. Check callback "
+                  "configuration\n";
+    this->runCallbackAfterTraining(callback);
+    this->pred_mapping = false;
+    return hist;
+  }
 
   // Training Loop
   {
@@ -271,6 +297,7 @@ Model::fit(const std::vector<tf::tensor> &training_inputs,
         break;
       }
     } // end of epoch
+    this->runCallbackAfterTraining(callback);
     this->pred_mapping = false;
   }
   return hist;

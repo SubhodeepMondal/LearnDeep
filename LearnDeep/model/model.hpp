@@ -69,17 +69,29 @@ private:
   void loadTrainingBatch(const std::vector<tf::tensor> &training_inputs,
                          unsigned batch_index);
 
-  void runCallbackOnEpochBegin(std::vector<std::shared_ptr<Callback>> callback);
+  bool runCallbackBeforeTraining(
+      const std::vector<std::shared_ptr<Callback>> &callbacks,
+      tf::model &model);
 
-  void runCallbackOnEpochEnd(std::vector<std::shared_ptr<Callback>> callback);
+  void runCallbackAfterTraining(
+      const std::vector<std::shared_ptr<Callback>> &callbacks);
 
-  void runCallbackOnBatchBegin(std::vector<std::shared_ptr<Callback>> callback,
-                               unsigned const epoch_no);
+  void runCallbackOnEpochBegin(
+      const std::vector<std::shared_ptr<Callback>> &callbacks);
 
-  void runCallbackOnBatchEnd(std::vector<std::shared_ptr<Callback>> callback,
-                             unsigned const epoch_no);
+  void runCallbackOnEpochEnd(
+      const std::vector<std::shared_ptr<Callback>> &callbacks);
 
-  bool checkEarlyStopping(std::vector<std::shared_ptr<Callback>> callbacks);
+  void runCallbackOnBatchBegin(
+      const std::vector<std::shared_ptr<Callback>> &callbacks,
+      unsigned const epoch_no);
+
+  void runCallbackOnBatchEnd(
+      const std::vector<std::shared_ptr<Callback>> &callbacks,
+      unsigned const epoch_no);
+
+  bool checkEarlyStopping(
+      const std::vector<std::shared_ptr<Callback>> &callbacks);
 
   void setTrainingTensorsForInputLayer();
 
@@ -147,7 +159,8 @@ public:
    * level 4: + validation loss
    * level 5: + va;odation metric */
   /** @return void */
-  tf::history_container fit(const std::vector<tf::tensor> &inputs,
+  tf::history_container fit(tf::model &model,
+                            const std::vector<tf::tensor> &inputs,
                             const std::vector<tf::tensor> &output,
                             const std::vector<tf::tensor> &valdiation_data = {},
                             unsigned epochs = 10, unsigned batch_size = 1,
@@ -167,6 +180,10 @@ public:
   void shuffle(bool shuffle);
 
   tf::loss getModelLoss(Tensor<std::float64_t> *output_tensor);
+
+  std::vector<tf::loss *> getLosses() { return this->losses; }
+
+  std::vector<Layer *> &getLayers() { return this->layers; }
 };
 
 #endif // _TENSOR_CORE_MODEL_

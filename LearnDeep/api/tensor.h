@@ -268,17 +268,15 @@ public:
                                      Layer_Parameter trainable_parameter_no,
                                      bool print_flag = false);
 
-  void record_scalar_loss_on_epoch_end(tf::loss loss, bool printFlag = false);
+  void record_scalar_loss_on_epoch_end(tf::loss loss);
 
   void record_tensor_loss_on_epoch_end(tf::loss loss,
-                                       Loss_Parameter loss_parameter,
-                                       bool printFlag = false);
+                                       Loss_Parameter loss_parameter);
 
-  void record_scalar_loss_on_batch_end(tf::loss loss, bool printFlag = false);
+  void record_scalar_loss_on_batch_end(tf::loss loss);
 
   void record_tensor_loss_on_batch_end(tf::loss loss,
-                                       Loss_Parameter loss_parameter,
-                                       bool printFlag = false);
+                                       Loss_Parameter loss_parameter);
 
   std::vector<std::vector<tf::tensor>>
   get_parameter_on_epoch_begin(Layer *const layer_ptr,
@@ -410,7 +408,7 @@ public:
   history_container
   fit(const std::vector<tf::tensor> &inputs,
       const std::vector<tf::tensor> &outputs,
-      std::vector<std::shared_ptr<Callback>> callbacks = {nullptr},
+      std::vector<std::shared_ptr<Callback>> callbacks = {},
       unsigned epochs = 10, unsigned batch_size = 1,
       const std::vector<tf::tensor> &validation_datas = {tf::tensor()},
       unsigned verbose = 0, bool training = true);
@@ -420,6 +418,10 @@ public:
   void shuffle(bool shuffle);
 
   tf::loss get_model_loss(tf::tensor output) const;
+
+  std::vector<Layer *> &get_layers();
+
+  std::vector<Loss *> get_losses();
 
 } model;
 typedef struct optimizer {

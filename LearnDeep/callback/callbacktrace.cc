@@ -16,10 +16,6 @@ CallbackTrace::CallbackTrace(unsigned callback_level) {
 
 CallbackTrace::~CallbackTrace() {
   {
-    std::vector<Loss *> loss_ptrs(
-        std::views::keys(this->tensor_loss_print_option_epoch_end).begin(),
-        std::views::keys(this->tensor_loss_print_option_epoch_end).end());
-
     for (auto loss : this->tensor_loss_epoch_end)
       for (auto loss_param : loss.second)
         for (auto tensor_vector_vector : loss_param.second)
@@ -27,10 +23,6 @@ CallbackTrace::~CallbackTrace() {
             delete tensor_vector;
   }
   {
-    std::vector<Loss *> loss_ptrs(
-        std::views::keys(this->tensor_loss_print_option_batch_end).begin(),
-        std::views::keys(this->tensor_loss_print_option_batch_end).end());
-
     for (auto loss : this->tensor_loss_batch_end)
       for (auto loss_param : loss.second)
         for (auto tensor_vector_vector_vector : loss_param.second)
@@ -69,28 +61,22 @@ void CallbackTrace::recordTrainableParameterOnBatchEnd(
   }
 }
 
-void CallbackTrace::recordScalerLossEpochEnd(Loss *const loss_ptr,
-                                             bool printFlag) {
-  this->scaler_loss_print_option_epoch_end[loss_ptr] = printFlag;
+void CallbackTrace::recordScalerLossEpochEnd(Loss *const loss_ptr) {
+  this->losses_on_epoch_end.insert(loss_ptr);
 }
 
 void CallbackTrace::recordTensorLossEpochEnd(Loss *const loss_ptr,
-                                             Loss_Parameter loss_parameter,
-                                             bool printFlag) {
-  this->tensor_loss_print_option_epoch_end[loss_ptr].push_back(
-      {loss_parameter, printFlag});
+                                             Loss_Parameter loss_parameter) {
+  this->loss_parameters_on_epoch_end[loss_ptr].push_back(loss_parameter);
 }
 
-void CallbackTrace::recordScalerLossBatchEnd(Loss *const loss_ptr,
-                                             bool printFlag) {
-  this->scaler_loss_print_option_batch_end[loss_ptr] = printFlag;
+void CallbackTrace::recordScalerLossBatchEnd(Loss *const loss_ptr) {
+  this->losses_on_batch_end.insert(loss_ptr);
 }
 
 void CallbackTrace::recordTensorLossBatchEnd(Loss *const loss_ptr,
-                                             Loss_Parameter loss_parameter,
-                                             bool printFlag) {
-  this->tensor_loss_print_option_batch_end[loss_ptr].push_back(
-      {loss_parameter, printFlag});
+                                             Loss_Parameter loss_parameter) {
+  this->loss_parameters_on_batch_end[loss_ptr].push_back(loss_parameter);
 }
 
 std::vector<std::vector<tf::tensor *>>
@@ -271,11 +257,7 @@ void CallbackTrace::callOnEpochEnd() {
 
   /* --- scalar loss --- */
   {
-    std::vector<Loss *> loss_ptrs(
-        std::views::keys(this->scaler_loss_print_option_epoch_end).begin(),
-        std::views::keys(this->scaler_loss_print_option_epoch_end).end());
-
-    for (Loss *loss_ptr : loss_ptrs) {
+    for (Loss *loss_ptr : this->losses_on_epoch_end) {
       this->scalar_loss_epoch_end[loss_ptr].push_back(
           loss_ptr->getEpochEndScalerLoss());
     }
@@ -283,14 +265,9 @@ void CallbackTrace::callOnEpochEnd() {
 
   /* --- tensor loss --- */
   {
-    std::vector<Loss *> loss_ptrs(
-        std::views::keys(this->tensor_loss_print_option_epoch_end).begin(),
-        std::views::keys(this->tensor_loss_print_option_epoch_end).end());
+    for (auto &[loss, loss_parameters] : this->loss_parameters_on_epoch_end) {
 
-    for (Loss *loss : loss_ptrs) {
-
-      for (auto [loss_parameter, flag] :
-           this->tensor_loss_print_option_epoch_end[loss]) {
+      for (Loss_Parameter loss_parameter : loss_parameters) {
         std::vector<tf::tensor *> temp_tensor;
         for (tf::tensor *tensor : loss->getLossParameter(loss_parameter)) {
 
@@ -374,11 +351,7 @@ void CallbackTrace::callOnBatchEnd(unsigned const epoch_no) {
 
   /* --- scalar loss --- */
   {
-    std::vector<Loss *> loss_ptrs(
-        std::views::keys(this->scaler_loss_print_option_batch_end).begin(),
-        std::views::keys(this->scaler_loss_print_option_batch_end).end());
-
-    for (Loss *loss_ptr : loss_ptrs) {
+    for (Loss *loss_ptr : this->losses_on_batch_end) {
       if (this->scalar_loss_batch_end[loss_ptr].size() == epoch_no)
         this->scalar_loss_batch_end[loss_ptr].resize(epoch_no + 1);
 
@@ -389,14 +362,9 @@ void CallbackTrace::callOnBatchEnd(unsigned const epoch_no) {
 
   /* --- tensor loss --- */
   {
-    std::vector<Loss *> loss_ptrs(
-        std::views::keys(this->tensor_loss_print_option_batch_end).begin(),
-        std::views::keys(this->tensor_loss_print_option_batch_end).end());
+    for (auto &[loss, loss_parameters] : this->loss_parameters_on_batch_end) {
 
-    for (Loss *loss : loss_ptrs) {
-
-      for (auto [loss_parameter, flag] :
-           this->tensor_loss_print_option_batch_end[loss]) {
+      for (Loss_Parameter loss_parameter : loss_parameters) {
         std::vector<tf::tensor *> temp_tensor;
         for (tf::tensor *tensor : loss->getLossParameter(loss_parameter)) {
 
@@ -418,4 +386,151 @@ void CallbackTrace::callOnBatchEnd(unsigned const epoch_no) {
       }
     }
   }
+}
+
+bool CallbackTrace::callOnTrainingBegin(tf::model &model) {
+  bool flag = this->verifyLayerCallbackSetup(model.get_layers());
+  if (flag) {
+    this->layers_verification_epoch_begin = true;
+    this->layers_verification_epoch_end = true;
+    this->layers_verification_batch_begin = true;
+    this->layers_verification_batch_end = true;
+    flag = flag && this->verifyLossCallbackSetup(model.get_losses());
+    if (flag) {
+      this->losses_verification_batch_end = true;
+      this->losses_verification_epoch_end = true;
+    }
+  }
+  return flag;
+}
+
+void CallbackTrace::callOnTrainingEnd() {
+  this->layers_verification_epoch_begin = false;
+  this->layers_verification_epoch_end = false;
+  this->layers_verification_batch_begin = false;
+  this->layers_verification_batch_end = false;
+
+  this->losses_verification_batch_end = false;
+  this->losses_verification_epoch_end = false;
+}
+
+bool CallbackTrace::verifyLayerCallbackSetup(std::vector<Layer *> &layers) {
+  bool flag = true;
+
+  // verify layers callback setup on epoch begin
+  if (flag) {
+    for (Layer *layer : std::views::keys(layers_on_epoch_begin)) {
+      auto idx = std::find(layers.begin(), layers.end(), layer);
+      if (idx == layers.end()) {
+        flag = false;
+        std::cerr
+            << "Callback set up for layers epoch begin not matching with the "
+               "model setup.\n";
+        break;
+      }
+    }
+  }
+
+  // verify layers callback setup on epoch end
+  if (flag) {
+    for (Layer *layer : std::views::keys(layers_on_epoch_end)) {
+      auto idx = std::find(layers.begin(), layers.end(), layer);
+      if (idx == layers.end()) {
+        flag = false;
+        std::cerr
+            << "Callback set up for layers at epoch end not matching with the "
+               "model setup.\n";
+        break;
+      }
+    }
+  }
+
+  // verify layers callback setup on batch begin
+  if (flag) {
+    for (Layer *layer : std::views::keys(layers_on_batch_begin)) {
+      auto idx = std::find(layers.begin(), layers.end(), layer);
+      if (idx == layers.end()) {
+        flag = false;
+        std::cerr << "Callback set up for layers at batch begin not matching "
+                     "with the "
+                     "model setup.\n";
+        break;
+      }
+    }
+  }
+
+  // verify layers callback setup on batch end
+  if (flag) {
+    for (Layer *layer : std::views::keys(layers_on_batch_end)) {
+      auto idx = std::find(layers.begin(), layers.end(), layer);
+      if (idx == layers.end()) {
+        flag = false;
+        std::cerr
+            << "Callback set up for layers at batch end not matching with the "
+               "model setup.\n";
+        break;
+      }
+    }
+  }
+  return flag;
+}
+
+bool CallbackTrace::verifyLossCallbackSetup(std::vector<Loss *> losses) {
+  bool flag = true;
+  // verify scalar loss callback setup on epoch end
+  if (flag) {
+    for (Loss *loss : this->losses_on_epoch_end) {
+      auto idx = std::find(losses.begin(), losses.end(), loss);
+      if (idx == losses.end()) {
+        flag = false;
+        std::cerr
+            << "Callback set up for Loss at epoch end not matching with the "
+               "model setup.\n";
+        break;
+      }
+    }
+  }
+
+  // verify scalar loss callback setup on batch end
+  if (flag) {
+    for (Loss *loss : this->losses_on_batch_end) {
+      auto idx = std::find(losses.begin(), losses.end(), loss);
+      if (idx == losses.end()) {
+        flag = false;
+        std::cerr
+            << "Callback set up for Loss at batch end not matching with the "
+               "model setup.\n";
+        break;
+      }
+    }
+  }
+
+  // verify tensor loss callback setup on epoch end
+  if (flag) {
+    for (Loss *loss : std::views::keys(this->loss_parameters_on_epoch_end)) {
+      auto idx = std::find(losses.begin(), losses.end(), loss);
+      if (idx == losses.end()) {
+        flag = false;
+        std::cerr
+            << "Callback set up for Loss at epoch end not matching with the "
+               "model setup.\n";
+        break;
+      }
+    }
+  }
+
+  // verify tensor loss callback setup on batch end
+  if (flag) {
+    for (Loss *loss : std::views::keys(this->loss_parameters_on_batch_end)) {
+      auto idx = std::find(losses.begin(), losses.end(), loss);
+      if (idx == losses.end()) {
+        flag = false;
+        std::cerr
+            << "Callback set up for Loss at batch end not matching with the "
+               "model setup.\n";
+        break;
+      }
+    }
+  }
+  return flag;
 }
