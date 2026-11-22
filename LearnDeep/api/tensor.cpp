@@ -777,8 +777,8 @@ tf::model::predict(const std::vector<tf::tensor> inputs) {
 void tf::model::shuffle(bool shuffle) { model_ptr->shuffle(shuffle); }
 
 void tf::model::compile(const OptimizerType optimizerType,
-                        const LossType lossType) {
-  this->model_ptr->compile(optimizerType, lossType);
+                        const std::string_view loss_type) {
+  this->model_ptr->compile(optimizerType, loss_type);
 }
 
 tf::loss::loss tf::model::get_model_loss(tf::tensor output) const {
@@ -843,7 +843,7 @@ void tf::callback::trace::record_scalar_loss_on_epoch_end(tf::loss::loss loss) {
 }
 
 void tf::callback::trace::record_tensor_loss_on_epoch_end(
-    tf::loss::loss loss, Loss_Parameter loss_parameter) {
+    tf::loss::loss loss, std::string_view loss_parameter) {
   static_cast<CallbackTrace *>(this->callback_ptr.get())
       ->recordTensorLossEpochEnd(loss.get_loss_ptr(), loss_parameter);
 }
@@ -854,7 +854,7 @@ void tf::callback::trace::record_scalar_loss_on_batch_end(tf::loss::loss loss) {
 }
 
 void tf::callback::trace::record_tensor_loss_on_batch_end(
-    tf::loss::loss loss, Loss_Parameter loss_parameter) {
+    tf::loss::loss loss, std::string_view loss_parameter) {
   static_cast<CallbackTrace *>(this->callback_ptr.get())
       ->recordTensorLossBatchEnd(loss.get_loss_ptr(), loss_parameter);
 }
@@ -961,7 +961,7 @@ tf::callback::trace::get_scaler_loss_on_epoch_end(tf::loss::loss loss) {
 
 std::vector<std::vector<tf::tensor>>
 tf::callback::trace::get_tensor_loss_on_epoch_end(
-    tf::loss::loss loss, Loss_Parameter loss_parameter) {
+    tf::loss::loss loss, std::string_view loss_parameter) {
   std::vector<std::vector<tf::tensor>> tensor_losses;
 
   std::vector<std::vector<tf::tensor *>> tensor_loss_ptrs =
@@ -985,7 +985,7 @@ tf::callback::trace::get_scaler_loss_on_batch_end(tf::loss::loss loss) {
 
 std::vector<std::vector<std::vector<tf::tensor>>>
 tf::callback::trace::get_tensor_loss_on_batch_end(
-    tf::loss::loss loss, Loss_Parameter loss_parameter) {
+    tf::loss::loss loss, std::string_view loss_parameter) {
   std::vector<std::vector<std::vector<tf::tensor>>> tensor_losses;
 
   std::vector<std::vector<std::vector<tf::tensor *>>> tensor_loss_ptrs =
@@ -1060,32 +1060,12 @@ void tf::optimizer::execute_optimizer() {
 // --- End Optimizer ---
 
 // --- Losses ---
-namespace {
-
-std::string_view lossTypeToName(LossType loss_type) {
-  switch (loss_type) {
-  case LossType::squared_error:
-    return tf::loss::type::squared_error;
-  case LossType::categorical_cross_entropy:
-    return tf::loss::type::categorical_cross_entropy;
-  default:
-    return {};
-  }
-}
-
-} // namespace
-
 tf::loss::loss::loss(std::string_view type_name)
     : loss(type_name, LossConfig{}) {}
 
 tf::loss::loss::loss(std::string_view type_name, const LossConfig &config)
     : loss_ptr_(
           LossRegistry::instance().create(std::string(type_name), config)) {}
-
-tf::loss::loss::loss(const LossType loss_type,
-                     std::vector<Tensor<std::float64_t> *> input_preds,
-                     std::string loss_name)
-    : loss(lossTypeToName(loss_type), makeLossConfig(input_preds, loss_name)) {}
 
 void tf::loss::loss::forward(std::vector<tf::tensor *> inputs,
                              unsigned batch_size) {
@@ -1123,6 +1103,29 @@ unsigned tf::loss::loss::get_no_of_inputs() {
 void tf::loss::loss::set_target_output(std::vector<tf::tensor> target_output) {
   if (this->loss_ptr_)
     this->loss_ptr_->setTargetOutput(target_output);
+}
+
+std::unordered_set<std::string> tf::loss::loss::parameterNames() const {
+  return this->loss_ptr_ ? this->loss_ptr_->parameterNames()
+                         : std::unordered_set<std::string>{};
+}
+
+std::vector<tf::tensor>
+tf::loss::loss::getParameter(std::string_view name) const {
+  if (!this->loss_ptr_)
+    return {};
+  return copy_output_tensors(this->loss_ptr_->getLossParameter(name));
+}
+
+void tf::loss::loss::setParameter(std::string_view name,
+                                  const LossParameterValue &value) {
+  if (!this->loss_ptr_)
+    return;
+  // Dispatch on the canonical type rather than the construction key so that
+  // alias-registered losses find their registered setter.
+  LossRegistry::instance().setParameter(std::string(this->type()),
+                                        this->loss_ptr_, std::string(name),
+                                        value);
 }
 
 std::string_view tf::loss::loss::type() const {

@@ -114,8 +114,8 @@ void CallbackTrace::recordScalerLossEpochEnd(Loss *const loss_ptr) {
 }
 
 void CallbackTrace::recordTensorLossEpochEnd(Loss *const loss_ptr,
-                                             Loss_Parameter loss_parameter) {
-  this->loss_parameters_on_epoch_end[loss_ptr].push_back(loss_parameter);
+                                             std::string_view loss_parameter) {
+  this->loss_parameters_on_epoch_end[loss_ptr].emplace_back(loss_parameter);
 }
 
 void CallbackTrace::recordScalerLossBatchEnd(Loss *const loss_ptr) {
@@ -123,8 +123,8 @@ void CallbackTrace::recordScalerLossBatchEnd(Loss *const loss_ptr) {
 }
 
 void CallbackTrace::recordTensorLossBatchEnd(Loss *const loss_ptr,
-                                             Loss_Parameter loss_parameter) {
-  this->loss_parameters_on_batch_end[loss_ptr].push_back(loss_parameter);
+                                             std::string_view loss_parameter) {
+  this->loss_parameters_on_batch_end[loss_ptr].emplace_back(loss_parameter);
 }
 
 std::vector<std::vector<tf::tensor *>>
@@ -213,8 +213,8 @@ std::vector<std::float64_t> CallbackTrace::getScalerLossEpochEnd(Loss *loss) {
 
 std::vector<std::vector<tf::tensor *>>
 CallbackTrace::getLossParameterEpochEnd(Loss *loss,
-                                        Loss_Parameter loss_parameter) {
-  return this->tensor_loss_epoch_end[loss][loss_parameter];
+                                        std::string_view loss_parameter) {
+  return this->tensor_loss_epoch_end[loss][std::string(loss_parameter)];
 }
 
 std::vector<std::vector<std::float64_t>>
@@ -224,8 +224,8 @@ CallbackTrace::getScalerLossBatchEnd(Loss *const loss) {
 
 std::vector<std::vector<std::vector<tf::tensor *>>>
 CallbackTrace::getLossParameterBatchEnd(Loss *loss,
-                                        Loss_Parameter loss_parameter) {
-  return this->tensor_loss_batch_end[loss][loss_parameter];
+                                        std::string_view loss_parameter) {
+  return this->tensor_loss_batch_end[loss][std::string(loss_parameter)];
 }
 
 void CallbackTrace::callOnEpochBegin() {
@@ -301,7 +301,7 @@ void CallbackTrace::callOnEpochEnd() {
   {
     for (auto &[loss, loss_parameters] : this->loss_parameters_on_epoch_end) {
 
-      for (Loss_Parameter loss_parameter : loss_parameters) {
+      for (const std::string &loss_parameter : loss_parameters) {
         std::vector<tf::tensor *> temp_tensor;
         for (tf::tensor *tensor : loss->getLossParameter(loss_parameter)) {
 
@@ -405,7 +405,7 @@ void CallbackTrace::callOnBatchEnd(unsigned const epoch_no) {
   {
     for (auto &[loss, loss_parameters] : this->loss_parameters_on_batch_end) {
 
-      for (Loss_Parameter loss_parameter : loss_parameters) {
+      for (const std::string &loss_parameter : loss_parameters) {
         std::vector<tf::tensor *> temp_tensor;
         for (tf::tensor *tensor : loss->getLossParameter(loss_parameter)) {
 

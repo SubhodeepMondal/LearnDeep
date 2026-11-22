@@ -2,6 +2,7 @@
 #include <gtest/gtest.h>
 #include <losses/loss_registry.hpp>
 
+#include <stdexcept>
 #include <string>
 #include <unordered_set>
 #include <vector>
@@ -10,8 +11,9 @@ TEST(LossRegistryTest, ContainsBuiltInLosses) {
   const std::unordered_set<std::string> &names =
       LossRegistry::instance().names();
 
-  EXPECT_TRUE(names.count("squared_error"));
-  EXPECT_TRUE(names.count("categorical_cross_entropy"));
+  EXPECT_TRUE(names.count(std::string(tf::loss::type::squared_error)));
+  EXPECT_TRUE(names.count(
+      std::string(tf::loss::type::categorical_cross_entropy)));
 }
 
 TEST(LossRegistryTest, GenericHandleSupportsRegistryConstruction) {
@@ -23,7 +25,7 @@ TEST(LossRegistryTest, GenericHandleSupportsRegistryConstruction) {
              std::vector<Tensor<std::float64_t> *>{x.getPtr()});
   config.set(std::string(tf::loss::parameter::name), std::string{"se_from_config"});
 
-  tf::loss::loss se(tf::loss::type::squared_error, config);
+  auto se = tf::loss::loss(tf::loss::type::squared_error, config);
   ASSERT_TRUE(se.valid());
   EXPECT_TRUE(static_cast<bool>(se));
   EXPECT_EQ(se.type(), tf::loss::type::squared_error);
@@ -31,33 +33,40 @@ TEST(LossRegistryTest, GenericHandleSupportsRegistryConstruction) {
   EXPECT_NE(se.id(), tf::loss::invalid_loss_id);
   EXPECT_EQ(se.get_no_of_inputs(), 1u);
 
-  tf::loss::loss se_copy = se;
+  auto se_copy = se;
   EXPECT_EQ(se_copy.id(), se.id());
   EXPECT_EQ(se_copy.get_loss_ptr(), se.get_loss_ptr());
 }
 
 TEST(LossRegistryTest, GenericHandleRejectsUnknownType) {
-  tf::loss::loss missing("not_a_loss");
+  auto missing = tf::loss::loss("not_a_loss");
 
   EXPECT_TRUE(missing.type().empty());
   EXPECT_FALSE(missing.valid());
   EXPECT_FALSE(static_cast<bool>(missing));
   EXPECT_EQ(missing.id(), tf::loss::invalid_loss_id);
+  EXPECT_TRUE(missing.parameterNames().empty());
+  EXPECT_TRUE(missing.getParameter("anything").empty());
 }
 
-TEST(LossRegistryTest, LegacyEnumConstructorUsesRegistry) {
+TEST(LossRegistryTest, HandleExposesStringParameterNames) {
   tf::tensor x;
   x.tf_create(tf_float64, 3, 2);
 
-  tf::loss::loss se(LossType::squared_error, {x.getPtr()}, "se_from_enum");
+  auto se = tf::loss::loss(tf::loss::type::squared_error,
+                           makeLossConfig({x.getPtr()}, "se_parameters"));
   ASSERT_TRUE(se.valid());
-  EXPECT_EQ(se.type(), tf::loss::type::squared_error);
-  EXPECT_EQ(se.get_loss_name(), "se_from_enum");
 
-  tf::loss::loss cce(LossType::categorical_cross_entropy, {x.getPtr()},
-                     "cce_from_enum");
-  ASSERT_TRUE(cce.valid());
-  EXPECT_EQ(cce.type(), tf::loss::type::categorical_cross_entropy);
+  const std::unordered_set<std::string> names = se.parameterNames();
+  EXPECT_TRUE(names.count(
+      std::string(tf::loss::parameter::squared_error_predicted_output)));
+  EXPECT_TRUE(names.count(
+      std::string(tf::loss::parameter::squared_error_target_output)));
+  EXPECT_TRUE(names.count(
+      std::string(tf::loss::parameter::squared_error_grad_predicted_output)));
+  EXPECT_TRUE(
+      se.getParameter(tf::loss::parameter::squared_error_predicted_output)
+          .empty());
 }
 
 TEST(LossRegistryTest, TypedWrappersUseRegistry) {
@@ -71,4 +80,24 @@ TEST(LossRegistryTest, TypedWrappersUseRegistry) {
   tf::loss::categorical_cross_entropy cce({x.getPtr()}, "cce_wrapper");
   ASSERT_TRUE(cce.valid());
   EXPECT_EQ(cce.type(), tf::loss::type::categorical_cross_entropy);
+}
+
+TEST(LossRegistryTest, CompileUsesStringLossType) {
+  tf::tensor x;
+  x.tf_create(tf_float64, 3, 2);
+
+  auto dense = tf::layer::dense(2);
+  const std::vector<tf::tensor> dense_output = dense({x});
+  tf::model model({x}, dense_output);
+
+  model.compile(OptimizerType::SGD, tf::loss::type::squared_error);
+  auto loss = model.get_model_loss(dense_output[0]);
+  ASSERT_TRUE(loss.valid());
+  // The historical global uniquifier may append a suffix when other tests
+  // already created a loss with this name.
+  EXPECT_EQ(loss.get_loss_name().rfind("mean_squared_loss_1", 0), 0u);
+
+  tf::model unknown_model({x}, dense_output);
+  EXPECT_THROW(unknown_model.compile(OptimizerType::SGD, "not_a_loss"),
+               std::invalid_argument);
 }

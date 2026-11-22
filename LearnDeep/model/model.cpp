@@ -11,6 +11,8 @@
 #include <core/utility/initializers.hpp>
 #include <layers/layer_graph.hpp>
 #include <layers/layers.hpp>
+#include <losses/loss_registry.hpp>
+#include <string>
 #include <unordered_map>
 #include <vector>
 
@@ -603,33 +605,24 @@ void Model::setTrainingTensorsForInputLayer() {
 void Model::shuffle(bool shuffle) { this->shuffle_input = shuffle; }
 
 void Model::compile(const OptimizerType optimizer_type,
-                    const LossType loss_type) {
-
+                    const std::string_view loss_type) {
   this->optimizer = tf::optimizer(optimizer_type);
-  int mse_count, cce_count;
-  mse_count = cce_count = 0;
-  tf::loss::loss *temp_loss = nullptr;
+
+  const std::string type_name(loss_type);
+  if (!LossRegistry::instance().contains(type_name)) {
+    LOG(ERROR) << "Unknown loss type '" << type_name << "'.\n";
+    throw std::invalid_argument("Unknown loss type: " + type_name);
+  }
+
+  // Keep the historical auto-generated names for the built-in losses.
+  std::string base_name = type_name;
+  if (loss_type == tf::loss::type::squared_error)
+    base_name = "mean_squared_loss";
+
   for (unsigned i = 0; i < outputs.size(); i++) {
-    switch (loss_type) {
-    case (LossType::squared_error): {
-      mse_count++;
-      temp_loss =
-          new tf::loss::loss(loss_type, {outputs[i]},
-                       "mean_squared_loss_" + std::to_string(mse_count));
-      break;
-    }
-    case (LossType::categorical_cross_entropy): {
-      cce_count++;
-      temp_loss = new tf::loss::loss(loss_type, {outputs[i]},
-                               "categorical_cross_entropy_" +
-                                   std::to_string(cce_count));
-      break;
-    }
-    default: {
-      temp_loss = nullptr;
-      break;
-    }
-    }
+    tf::loss::loss *temp_loss = new tf::loss::loss(
+        type_name,
+        makeLossConfig({outputs[i]}, base_name + "_" + std::to_string(i + 1)));
     this->losses.push_back(temp_loss);
     loss_input_mappings[temp_loss].push_back(outputs[i]);
   }

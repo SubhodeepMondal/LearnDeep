@@ -3,6 +3,7 @@
 
 // C++ Headers
 #include <string>
+#include <string_view>
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
@@ -10,7 +11,6 @@
 
 // Library Headers
 #include <api/tensor.h>
-#include <losses/loss_enum.hpp>
 
 class Loss;
 
@@ -42,21 +42,21 @@ class CallbackTrace : public Callback {
   bool losses_verification_epoch_end = false;
   bool losses_verification_batch_end = false;
   std::unordered_set<Loss *> losses_on_epoch_end;
-  std::unordered_map<Loss *, std::vector<Loss_Parameter>>
+  std::unordered_map<Loss *, std::vector<std::string>>
       loss_parameters_on_epoch_end;
   std::unordered_set<Loss *> losses_on_batch_end;
-  std::unordered_map<Loss *, std::vector<Loss_Parameter>>
+  std::unordered_map<Loss *, std::vector<std::string>>
       loss_parameters_on_batch_end;
   std::unordered_map<Loss *, std::vector<std::float64_t>> scalar_loss_epoch_end;
-  std::unordered_map<Loss *,
-                     std::unordered_map<Loss_Parameter,
-                                        std::vector<std::vector<tf::tensor *>>>>
+  std::unordered_map<
+      Loss *,
+      std::unordered_map<std::string, std::vector<std::vector<tf::tensor *>>>>
       tensor_loss_epoch_end;
   std::unordered_map<Loss *, std::vector<std::vector<std::float64_t>>>
       scalar_loss_batch_end;
   std::unordered_map<
       Loss *,
-      std::unordered_map<Loss_Parameter,
+      std::unordered_map<std::string,
                          std::vector<std::vector<std::vector<tf::tensor *>>>>>
       tensor_loss_batch_end;
 
@@ -125,12 +125,12 @@ public:
   void recordScalerLossEpochEnd(Loss *const loss_ptr);
 
   void recordTensorLossEpochEnd(Loss *const loss_ptr,
-                                Loss_Parameter loss_parameter);
+                                std::string_view loss_parameter);
 
   void recordScalerLossBatchEnd(Loss *const loss_ptr);
 
   void recordTensorLossBatchEnd(Loss *const loss_ptr,
-                                Loss_Parameter loss_parameter);
+                                std::string_view loss_parameter);
 
   /* --- epoch batch vector-tensor --- */
   std::vector<std::vector<tf::tensor *>>
@@ -153,13 +153,14 @@ public:
   std::vector<std::float64_t> getScalerLossEpochEnd(Loss *loss_ptr);
 
   std::vector<std::vector<tf::tensor *>>
-  getLossParameterEpochEnd(Loss *const loss_ptr, Loss_Parameter loss_parameter);
+  getLossParameterEpochEnd(Loss *const loss_ptr,
+                           std::string_view loss_parameter);
 
   std::vector<std::vector<std::float64_t>>
   getScalerLossBatchEnd(Loss *const loss_ptr);
 
   std::vector<std::vector<std::vector<tf::tensor *>>>
-  getLossParameterBatchEnd(Loss *loss_ptr, Loss_Parameter loss_parameter);
+  getLossParameterBatchEnd(Loss *loss_ptr, std::string_view loss_parameter);
 
   bool callOnTrainingBegin(tf::model &model) override;
 

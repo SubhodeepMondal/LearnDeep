@@ -205,7 +205,7 @@ TEST_F(FrameworkTest, StaleLayerCallbackIdsDoNotBlockTraining) {
   const std::vector<tf::tensor> outputs = live({x});
 
   tf::model model({x}, outputs);
-  model.compile(OptimizerType::SGD, LossType::squared_error);
+  model.compile(OptimizerType::SGD, tf::loss::type::squared_error);
   EXPECT_TRUE(trace.callback()->callOnTrainingBegin(model));
 
   tf::tensor target;

@@ -6,7 +6,6 @@
 
 // Library Header
 #include "loss.hpp"
-#include "loss_enum.hpp"
 #include "loss_registry.hpp"
 #include <core/graph/graph_framework.hpp>
 #include <core/graph/graph_manager.hpp>
@@ -159,26 +158,31 @@ std::float64_t const CategoricalCrossEntropy::getScalerLoss() {
 }
 
 std::vector<tf::tensor *>
-CategoricalCrossEntropy::getLossParameter(Loss_Parameter loss_parameter) {
+CategoricalCrossEntropy::getLossParameter(std::string_view loss_parameter) {
   std::vector<tf::tensor *> temp_tensor;
-  switch (loss_parameter) {
-  case Loss_Parameter::categorical_cross_entropy_error: {
+  using tf::loss::parameter::categorical_cross_entropy_error;
+  using tf::loss::parameter::categorical_cross_entropy_target_output;
+  using tf::loss::parameter::mean_categorical_cross_entropy_error;
+
+  if (loss_parameter == categorical_cross_entropy_error) {
     temp_tensor.push_back(this->loss_tensor);
-    break;
-  }
-  case Loss_Parameter::mean_categorical_cross_entropy_error: {
+  } else if (loss_parameter == mean_categorical_cross_entropy_error) {
     temp_tensor.push_back(&this->grad_training_inputs);
-    break;
-  }
-  case Loss_Parameter::categorical_cross_entropy_target_output: {
-    // tf::tensor temp_reference = tf::tensor(tf_float64, target_outputs[0]);
-    temp_tensor.push_back(target_outputs[0]);
-    break;
-  }
-  default:
-    LOG(ERROR) << "Sever! the selected loss parameter is not available for "
-                  "mean squared error layer.\n";
-    break;
+  } else if (loss_parameter == categorical_cross_entropy_target_output) {
+    if (!target_outputs.empty())
+      temp_tensor.push_back(target_outputs[0]);
+  } else {
+    LOG(ERROR) << "Sever! the selected loss parameter '" << loss_parameter
+               << "' is not available for categorical cross entropy.\n";
   }
   return temp_tensor;
+}
+
+std::unordered_set<std::string>
+CategoricalCrossEntropy::parameterNames() const {
+  return {
+      std::string(tf::loss::parameter::categorical_cross_entropy_error),
+      std::string(tf::loss::parameter::mean_categorical_cross_entropy_error),
+      std::string(
+          tf::loss::parameter::categorical_cross_entropy_target_output)};
 }

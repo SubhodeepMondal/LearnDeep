@@ -4,6 +4,7 @@
 // C++ Headers
 #include <memory>
 #include <stdfloat>
+#include <string_view>
 #include <unordered_map>
 #include <vector>
 
@@ -138,7 +139,8 @@ public:
   /** @param Loss loss to be used */
   /** @param Metric metric to be used */
   /** @return void */
-  void compile(const OptimizerType optimizer_type, const LossType loss_type);
+  void compile(const OptimizerType optimizer_type,
+               const std::string_view loss_type);
 
   /** @file model.hpp basic model implementation */
   /** @brief Runs the training loop and updates the gradients */

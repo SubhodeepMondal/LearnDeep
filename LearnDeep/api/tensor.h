@@ -19,7 +19,6 @@
 #include <core/framework/MathLibrary.h>
 #include <core/graph/graph_context.hpp>
 #include <core/ops/opskernel.h>
-#include <losses/loss_enum.hpp>
 #include <optimizers/optimizer_type.hpp>
 
 class Callback;
@@ -313,8 +312,7 @@ namespace parameter {
 inline constexpr std::string_view inputs{"inputs"};
 inline constexpr std::string_view name{"name"};
 
-// Canonical parameter keys. These preserve the spellings of the removed
-// Loss_Parameter enumerators so existing callback registrations keep working.
+// Canonical parameter keys preserved across the string-based loss API.
 inline constexpr std::string_view squared_error_predicted_output{
     "squared_error_predicted_output"};
 inline constexpr std::string_view squared_error_target_output{
@@ -344,10 +342,6 @@ public:
 
   loss(std::string_view type_name, const LossConfig &config);
 
-  // Compatibility bridge used until the enum is removed in the next phase.
-  loss(LossType loss_type, std::vector<Tensor<std::float64_t> *> input_preds,
-       std::string loss_name);
-
   virtual ~loss() = default;
 
   void forward(std::vector<tf::tensor *> inputs, unsigned batch_size);
@@ -364,6 +358,12 @@ public:
   unsigned get_no_of_inputs();
 
   void set_target_output(std::vector<tf::tensor> target_output);
+
+  std::unordered_set<std::string> parameterNames() const;
+
+  std::vector<tf::tensor> getParameter(std::string_view name) const;
+
+  void setParameter(std::string_view name, const LossParameterValue &value);
 
   std::string_view type() const;
 
@@ -419,12 +419,12 @@ public:
   void record_scalar_loss_on_epoch_end(tf::loss::loss loss);
 
   void record_tensor_loss_on_epoch_end(tf::loss::loss loss,
-                                       Loss_Parameter loss_parameter);
+                                       std::string_view loss_parameter);
 
   void record_scalar_loss_on_batch_end(tf::loss::loss loss);
 
   void record_tensor_loss_on_batch_end(tf::loss::loss loss,
-                                       Loss_Parameter loss_parameter);
+                                       std::string_view loss_parameter);
 
   std::vector<std::vector<tf::tensor>>
   get_parameter_on_epoch_begin(const tf::layer::layer &layer_handle,
@@ -445,14 +445,14 @@ public:
   std::vector<std::float64_t> get_scaler_loss_on_epoch_end(tf::loss::loss loss);
 
   std::vector<std::vector<tf::tensor>> get_tensor_loss_on_epoch_end(
-      tf::loss::loss loss, Loss_Parameter loss_parameter);
+      tf::loss::loss loss, std::string_view loss_parameter);
 
   std::vector<std::vector<std::float64_t>>
   get_scaler_loss_on_batch_end(tf::loss::loss loss);
 
   std::vector<std::vector<std::vector<tf::tensor>>>
   get_tensor_loss_on_batch_end(tf::loss::loss loss,
-                               Loss_Parameter loss_parameter);
+                               std::string_view loss_parameter);
 
   std::shared_ptr<Callback> callback() const;
 
@@ -532,7 +532,8 @@ public:
   /** @param Loss loss to be used */
   /** @param Metric metric to be used */
   /** @return void */
-  void compile(const OptimizerType optimizerType, const LossType lossType);
+  void compile(const OptimizerType optimizerType,
+               const std::string_view loss_type);
 
   /** @file tensor.cpp basic model implementation */
   /** @brief Runs the training loop and updates the gradients */

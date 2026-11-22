@@ -10,10 +10,7 @@
 #include <vector>
 
 // Library Headers
-#include "loss_enum.hpp"
 #include <api/tensor.h>
-
-enum class LossParameter { output_predict, output_target, loss };
 
 class Loss {
 private:
@@ -56,7 +53,9 @@ public:
                                    std::vector<tf::tensor> &target_output) = 0;
 
   virtual std::vector<tf::tensor *>
-  getLossParameter(Loss_Parameter loss_parameter) = 0;
+  getLossParameter(std::string_view loss_parameter) = 0;
+
+  virtual std::unordered_set<std::string> parameterNames() const { return {}; }
 
   virtual unsigned getNoOfInputs() = 0;
 
@@ -68,10 +67,10 @@ class SquaredError : public Loss {
   std::vector<tf::tensor *> training_inputs;
   std::vector<tf::tensor *> target_outputs;
   tf::tensor grad_training_inputs;
-  tf::tensor *differences;
-  tf::tensor *loss_tensor_batch;
-  tf::tensor *loss_tensor;
-  tf::tensor *loss_gradient;
+  tf::tensor *differences{nullptr};
+  tf::tensor *loss_tensor_batch{nullptr};
+  tf::tensor *loss_tensor{nullptr};
+  tf::tensor *loss_gradient{nullptr};
   std::vector<tf::tensor> loss_reduction_intermediates;
 
 public:
@@ -100,7 +99,9 @@ public:
   std::float64_t const getScalerLoss() override;
 
   std::vector<tf::tensor *>
-  getLossParameter(Loss_Parameter loss_parameter) override;
+  getLossParameter(std::string_view loss_parameter) override;
+
+  std::unordered_set<std::string> parameterNames() const override;
 
   unsigned getNoOfInputs() override { return 1; }
 
@@ -111,11 +112,11 @@ class CategoricalCrossEntropy : public Loss {
   std::vector<tf::tensor *> training_inputs;
   std::vector<tf::tensor *> target_outputs;
   tf::tensor grad_training_inputs;
-  tf::tensor *log_value;
-  tf::tensor *log_difference;
-  tf::tensor *loss_tensor_batch;
-  tf::tensor *loss_tensor;
-  tf::tensor *loss_gradient;
+  tf::tensor *log_value{nullptr};
+  tf::tensor *log_difference{nullptr};
+  tf::tensor *loss_tensor_batch{nullptr};
+  tf::tensor *loss_tensor{nullptr};
+  tf::tensor *loss_gradient{nullptr};
 
 public:
   CategoricalCrossEntropy() = default;
@@ -143,7 +144,9 @@ public:
   std::float64_t const getScalerLoss() override;
 
   std::vector<tf::tensor *>
-  getLossParameter(Loss_Parameter loss_parameter) override;
+  getLossParameter(std::string_view loss_parameter) override;
+
+  std::unordered_set<std::string> parameterNames() const override;
 
   unsigned getNoOfInputs() override { return 1; }
 

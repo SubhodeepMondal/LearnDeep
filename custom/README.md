@@ -68,8 +68,8 @@ unreferenced `DT_NEEDED` entry and the static initializer would never run.
   pure-virtual layout). An `Optimizer`/`Tensor` change requires recompiling it.
 - The public header itself includes internal headers
   (`core/framework/MathLibrary.h`, `core/graph/graph_context.hpp`,
-  `core/ops/opskernel.h`, `losses/loss_enum.hpp`,
-  `optimizers/optimizer_type.hpp`), so "public header only" still requires the
+  `core/ops/opskernel.h`, `optimizers/optimizer_type.hpp`), so "public header
+  only" still requires the
   framework's source-tree include directory at compile time.
 - There is no install/export package yet; `custom/CMakeLists.txt` locates
   libraries directly in the framework build tree via `find_library`.
