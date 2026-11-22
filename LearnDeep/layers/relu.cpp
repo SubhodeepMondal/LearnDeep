@@ -10,7 +10,7 @@
 // Third party
 #include <absl/log/log.h>
 
-Relu::Relu() {
+Relu::Relu() : layer_type(tf_relu_layer) {
   this->isForwardGraphCreated = false;
   this->isBackwardGraphCreated = false;
   this->isGradRecorded = false;

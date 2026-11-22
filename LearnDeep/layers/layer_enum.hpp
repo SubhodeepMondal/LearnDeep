@@ -6,7 +6,8 @@ enum LayerType {
   tf_conv2d,
   tf_batchnormalization,
   tf_dropout,
-  tf_softmax_layer
+  tf_softmax_layer,
+  tf_relu_layer
 };
 
 enum class Layer_Parameter {

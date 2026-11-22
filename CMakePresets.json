@@ -109,6 +109,14 @@
         {
             "name": "release_cpu",
             "configurePreset": "release_cpu"
+        },
+        {
+            "name": "debug_cpu",
+            "configurePreset": "debug_cpu"
+        },
+        {
+            "name": "debug_gpu",
+            "configurePreset": "debug_gpu"
         }
     ]
 }

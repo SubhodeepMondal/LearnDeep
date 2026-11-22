@@ -15,6 +15,8 @@ class Optimizer;
 class Layer {
 protected:
 public:
+  virtual ~Layer() = default;
+
   std::vector<const Tensor<std::float64_t> *>
       layer_inputs; // not own by any layer
   std::vector<tf::tensor *> layer_outputs;

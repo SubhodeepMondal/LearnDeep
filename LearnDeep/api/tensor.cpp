@@ -21,6 +21,29 @@ class CallbackEarlyStopping;
 std::unordered_map<Tensor<std::float64_t> *, tf::tensor *> tf::tensor_nodes;
 std::unordered_set<Tensor<std::float64_t> *> tf::tensor_to_be_spared;
 
+namespace {
+
+std::vector<const tf::tensor *>
+api_tensors_for(const std::vector<const Tensor<std::float64_t> *> &tensors) {
+  std::vector<const tf::tensor *> api_tensors;
+  api_tensors.reserve(tensors.size());
+
+  for (const Tensor<std::float64_t> *tensor : tensors) {
+    if (!tensor)
+      continue;
+
+    auto registered_tensor =
+        tf::tensor_nodes.find(const_cast<Tensor<std::float64_t> *>(tensor));
+    if (registered_tensor != tf::tensor_nodes.end() &&
+        registered_tensor->second)
+      api_tensors.push_back(registered_tensor->second);
+  }
+
+  return api_tensors;
+}
+
+} // namespace
+
 // --- Default Constructor
 tf::tensor::tensor() : ptr(NULL) {}
 
@@ -564,7 +587,7 @@ tf::layer::dense::operator()(const std::vector<tf::tensor> &inputs) {
 }
 
 std::vector<const tf::tensor *> tf::layer::dense::get_input_tensors() {
-  return {nullptr};
+  return api_tensors_for(this->dense_layer->getInputTensors());
 }
 
 std::vector<tf::tensor> tf::layer::dense::get_output_tensors() {
@@ -577,6 +600,32 @@ std::vector<tf::tensor> tf::layer::dense::get_output_tensors() {
     output_tensors.push_back(*tensor);
 
   return output_tensors;
+}
+
+std::vector<tf::tensor> tf::layer::dense::get_output_training_tensor() {
+  std::vector<tf::tensor> training_output_tensors;
+
+  std::vector<tf::tensor *> temp_training_output_tensors =
+      dense_layer->getOutputTrainingTensors();
+
+  for (tf::tensor *tensor : temp_training_output_tensors)
+    training_output_tensors.push_back(*tensor);
+
+  return training_output_tensors;
+}
+
+std::vector<tf::tensor> tf::layer::dense::get_output_training_weight() {
+  std::vector<tf::tensor> training_weights;
+
+  std::vector<tf::tensor *> training_weight_parameters =
+      static_cast<Dense *>(this->dense_layer)
+          ->getLayerParameter(Layer_Parameter::dense_training_weight);
+
+  for (tf::tensor *weight : training_weight_parameters)
+    if (weight)
+      training_weights.push_back(*weight);
+
+  return training_weights;
 }
 
 void tf::layer::dense::set_weight(const tf::tensor &weight_tensor) {
@@ -623,7 +672,7 @@ tf::layer::relu::operator()(const std::vector<tf::tensor> &inputs) {
 }
 
 std::vector<const tf::tensor *> tf::layer::relu::get_input_tensors() {
-  return {nullptr};
+  return api_tensors_for(this->relu_layer->getInputTensors());
 }
 
 std::vector<tf::tensor> tf::layer::relu::get_output_tensors() {
@@ -650,7 +699,7 @@ tf::layer::softmax::softmax(unsigned axis) {
 
 tf::layer::softmax::~softmax() {
   global_layer_graph.removeNode(this->softmax_layer);
-  delete dynamic_cast<Relu *>(this->softmax_layer);
+  delete dynamic_cast<Softmax *>(this->softmax_layer);
 }
 
 std::vector<tf::tensor>
@@ -667,7 +716,7 @@ tf::layer::softmax::operator()(const std::vector<tf::tensor> &inputs) {
 }
 
 std::vector<const tf::tensor *> tf::layer::softmax::get_input_tensors() {
-  return {nullptr};
+  return api_tensors_for(this->softmax_layer->getInputTensors());
 }
 
 std::vector<tf::tensor> tf::layer::softmax::get_output_tensors() {

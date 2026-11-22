@@ -25,7 +25,6 @@ Softmax::~Softmax() {
 const std::vector<tf::tensor *> &
 Softmax::operator()(std::vector<tf::tensor> input_tensors) {
 
-  this->axis = axis;
   // do a lazy initialization
   if (input_tensors.size() == 1) {
     this->layer_inputs.push_back(input_tensors[0].getPtr());
