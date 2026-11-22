@@ -34,8 +34,9 @@ framework `CMakeLists.txt` is edited to add an experiment here.
     values are checked against NumPy reference data.
   - `data/` — float64 `.bin` reference data used by the integration test.
   - `generate_custom_scale_data.py` — regenerates that data from the notebook.
-- A future `optimizer/` experiment area can be added in
-  `custom/CMakeLists.txt` the same way, incrementally.
+- An `optimizer/` experiment area is **deferred**. Custom optimizer plugins are
+  not part of the public extension surface yet; use the built-in `"sgd"` key or
+  a preconfigured `tf::optimizer::optimizer` handle with `model.compile()`.
 
 Adding a source file to `layer/`, `loss/` or `test/` is picked up automatically
 by the `CONFIGURE_DEPENDS` globs: layer/loss sources join their plugins, test
@@ -63,7 +64,9 @@ construction parameters, and the framework adapts that object to the internal
 `Loss` ABI inside `libloss.so`. Its third argument is a public parameter setter,
 so `tf::loss::loss::setParameter("scale", 3.0)` works for the generic handle.
 `model.compile(tf::optimizer::type::sgd, "custom_scaled_mse")` creates the loss by its
-registry key, and callbacks refer to it only by `loss_id`.
+registry key, and callbacks refer to it only by `loss_id`. The optimizer is
+selected independently by string key or through a `tf::optimizer::optimizer`
+handle; no raw optimizer object is exposed to the custom loss.
 
 `custom/test/custom_layer_test.cpp`, `custom/test/custom_loss_test.cpp`, and
 `custom/test/custom_loss_integration.cpp` call the tiny exported anchors
@@ -81,9 +84,11 @@ the static initializer would never run.
   `<layers/layers.hpp>` and `<layers/layer_registry.hpp>` headers. The custom
   *test* has no such dependency.
 - Consequently a custom layer is compiled against internal C++ headers and is
-  tied to the internal `Layer` ABI (`Tensor<std::float64_t>*`,
-  `tf::optimizer::optimizer`, pure-virtual layout). An `Optimizer`/`Tensor`
-  change requires recompiling it.
+  tied to the internal `Layer` ABI plus the public handle ABI
+  (`Tensor<std::float64_t>*`, `tf::optimizer::optimizer`, pure-virtual layout).
+  A change to the optimizer handle or `Tensor` ABI requires recompiling it. A
+  custom optimizer plugin is deferred, so there is no optimizer equivalent of
+  `REGISTER_LAYER`/`REGISTER_LOSS` today.
 - The custom loss has **no** internal-header dependency: it implements the
   public `tf::loss::behavior` contract and registers through the public
   `REGISTER_LOSS` macro. It still links against the framework libraries, so an

@@ -61,9 +61,16 @@ public:
     calculate(std::vector<tf::tensor> inputs) = 0;
     virtual std::vector<tf::tensor*>
     forward(std::vector<tf::tensor> inputs) = 0;
-    virtual void backward() = 0;
+    virtual void backward(const tf::optimizer::optimizer& optimizer) = 0;
+
+    // Clears one-shot gradient state before a new training graph.
+    virtual void resetGradientRecording() {}
 };
 \end{lstlisting}
+
+Layers receive the shared-owning \texttt{tf::optimizer::optimizer} handle, never
+an internal optimizer object. The handle is valid for the whole training run
+because the compiled model shares ownership of the same optimizer instance.
 
 Now lets take a look at each layer and how they're constructed
 
@@ -133,6 +140,7 @@ Class Dense : protected Layer{
     std::vector<tf::tensor> calculate(std::vactor<tf::tensor> inputs) override;
     std::vector<tf::tensor *>& forward(std::vector<tf::tensor> inputs, unsigned const batch_size) override;
     void backward(const tf::optimizer::optimizer& optimizer) override;
+    void resetGradientRecording() override;
     ...
     // few other internal methods/functions
     ...
@@ -307,7 +315,10 @@ tensors and prepares the optimizer update path.
 
 The isGradRecorded flag prevents these
 registrations from being repeated unnecessarily
-within the intended graph lifecycle.
+within the intended graph lifecycle. Before a new
+training graph is built, \texttt{resetGradientRecording()} clears that flag and
+drops the stale gradient aliases so the next \texttt{backward()} records fresh
+update operations through the optimizer handle.
 
 \subsection{Dense in practice}
 

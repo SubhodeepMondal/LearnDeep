@@ -186,7 +186,20 @@ The implementation includes the tensor operations required for the loss calculat
 
 ### Optimization
 
-LearnDeep includes stochastic gradient descent (SGD) for updating learnable parameters using calculated gradients.
+LearnDeep includes stochastic gradient descent (SGD) for updating learnable parameters using calculated gradients. Optimizers are selected by string key through a registry and used through a shared-owning `tf::optimizer::optimizer` handle:
+
+```cpp
+auto sgd = tf::optimizer::optimizer(tf::optimizer::type::sgd);
+sgd.setParameter(tf::optimizer::parameter::learning_rate, 0.01);
+
+tf::model model({x}, dense_output);
+model.compile(sgd, tf::loss::type::squared_error);
+
+// Equivalent string-key form:
+model.compile("sgd", tf::loss::type::squared_error);
+```
+
+Unknown optimizer keys are rejected with `std::invalid_argument`. Layers receive the handle, never an internal optimizer object, and the model shares ownership so the optimizer stays alive for the whole training run.
 
 The optimizer, loss function, model, and execution engine work together to form the training pipeline.
 

@@ -50,10 +50,10 @@ class Model {
   tf::history_container fit(
       const std::vector<tf::tensor>& inputs,
       const std::vector<tf::tensor>& outputs,
-      const std::vector<tf::tensor>& validation_data = {},
+      std::vector<std::shared_ptr<Callback>> callbacks = {},
       unsigned epochs = 10,
       unsigned batch_size = 1,
-      std::vector<std::shared_ptr<Callback>> callback = {},
+      const std::vector<tf::tensor>& validation_data = {},
       unsigned verbose = 0,
       bool training = true);
 
@@ -152,6 +152,16 @@ Based on these selections, LearnDeep creates the corresponding
 optimizer and loss instances. This separates the choice of
 training configuration from the implementation of the
 training loop itself.
+
+The \texttt{compile(std::string\_view, std::string\_view)} overload constructs
+each component from its registry key; an unknown optimizer or loss key throws
+\texttt{std::invalid\_argument}. The
+\texttt{compile(const tf::optimizer::optimizer\&, std::string\_view)} overload
+accepts a preconfigured optimizer handle instead, so hyperparameters can be set
+before compilation. The model and the caller share ownership of that optimizer.
+Recompiling releases the previous optimizer and losses before installing the new
+ones and resets one-shot gradient state, so no update operations from an older
+training graph remain active.
 
 The optimizer and loss function serve different purposes.
 The loss function quantifies the prediction error, whereas

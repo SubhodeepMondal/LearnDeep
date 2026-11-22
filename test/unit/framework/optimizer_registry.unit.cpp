@@ -105,7 +105,7 @@ TEST(OptimizerRegistryTest, UpdateGraphRoutingDoesNotStealTensorOwnership) {
   EXPECT_NE(update.getPtr(), nullptr);
 }
 
-TEST(OptimizerRegistryTest, CompileUsesStringOptimizerType) {
+TEST(OptimizerRegistryTest, CompileUsesStringOptimizerKey) {
   tf::tensor x;
   x.tf_create(tf_float64, 3, 2);
 
