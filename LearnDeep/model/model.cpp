@@ -285,7 +285,7 @@ Model::fit(tf::model &model, const std::vector<tf::tensor> &training_inputs,
 
               for (tf::layer::layer_id id : this->layers)
                 if (std::shared_ptr<Layer> layer = this->lockLayer(id))
-                  layer->backward(optimizer.getPtr());
+                  layer->backward(optimizer);
 
               for (tf::loss::loss_id id : this->losses)
                 if (std::shared_ptr<Loss> loss = this->lockLoss(id))
@@ -294,7 +294,7 @@ Model::fit(tf::model &model, const std::vector<tf::tensor> &training_inputs,
               this->auto_grad_created = true;
             }
             ctx_compute_n_gradient.compute_gradient(); // back propagation
-            optimizer.execute_optimizer();
+            optimizer.execute();
           }
 
           this->runCallbackOnBatchEnd(callback, i);

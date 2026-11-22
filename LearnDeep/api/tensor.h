@@ -748,12 +748,9 @@ public:
   virtual ~optimizer() = default;
 
   void create_parameter_update_graph(tf::tensor param, tf::tensor &update_param,
-                                     tf::tensor gradient_param);
+                                     tf::tensor gradient_param) const;
 
-  void execute();
-
-  // Deprecated alias retained until Model routing is migrated in Phase 3.
-  void execute_optimizer();
+  void execute() const;
 
   std::unordered_set<std::string> parameterNames() const;
 
@@ -769,9 +766,6 @@ public:
   bool valid() const;
 
   explicit operator bool() const;
-
-  // Temporary Phase 1 bridge for Layer::backward; removed in Phase 3.
-  Optimizer *getPtr() const;
 };
 
 } // namespace optimizer

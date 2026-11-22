@@ -132,7 +132,7 @@ Class Dense : protected Layer{
     std::vector<tf::tensor *>& operator(std::vector<tf::tensor> input_tensors);
     std::vector<tf::tensor> calculate(std::vactor<tf::tensor> inputs) override;
     std::vector<tf::tensor *>& forward(std::vector<tf::tensor> inputs, unsigned const batch_size) override;
-    std::vector<tf::tensor *>& backward(Optimizer *const optimizer) override;
+    void backward(const tf::optimizer::optimizer& optimizer) override;
     ...
     // few other internal methods/functions
     ...
@@ -237,7 +237,7 @@ output.emplace_back(inputs[0].matmul(weights).add(bias));
 return output;
 }
 
-Dense::backward(Optimizer *optimizer){
+Dense::backward(const tf::optimizer::optimizer& optimizer){
 
   if (!this->isGradRecorded) {
     Graph *g = GraphManager::instance().getCurrentGraph();
@@ -246,8 +246,8 @@ Dense::backward(Optimizer *optimizer){
     grad_input = g->getGradTensor(training_inputs[0]);
     grad_output = g->getGradTensor(training_output[0]);
 
-    optimizer->createParameterUpdateGraph(training_weight, updated_weight, grad_weight);
-    optimizer->createParameterUpdateGraph(training_bias, updated_bias, grad_bias);
+    optimizer.create_parameter_update_graph(training_weight, updated_weight, grad_weight);
+    optimizer.create_parameter_update_graph(training_bias, updated_bias, grad_bias);
 
     this->isGradRecorded = true;
   }

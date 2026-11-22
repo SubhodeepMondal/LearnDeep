@@ -72,7 +72,7 @@ std::vector<tf::tensor> Relu::calculate(std::vector<tf::tensor> inputs) {
   return output;
 }
 
-void Relu::backward(Optimizer *optimiser) {
+void Relu::backward(const tf::optimizer::optimizer &) {
 
   if (!this->isGradRecorded && !this->training_input_aliases.empty()) {
 

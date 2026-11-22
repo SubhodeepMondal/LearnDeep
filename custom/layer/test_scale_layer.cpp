@@ -66,7 +66,7 @@ TestScaleLayer::calculate(std::vector<tf::tensor> inputs) {
   return result;
 }
 
-void TestScaleLayer::backward(Optimizer *) {
+void TestScaleLayer::backward(const tf::optimizer::optimizer &) {
   if (this->training_input_aliases.empty())
     return;
 

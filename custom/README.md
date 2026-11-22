@@ -81,8 +81,9 @@ the static initializer would never run.
   `<layers/layers.hpp>` and `<layers/layer_registry.hpp>` headers. The custom
   *test* has no such dependency.
 - Consequently a custom layer is compiled against internal C++ headers and is
-  tied to the internal `Layer` ABI (`Tensor<std::float64_t>*`, `Optimizer*`,
-  pure-virtual layout). An `Optimizer`/`Tensor` change requires recompiling it.
+  tied to the internal `Layer` ABI (`Tensor<std::float64_t>*`,
+  `tf::optimizer::optimizer`, pure-virtual layout). An `Optimizer`/`Tensor`
+  change requires recompiling it.
 - The custom loss has **no** internal-header dependency: it implements the
   public `tf::loss::behavior` contract and registers through the public
   `REGISTER_LOSS` macro. It still links against the framework libraries, so an

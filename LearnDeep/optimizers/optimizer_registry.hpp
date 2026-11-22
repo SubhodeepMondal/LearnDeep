@@ -67,10 +67,6 @@ public:
 
   void execute(const OptimizerHandle &optimizer) const;
 
-  // Temporary Phase 1 bridge for the existing Layer::backward(Optimizer *)
-  // signature. Removed when routing is migrated in Phase 3.
-  Optimizer *pointer(const OptimizerHandle &optimizer) const;
-
   std::vector<tf::tensor>
   optimizerParameters(const OptimizerHandle &optimizer,
                       std::string_view parameter) const;

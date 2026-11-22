@@ -1057,17 +1057,18 @@ tf::optimizer::optimizer::optimizer(std::shared_ptr<Optimizer> owned)
     : optimizer_ptr_(std::move(owned)) {}
 
 void tf::optimizer::optimizer::create_parameter_update_graph(
-    tf::tensor param, tf::tensor &update_param, tf::tensor gradient_param) {
+    tf::tensor param, tf::tensor &update_param,
+    tf::tensor gradient_param) const {
+  // Tensor copies are non-owning aliases. Do not move them into the facade:
+  // a move transfers global tensor ownership to a short-lived local wrapper,
+  // which would delete the underlying tensor when the call returns.
   OptimizerRegistry::instance().createParameterUpdateGraph(
-      this->optimizer_ptr_, std::move(param), update_param,
-      std::move(gradient_param));
+      this->optimizer_ptr_, param, update_param, gradient_param);
 }
 
-void tf::optimizer::optimizer::execute() {
+void tf::optimizer::optimizer::execute() const {
   OptimizerRegistry::instance().execute(this->optimizer_ptr_);
 }
-
-void tf::optimizer::optimizer::execute_optimizer() { this->execute(); }
 
 std::unordered_set<std::string>
 tf::optimizer::optimizer::parameterNames() const {
@@ -1108,9 +1109,6 @@ tf::optimizer::optimizer::operator bool() const {
   return static_cast<bool>(this->optimizer_ptr_);
 }
 
-Optimizer *tf::optimizer::optimizer::getPtr() const {
-  return OptimizerRegistry::instance().pointer(this->optimizer_ptr_);
-}
 // --- End Optimizer ---
 
 // --- Losses ---

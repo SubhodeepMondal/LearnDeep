@@ -115,17 +115,12 @@ void OptimizerRegistry::createParameterUpdateGraph(
     const OptimizerHandle &optimizer, tf::tensor param,
     tf::tensor &update_param, tf::tensor gradient_param) const {
   if (optimizer)
-    optimizer->createParameterUpdateGraph(std::move(param), update_param,
-                                          std::move(gradient_param));
+    optimizer->createParameterUpdateGraph(param, update_param, gradient_param);
 }
 
 void OptimizerRegistry::execute(const OptimizerHandle &optimizer) const {
   if (optimizer)
     optimizer->executeOptimizer();
-}
-
-Optimizer *OptimizerRegistry::pointer(const OptimizerHandle &optimizer) const {
-  return optimizer.get();
 }
 
 std::vector<tf::tensor>

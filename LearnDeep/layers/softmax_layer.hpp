@@ -40,7 +40,7 @@ public:
   forward(std::vector<const tf::tensor *> &input, unsigned batch_size) override;
   std::vector<tf::tensor> calculate(std::vector<tf::tensor> inputs) override;
 
-  void backward(Optimizer *optimizer) override;
+  void backward(const tf::optimizer::optimizer &optimizer) override;
 
   const std::vector<tf::tensor *> &getOutputTensors() override;
 

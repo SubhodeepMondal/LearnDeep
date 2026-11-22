@@ -74,7 +74,7 @@ std::vector<tf::tensor> Softmax::calculate(std::vector<tf::tensor> inputs) {
   return output;
 }
 
-void Softmax::backward(Optimizer *optimiser) {
+void Softmax::backward(const tf::optimizer::optimizer &) {
 
   if (!this->isGradRecorded && !this->training_input_aliases.empty()) {
 

@@ -36,8 +36,9 @@ TEST(OptimizerRegistryTest, GenericHandleSupportsRegistryConstruction) {
   EXPECT_TRUE(static_cast<bool>(sgd));
   EXPECT_EQ(sgd.type(), tf::optimizer::type::sgd);
   EXPECT_NE(sgd.id(), tf::optimizer::invalid_optimizer_id);
-  ASSERT_NE(sgd.getPtr(), nullptr);
-  auto *internal_sgd = dynamic_cast<SGD *>(sgd.getPtr());
+  auto locked = OptimizerRegistry::instance().lock(sgd.id());
+  ASSERT_NE(locked, nullptr);
+  auto *internal_sgd = dynamic_cast<SGD *>(locked.get());
   ASSERT_NE(internal_sgd, nullptr);
   EXPECT_DOUBLE_EQ(internal_sgd->learningRate(), 0.05);
 
@@ -45,7 +46,7 @@ TEST(OptimizerRegistryTest, GenericHandleSupportsRegistryConstruction) {
   EXPECT_DOUBLE_EQ(internal_sgd->learningRate(), 0.2);
 
   EXPECT_TRUE(OptimizerRegistry::instance().contains(sgd.id()));
-  EXPECT_EQ(OptimizerRegistry::instance().lock(sgd.id()).get(), sgd.getPtr());
+  EXPECT_EQ(OptimizerRegistry::instance().lock(sgd.id()), locked);
 
   auto sgd_copy = sgd;
   EXPECT_EQ(sgd_copy.id(), sgd.id());
@@ -58,7 +59,6 @@ TEST(OptimizerRegistryTest, GenericHandleRejectsUnknownType) {
   EXPECT_FALSE(missing.valid());
   EXPECT_FALSE(static_cast<bool>(missing));
   EXPECT_EQ(missing.id(), tf::optimizer::invalid_optimizer_id);
-  EXPECT_EQ(missing.getPtr(), nullptr);
   EXPECT_TRUE(missing.parameterNames().empty());
   EXPECT_TRUE(missing.getParameter("anything").empty());
 
@@ -80,6 +80,24 @@ TEST(OptimizerRegistryTest, HandleExposesStringParameterNames) {
       std::string(tf::optimizer::parameter::learning_rate)));
   EXPECT_TRUE(
       sgd.getParameter(tf::optimizer::parameter::learning_rate).empty());
+}
+
+TEST(OptimizerRegistryTest, UpdateGraphRoutingDoesNotStealTensorOwnership) {
+  tf::tensor param;
+  tf::tensor update;
+  tf::tensor gradient;
+  param.tf_create(tf_float64, 2, 2);
+  gradient.tf_create(tf_float64, 2, 2);
+
+  Tensor<std::float64_t> *param_ptr = param.getPtr();
+  Tensor<std::float64_t> *gradient_ptr = gradient.getPtr();
+
+  auto sgd = tf::optimizer::optimizer(tf::optimizer::type::sgd);
+  sgd.create_parameter_update_graph(param, update, gradient);
+
+  EXPECT_EQ(param.getPtr(), param_ptr);
+  EXPECT_EQ(gradient.getPtr(), gradient_ptr);
+  EXPECT_NE(update.getPtr(), nullptr);
 }
 
 TEST(OptimizerRegistryTest, CompileUsesStringOptimizerType) {
