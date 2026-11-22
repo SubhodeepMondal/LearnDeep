@@ -10,6 +10,7 @@
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
+#include <variant>
 #include <vector>
 
 // Library Headers
@@ -26,6 +27,7 @@ class Layer;
 class Loss;
 class Model;
 class Optimizer;
+struct LayerConfig;
 
 namespace tf {
 typedef struct loss loss;
@@ -156,6 +158,9 @@ public:
 extern std::unordered_map<Tensor<std::float64_t> *, tensor *> tensor_nodes;
 extern std::unordered_set<Tensor<std::float64_t> *> tensor_to_be_spared;
 
+using LayerParameterValue =
+    std::variant<unsigned, double, std::string, tf::tensor>;
+
 typedef struct graph_context {
 private:
   GraphContext *graph_ctx;
@@ -178,19 +183,49 @@ public:
 
 namespace layer {
 
-typedef struct dense {
+class layer {
 private:
-  Layer *dense_layer;
+  std::shared_ptr<Layer> layer_ptr;
+  std::string type_name_;
+
+protected:
   // Non-owning API-facing aliases of the most recent inputs. Pointers returned
   // by get_input_tensors() refer to elements of this vector.
   std::vector<tf::tensor> input_aliases;
 
 public:
-  dense(unsigned unit);
-
-  ~dense();
+  layer();
+  layer(const std::string &type_name);
+  layer(const std::string &type_name, const LayerConfig &config);
+  virtual ~layer();
 
   std::vector<tf::tensor> operator()(const std::vector<tf::tensor> &inputs);
+
+  std::vector<tf::tensor> forward(const std::vector<tf::tensor> &inputs,
+                                  unsigned batch_size);
+
+  std::vector<tf::tensor> calculate(std::vector<tf::tensor> inputs);
+
+  void initialize_parameters();
+
+  std::unordered_set<std::string> parameterNames() const;
+
+  std::vector<tf::tensor> getParameter(const std::string &name) const;
+
+  void setParameter(const std::string &name,
+                    const LayerParameterValue &value);
+
+  std::string type() const;
+
+  Layer *getLayerPtr() const;
+
+  const void *identity() const;
+};
+
+struct dense : public layer {
+  dense(unsigned unit);
+
+  ~dense() override;
 
   std::vector<const tf::tensor *> get_input_tensors();
 
@@ -203,47 +238,27 @@ public:
   void set_weight(const tf::tensor &weight_tensor);
 
   void set_bias(const tf::tensor &bias_tensor);
+};
 
-  Layer *getLayerPtr() const;
-} dense;
-
-typedef struct relu {
-private:
-  Layer *relu_layer;
-  std::vector<tf::tensor> input_aliases;
-
-public:
+struct relu : public layer {
   relu();
 
-  ~relu();
-
-  std::vector<tf::tensor> operator()(const std::vector<tf::tensor> &inputs);
+  ~relu() override;
 
   std::vector<const tf::tensor *> get_input_tensors();
 
   std::vector<tf::tensor> get_output_tensors();
+};
 
-  Layer *getLayerPtr() const;
-} relu;
-
-typedef struct softmax {
-private:
-  Layer *softmax_layer;
-  std::vector<tf::tensor> input_aliases;
-
-public:
+struct softmax : public layer {
   softmax(unsigned axis = 0);
 
-  ~softmax();
-
-  std::vector<tf::tensor> operator()(const std::vector<tf::tensor> &inputs);
+  ~softmax() override;
 
   std::vector<const tf::tensor *> get_input_tensors();
 
   std::vector<tf::tensor> get_output_tensors();
-
-  Layer *getLayerPtr() const;
-} softmax;
+};
 
 } // namespace layer
 

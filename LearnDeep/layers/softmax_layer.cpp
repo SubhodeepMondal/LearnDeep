@@ -2,6 +2,7 @@
 #include "softmax_layer.hpp"
 #include "layer_enum.hpp"
 #include "layer_graph.hpp"
+#include "layer_registry.hpp"
 #include "layers.hpp"
 #include <core/graph/graph_framework.hpp>
 #include <core/graph/graph_manager.hpp>
@@ -9,6 +10,11 @@
 
 // Third party
 #include <absl/log/log.h>
+
+REGISTER_LAYER("softmax", [](const LayerConfig &config) -> Layer * {
+  const unsigned *axis = config.getAs<unsigned>("axis");
+  return new Softmax(axis ? *axis : 0u);
+});
 
 Softmax::Softmax(unsigned axis) : axis(axis), layer_type(tf_softmax_layer) {
   this->isForwardGraphCreated = false;

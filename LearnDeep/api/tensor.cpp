@@ -6,12 +6,11 @@
 
 // Library Headers
 #include <callback/callback.hpp>
-#include <layers/dense.hpp>
-#include <layers/relu.hpp>
-#include <layers/softmax_layer.hpp>
+#include <layers/layer_registry.hpp>
 #include <losses/loss.hpp>
 #include <model/model.hpp>
 #include <numeric>
+#include <optional>
 #include <optimizers/optimizers.hpp>
 #include <unordered_map>
 
@@ -41,6 +40,78 @@ input_alias_ptrs(const std::vector<tf::tensor> &aliases) {
     inputs.push_back(&alias);
 
   return inputs;
+}
+
+std::vector<tf::tensor>
+copy_output_tensors(const std::vector<tf::tensor *> &tensors) {
+  std::vector<tf::tensor> copies;
+  copies.reserve(tensors.size());
+
+  for (const tf::tensor *tensor : tensors)
+    if (tensor)
+      copies.push_back(*tensor);
+
+  return copies;
+}
+
+LayerConfig config_with(const std::string &key, unsigned value) {
+  LayerConfig config;
+  config.set(key, value);
+  return config;
+}
+
+const std::unordered_map<std::string,
+                         std::unordered_map<std::string, Layer_Parameter>> &
+layer_parameter_maps() {
+  static const std::unordered_map<
+      std::string, std::unordered_map<std::string, Layer_Parameter>>
+      maps = {
+          {"dense",
+           {{"input", Layer_Parameter::dense_input},
+            {"weight", Layer_Parameter::dense_weight},
+            {"bias", Layer_Parameter::dense_bias},
+            {"matmul_result", Layer_Parameter::dense_matmul_result},
+            {"output", Layer_Parameter::dense_output},
+            {"training_input", Layer_Parameter::dense_training_input},
+            {"training_weight", Layer_Parameter::dense_training_weight},
+            {"training_bias", Layer_Parameter::dense_training_bias},
+            {"training_matmul_result",
+             Layer_Parameter::dense_training_matmul_result},
+            {"training_output", Layer_Parameter::dense_training_output},
+            {"grad_input", Layer_Parameter::dense_grad_input},
+            {"grad_weight", Layer_Parameter::dense_grad_weight},
+            {"grad_bias", Layer_Parameter::dense_grad_bias},
+            {"incoming_grad", Layer_Parameter::dense_incoming_grad},
+            {"updated_weight", Layer_Parameter::dense_updated_weight},
+            {"updated_bias", Layer_Parameter::dense_updated_bias}}},
+          {"relu",
+           {{"grad_input", Layer_Parameter::relu_grad_input},
+            {"input", Layer_Parameter::relu_input},
+            {"output", Layer_Parameter::relu_output},
+            {"training_input", Layer_Parameter::relu_training_input},
+            {"training_output", Layer_Parameter::relu_training_output}}},
+          {"softmax",
+           {{"grad_input", Layer_Parameter::softmax_grad_input},
+            {"input", Layer_Parameter::softmax_input},
+            {"output", Layer_Parameter::softmax_output},
+            {"training_input", Layer_Parameter::softmax_training_input},
+            {"training_output", Layer_Parameter::softmax_training_output}}}};
+
+  return maps;
+}
+
+std::optional<Layer_Parameter> layer_parameter_for(const std::string &type,
+                                                   const std::string &name) {
+  const auto &maps = layer_parameter_maps();
+  auto type_it = maps.find(type);
+  if (type_it == maps.end())
+    return std::nullopt;
+
+  auto parameter_it = type_it->second.find(name);
+  if (parameter_it == type_it->second.end())
+    return std::nullopt;
+
+  return parameter_it->second;
 }
 
 } // namespace
@@ -568,180 +639,199 @@ void tf::graph_context::compute_gradient() {
 
 // --- Layers ---
 
-// --- Dense ---
-tf::layer::dense::dense(unsigned unit) {
-  dense_layer = new Dense(unit);
-  global_layer_graph.addNode(dense_layer);
+// --- Generic layer handle ---
+
+tf::layer::layer::layer() = default;
+
+tf::layer::layer::layer(const std::string &type_name)
+    : layer(type_name, LayerConfig{}) {}
+
+tf::layer::layer::layer(const std::string &type_name,
+                        const LayerConfig &config)
+    : type_name_(type_name) {
+  std::unique_ptr<Layer> created =
+      LayerRegistry::instance().create(type_name, config);
+  if (!created) {
+    this->type_name_.clear();
+    return;
+  }
+
+  Layer *raw_layer = created.release();
+  global_layer_graph.addNode(raw_layer);
+  this->layer_ptr = std::shared_ptr<Layer>(raw_layer, [](Layer *layer) {
+    if (!layer)
+      return;
+    global_layer_graph.removeNode(layer);
+    delete layer;
+  });
 }
 
-tf::layer::dense::~dense() {
-  global_layer_graph.removeNode(this->dense_layer);
-  delete dynamic_cast<Dense *>(this->dense_layer);
+tf::layer::layer::~layer() = default;
+
+std::vector<tf::tensor>
+tf::layer::layer::operator()(const std::vector<tf::tensor> &inputs) {
+  store_input_aliases(this->input_aliases, inputs);
+
+  if (!this->layer_ptr)
+    return {};
+
+  return copy_output_tensors((*this->layer_ptr)(inputs));
 }
 
 std::vector<tf::tensor>
-tf::layer::dense::operator()(const std::vector<tf::tensor> &inputs) {
+tf::layer::layer::forward(const std::vector<tf::tensor> &inputs,
+                          unsigned batch_size) {
   store_input_aliases(this->input_aliases, inputs);
 
-  std::vector<tf::tensor> layer_outputs;
+  if (!this->layer_ptr)
+    return {};
 
-  const std::vector<tf::tensor *> &outputs = (*this->dense_layer)(inputs);
+  std::vector<const tf::tensor *> raw_inputs;
+  raw_inputs.reserve(this->input_aliases.size());
+  for (const tf::tensor &input : this->input_aliases)
+    raw_inputs.push_back(&input);
 
-  for (const tf::tensor *output : outputs)
-    layer_outputs.push_back(*output);
-
-  return layer_outputs;
+  return copy_output_tensors(this->layer_ptr->forward(raw_inputs, batch_size));
 }
+
+std::vector<tf::tensor>
+tf::layer::layer::calculate(std::vector<tf::tensor> inputs) {
+  store_input_aliases(this->input_aliases, inputs);
+
+  if (!this->layer_ptr)
+    return {};
+
+  return this->layer_ptr->calculate(inputs);
+}
+
+void tf::layer::layer::initialize_parameters() {
+  if (this->layer_ptr)
+    this->layer_ptr->initializeParameters();
+}
+
+std::unordered_set<std::string> tf::layer::layer::parameterNames() const {
+  const auto &maps = layer_parameter_maps();
+  auto type_it = maps.find(this->type_name_);
+  if (type_it == maps.end())
+    return {};
+
+  std::unordered_set<std::string> names;
+  for (const auto &parameter : type_it->second)
+    names.insert(parameter.first);
+  return names;
+}
+
+std::vector<tf::tensor>
+tf::layer::layer::getParameter(const std::string &name) const {
+  if (!this->layer_ptr)
+    return {};
+
+  auto parameter = layer_parameter_for(this->type_name_, name);
+  if (!parameter) {
+    LOG(ERROR) << "Fatal! Parameter '" << name
+               << "' is not available for layer type '" << this->type_name_
+               << "'.\n";
+    return {};
+  }
+
+  return copy_output_tensors(
+      this->layer_ptr->getLayerParameter(*parameter));
+}
+
+void tf::layer::layer::setParameter(const std::string &name,
+                                    const LayerParameterValue &value) {
+  if (!this->layer_ptr)
+    return;
+
+  LayerRegistry::instance().setParameter(this->type_name_,
+                                         this->layer_ptr.get(), name, value);
+}
+
+std::string tf::layer::layer::type() const { return this->type_name_; }
+
+Layer *tf::layer::layer::getLayerPtr() const { return this->layer_ptr.get(); }
+
+const void *tf::layer::layer::identity() const {
+  return static_cast<const void *>(this->layer_ptr.get());
+}
+
+// --- End of Generic layer handle ---
+
+// --- Dense ---
+
+tf::layer::dense::dense(unsigned unit)
+    : layer("dense", config_with("units", unit)) {}
+
+tf::layer::dense::~dense() = default;
 
 std::vector<const tf::tensor *> tf::layer::dense::get_input_tensors() {
   return input_alias_ptrs(this->input_aliases);
 }
 
 std::vector<tf::tensor> tf::layer::dense::get_output_tensors() {
-  std::vector<tf::tensor> output_tensors;
-
-  std::vector<tf::tensor *> temp_output_tensors =
-      dense_layer->getOutputTensors();
-
-  for (tf::tensor *tensor : temp_output_tensors)
-    output_tensors.push_back(*tensor);
-
-  return output_tensors;
+  return this->getParameter("output");
 }
 
 std::vector<tf::tensor> tf::layer::dense::get_output_training_tensor() {
-  std::vector<tf::tensor> training_output_tensors;
-
-  std::vector<tf::tensor *> temp_training_output_tensors =
-      dense_layer->getOutputTrainingTensors();
-
-  for (tf::tensor *tensor : temp_training_output_tensors)
-    training_output_tensors.push_back(*tensor);
-
-  return training_output_tensors;
+  return this->getParameter("training_output");
 }
 
 std::vector<tf::tensor> tf::layer::dense::get_output_training_weight() {
-  std::vector<tf::tensor> training_weights;
-
-  std::vector<tf::tensor *> training_weight_parameters =
-      static_cast<Dense *>(this->dense_layer)
-          ->getLayerParameter(Layer_Parameter::dense_training_weight);
-
-  for (tf::tensor *weight : training_weight_parameters)
-    if (weight)
-      training_weights.push_back(*weight);
-
-  return training_weights;
+  return this->getParameter("training_weight");
 }
 
 void tf::layer::dense::set_weight(const tf::tensor &weight_tensor) {
-  if (weight_tensor.getPtr()) {
-    static_cast<Dense *>(this->dense_layer)->setWeight(weight_tensor);
-  } else
+  if (!weight_tensor.getPtr()) {
     LOG(ERROR) << "Fatal! given tensor is not initialized with data\n";
+    return;
+  }
+
+  this->setParameter("weight", weight_tensor);
 }
 
 void tf::layer::dense::set_bias(const tf::tensor &bias_tensor) {
-  if (bias_tensor.getPtr()) {
-    static_cast<Dense *>(this->dense_layer)->setBias(bias_tensor);
-  } else
+  if (!bias_tensor.getPtr()) {
     LOG(ERROR) << "Fatal! given tensor is not initialized with data\n";
-}
+    return;
+  }
 
-Layer *tf::layer::dense::getLayerPtr() const { return this->dense_layer; }
+  this->setParameter("bias", bias_tensor);
+}
 
 // --- End of Dense ---
 
 // --- Relu ---
 
-tf::layer::relu::relu() {
-  this->relu_layer = new Relu();
-  global_layer_graph.addNode(this->relu_layer);
-}
+tf::layer::relu::relu() : layer("relu") {}
 
-tf::layer::relu::~relu() {
-  global_layer_graph.removeNode(this->relu_layer);
-  delete dynamic_cast<Relu *>(this->relu_layer);
-}
-
-std::vector<tf::tensor>
-tf::layer::relu::operator()(const std::vector<tf::tensor> &inputs) {
-  store_input_aliases(this->input_aliases, inputs);
-
-  std::vector<tf::tensor> layer_outputs;
-
-  const std::vector<tf::tensor *> &outputs = (*this->relu_layer)(inputs);
-
-  for (const tf::tensor *output : outputs)
-    layer_outputs.push_back(*output);
-
-  return layer_outputs;
-}
+tf::layer::relu::~relu() = default;
 
 std::vector<const tf::tensor *> tf::layer::relu::get_input_tensors() {
   return input_alias_ptrs(this->input_aliases);
 }
 
 std::vector<tf::tensor> tf::layer::relu::get_output_tensors() {
-  std::vector<tf::tensor> output_tensors;
-
-  std::vector<tf::tensor *> temp_output_tensors =
-      relu_layer->getOutputTensors();
-
-  for (tf::tensor *tensor : temp_output_tensors)
-    output_tensors.push_back(*tensor);
-
-  return output_tensors;
+  return this->getParameter("output");
 }
 
-Layer *tf::layer::relu::getLayerPtr() const { return this->relu_layer; }
 // --- End of Relu ---
 
 // --- Softmax ---
 
-tf::layer::softmax::softmax(unsigned axis) {
-  this->softmax_layer = new Softmax(axis);
-  global_layer_graph.addNode(this->softmax_layer);
-}
+tf::layer::softmax::softmax(unsigned axis)
+    : layer("softmax", config_with("axis", axis)) {}
 
-tf::layer::softmax::~softmax() {
-  global_layer_graph.removeNode(this->softmax_layer);
-  delete dynamic_cast<Softmax *>(this->softmax_layer);
-}
-
-std::vector<tf::tensor>
-tf::layer::softmax::operator()(const std::vector<tf::tensor> &inputs) {
-  store_input_aliases(this->input_aliases, inputs);
-
-  std::vector<tf::tensor> layer_outputs;
-
-  const std::vector<tf::tensor *> &outputs = (*this->softmax_layer)(inputs);
-
-  for (const tf::tensor *output : outputs)
-    layer_outputs.push_back(*output);
-
-  return layer_outputs;
-}
+tf::layer::softmax::~softmax() = default;
 
 std::vector<const tf::tensor *> tf::layer::softmax::get_input_tensors() {
   return input_alias_ptrs(this->input_aliases);
 }
 
 std::vector<tf::tensor> tf::layer::softmax::get_output_tensors() {
-  std::vector<tf::tensor> output_tensors;
-
-  std::vector<tf::tensor *> temp_output_tensors =
-      softmax_layer->getOutputTensors();
-
-  for (tf::tensor *tensor : temp_output_tensors)
-    output_tensors.push_back(*tensor);
-
-  return output_tensors;
+  return this->getParameter("output");
 }
 
-Layer *tf::layer::softmax::getLayerPtr() const { return this->softmax_layer; }
-// --- End of Relu ---
+// --- End of Softmax ---
 // --- End of Layers ---
 
 // --- Model ---

@@ -5,6 +5,8 @@ set(LAYER_RESOURCES
     dense.cpp
     layer_graph.cpp
     layer_graph.hpp
+    layer_registry.cpp
+    layer_registry.hpp
     layers.cpp
     layers.hpp
 )

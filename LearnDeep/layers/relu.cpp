@@ -2,6 +2,7 @@
 #include "relu.hpp"
 #include "layer_enum.hpp"
 #include "layer_graph.hpp"
+#include "layer_registry.hpp"
 #include "layers.hpp"
 #include <core/graph/graph_framework.hpp>
 #include <core/graph/graph_manager.hpp>
@@ -9,6 +10,9 @@
 
 // Third party
 #include <absl/log/log.h>
+
+REGISTER_LAYER("relu",
+               [](const LayerConfig &) -> Layer * { return new Relu(); });
 
 Relu::Relu() : layer_type(tf_relu_layer) {
   this->isForwardGraphCreated = false;

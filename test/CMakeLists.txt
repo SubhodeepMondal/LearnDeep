@@ -25,6 +25,7 @@ add_executable(unit_test
     unit/div.unit.cpp
     unit/natural_log.unit.cpp
     unit/framework/dense_layer.unit.cpp
+    unit/framework/layer_registry.unit.cpp
     unit/framework/softmax_layer.test.cpp
 )
 

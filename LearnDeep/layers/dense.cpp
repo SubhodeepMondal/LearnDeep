@@ -1,6 +1,7 @@
 // Library Headers
 #include "dense.hpp"
 #include "layer_enum.hpp"
+#include "layer_registry.hpp"
 #include "layer_graph.hpp"
 #include "layers.hpp"
 #include <absl/log/log.h>
@@ -8,6 +9,40 @@
 #include <core/graph/graph_manager.hpp>
 #include <optimizers/optimizers.hpp>
 #include <vector>
+
+REGISTER_LAYER(
+    "dense",
+    [](const LayerConfig &config) -> Layer * {
+      const unsigned *units = config.getAs<unsigned>("units");
+      if (!units)
+        units = config.getAs<unsigned>("unit");
+
+      Layer *layer = new Dense(units ? *units : 1u);
+
+      if (const tf::tensor *weight = config.getAs<tf::tensor>("weight"))
+        static_cast<Dense *>(layer)->setWeight(*weight);
+      if (const tf::tensor *bias = config.getAs<tf::tensor>("bias"))
+        static_cast<Dense *>(layer)->setBias(*bias);
+
+      return layer;
+    },
+    [](Layer *layer, const std::string &name,
+       const tf::LayerParameterValue &value) -> bool {
+      const tf::tensor *tensor = std::get_if<tf::tensor>(&value);
+      if (!tensor)
+        return false;
+
+      Dense *dense = static_cast<Dense *>(layer);
+      if (name == "weight") {
+        dense->setWeight(*tensor);
+        return true;
+      }
+      if (name == "bias") {
+        dense->setBias(*tensor);
+        return true;
+      }
+      return false;
+    });
 
 // --- Constructor
 Dense::Dense(unsigned unit)
