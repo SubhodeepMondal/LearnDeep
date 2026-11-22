@@ -23,23 +23,24 @@ std::unordered_set<Tensor<std::float64_t> *> tf::tensor_to_be_spared;
 
 namespace {
 
+void store_input_aliases(std::vector<tf::tensor> &aliases,
+                         const std::vector<tf::tensor> &inputs) {
+  aliases.clear();
+  aliases.reserve(inputs.size());
+
+  for (const tf::tensor &input : inputs)
+    aliases.push_back(input);
+}
+
 std::vector<const tf::tensor *>
-api_tensors_for(const std::vector<const Tensor<std::float64_t> *> &tensors) {
-  std::vector<const tf::tensor *> api_tensors;
-  api_tensors.reserve(tensors.size());
+input_alias_ptrs(const std::vector<tf::tensor> &aliases) {
+  std::vector<const tf::tensor *> inputs;
+  inputs.reserve(aliases.size());
 
-  for (const Tensor<std::float64_t> *tensor : tensors) {
-    if (!tensor)
-      continue;
+  for (const tf::tensor &alias : aliases)
+    inputs.push_back(&alias);
 
-    auto registered_tensor =
-        tf::tensor_nodes.find(const_cast<Tensor<std::float64_t> *>(tensor));
-    if (registered_tensor != tf::tensor_nodes.end() &&
-        registered_tensor->second)
-      api_tensors.push_back(registered_tensor->second);
-  }
-
-  return api_tensors;
+  return inputs;
 }
 
 } // namespace
@@ -66,6 +67,7 @@ tf::tensor::tensor(DataType dt_type, const Tensor<std::float64_t> *ptr) {
 
 // --- Copy constructor
 tf::tensor::tensor(const tensor &other) {
+  this->activateGraphSession = other.activateGraphSession;
   dt_type = other.dt_type;
   if (other.getPtr()) {
     this->ptr = other.getPtr();
@@ -75,6 +77,7 @@ tf::tensor::tensor(const tensor &other) {
 // --- Copy assignment
 tf::tensor &tf::tensor::operator=(const tensor &other) {
   if (this != &other) {
+    this->activateGraphSession = other.activateGraphSession;
     if (other.getPtr()) {
       if (this->ptr) {
         delete this->ptr;
@@ -89,6 +92,7 @@ tf::tensor &tf::tensor::operator=(const tensor &other) {
 
 // --- Move constructor
 tf::tensor::tensor(tensor &&other) noexcept {
+  this->activateGraphSession = other.activateGraphSession;
   this->dt_type = other.dt_type;
   this->ptr = other.getPtr();
   tf::tensor_nodes[this->ptr] = this; // steal ownership of the Tensor
@@ -100,6 +104,7 @@ tf::tensor &tf::tensor::operator=(tensor &&other) noexcept {
   if (this != &other) {
     if (this->ptr)
       delete this->ptr;
+    this->activateGraphSession = other.activateGraphSession;
     this->dt_type = other.dt_type;
     this->ptr = other.getPtr();
     tf::tensor_nodes[this->ptr] = this; // steal ownership of the Tensor
@@ -576,6 +581,8 @@ tf::layer::dense::~dense() {
 
 std::vector<tf::tensor>
 tf::layer::dense::operator()(const std::vector<tf::tensor> &inputs) {
+  store_input_aliases(this->input_aliases, inputs);
+
   std::vector<tf::tensor> layer_outputs;
 
   const std::vector<tf::tensor *> &outputs = (*this->dense_layer)(inputs);
@@ -587,7 +594,7 @@ tf::layer::dense::operator()(const std::vector<tf::tensor> &inputs) {
 }
 
 std::vector<const tf::tensor *> tf::layer::dense::get_input_tensors() {
-  return api_tensors_for(this->dense_layer->getInputTensors());
+  return input_alias_ptrs(this->input_aliases);
 }
 
 std::vector<tf::tensor> tf::layer::dense::get_output_tensors() {
@@ -660,6 +667,7 @@ tf::layer::relu::~relu() {
 
 std::vector<tf::tensor>
 tf::layer::relu::operator()(const std::vector<tf::tensor> &inputs) {
+  store_input_aliases(this->input_aliases, inputs);
 
   std::vector<tf::tensor> layer_outputs;
 
@@ -672,7 +680,7 @@ tf::layer::relu::operator()(const std::vector<tf::tensor> &inputs) {
 }
 
 std::vector<const tf::tensor *> tf::layer::relu::get_input_tensors() {
-  return api_tensors_for(this->relu_layer->getInputTensors());
+  return input_alias_ptrs(this->input_aliases);
 }
 
 std::vector<tf::tensor> tf::layer::relu::get_output_tensors() {
@@ -704,6 +712,7 @@ tf::layer::softmax::~softmax() {
 
 std::vector<tf::tensor>
 tf::layer::softmax::operator()(const std::vector<tf::tensor> &inputs) {
+  store_input_aliases(this->input_aliases, inputs);
 
   std::vector<tf::tensor> layer_outputs;
 
@@ -716,7 +725,7 @@ tf::layer::softmax::operator()(const std::vector<tf::tensor> &inputs) {
 }
 
 std::vector<const tf::tensor *> tf::layer::softmax::get_input_tensors() {
-  return api_tensors_for(this->softmax_layer->getInputTensors());
+  return input_alias_ptrs(this->input_aliases);
 }
 
 std::vector<tf::tensor> tf::layer::softmax::get_output_tensors() {

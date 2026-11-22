@@ -34,7 +34,7 @@ class tensor {
   Tensor<std::float64_t> *ptr{nullptr};
 
 public:
-  bool activateGraphSession;
+  bool activateGraphSession{false};
   DataType dt_type;
 
   // --- Default constructor
@@ -181,6 +181,9 @@ namespace layer {
 typedef struct dense {
 private:
   Layer *dense_layer;
+  // Non-owning API-facing aliases of the most recent inputs. Pointers returned
+  // by get_input_tensors() refer to elements of this vector.
+  std::vector<tf::tensor> input_aliases;
 
 public:
   dense(unsigned unit);
@@ -207,6 +210,7 @@ public:
 typedef struct relu {
 private:
   Layer *relu_layer;
+  std::vector<tf::tensor> input_aliases;
 
 public:
   relu();
@@ -225,6 +229,7 @@ public:
 typedef struct softmax {
 private:
   Layer *softmax_layer;
+  std::vector<tf::tensor> input_aliases;
 
 public:
   softmax(unsigned axis = 0);

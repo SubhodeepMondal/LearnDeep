@@ -1536,3 +1536,24 @@ TEST_F(FrameworkTest, CallbackTrace_RejectsForeignLayerRegistration) {
       foreign_layer, Layer_Parameter::dense_weight);
   EXPECT_FALSE(foreign_batch_end.callback()->callOnTrainingBegin(model1));
 }
+
+TEST_F(FrameworkTest, LayerApiExposesInputTensorAliases) {
+  tf::tensor x;
+  x.tf_create(tf_float64, 3, 2);
+
+  tf::layer::dense dense(4);
+  tf::layer::relu relu;
+  tf::layer::softmax softmax;
+
+  dense({x});
+  relu({x});
+  softmax({x});
+
+  for (const std::vector<const tf::tensor *> &inputs :
+       {dense.get_input_tensors(), relu.get_input_tensors(),
+        softmax.get_input_tensors()}) {
+    ASSERT_EQ(inputs.size(), 1u);
+    ASSERT_NE(inputs[0], nullptr);
+    EXPECT_EQ(inputs[0]->getPtr(), x.getPtr());
+  }
+}
