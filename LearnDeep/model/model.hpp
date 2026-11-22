@@ -11,6 +11,8 @@
 // Library headers
 #include <api/tensor.h>
 
+class Loss;
+
 class Model {
 private:
   unsigned batch_size;
@@ -47,13 +49,20 @@ private:
   std::shared_ptr<Layer> lockLayer(tf::layer::layer_id id) const;
 
   tf::optimizer optimizer;
-  std::vector<tf::loss::loss *> losses;
-  std::unordered_map<tf::loss::loss *,
+
+  // Losses are owned through the registry and referenced everywhere else by
+  // their stable id. This removes dangling raw pointers from callbacks while
+  // still allowing foreign-loss rejection and stale-id pruning.
+  std::vector<tf::loss::loss_id> losses;
+  std::unordered_map<tf::loss::loss_id, std::shared_ptr<Loss>> owned_losses;
+  std::unordered_map<tf::loss::loss_id,
                      std::vector<Tensor<std::float64_t> *>>
       loss_input_mappings; // this maps loss and all the input tensor(aka target
                            // output) that is feed
-  std::unordered_map<tf::loss::loss *, std::vector<tf::tensor *>>
+  std::unordered_map<tf::loss::loss_id, std::vector<tf::tensor *>>
       loss_training_input_mappings;
+
+  std::shared_ptr<Loss> lockLoss(tf::loss::loss_id id) const;
   //   tf::metric metric;
 
   std::vector<const Tensor<std::float64_t> *> getLayersNBackTrackInputs(
@@ -184,7 +193,7 @@ public:
 
   tf::loss::loss getModelLoss(Tensor<std::float64_t> *output_tensor);
 
-  std::vector<tf::loss::loss *> getLosses() { return this->losses; }
+  std::vector<tf::loss::loss_id> getLosses() const { return this->losses; }
 
   std::vector<tf::layer::layer_id> getLayers() const { return this->layers; }
 };

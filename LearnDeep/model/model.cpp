@@ -46,6 +46,7 @@ Model::~Model() {
     delete local_training_input;
 
   this->owned_layers.clear();
+  this->owned_losses.clear();
   global_layer_graph.prune();
 }
 
@@ -54,14 +55,19 @@ std::shared_ptr<Layer> Model::lockLayer(tf::layer::layer_id id) const {
   return layer == this->owned_layers.end() ? nullptr : layer->second;
 }
 
+std::shared_ptr<Loss> Model::lockLoss(tf::loss::loss_id id) const {
+  auto loss = this->owned_losses.find(id);
+  return loss == this->owned_losses.end() ? nullptr : loss->second;
+}
+
 void Model::initializeTrainingMappings() {
   for (tf::layer::layer_id id : this->layers)
     this->layer_training_input_mappings[id].assign(
         this->layer_input_mappings[id].size(), nullptr);
 
-  for (tf::loss::loss *loss : this->losses)
-    this->loss_training_input_mappings[loss].assign(
-        loss_input_mappings[loss].size(), nullptr);
+  for (tf::loss::loss_id id : this->losses)
+    this->loss_training_input_mappings[id].assign(
+        loss_input_mappings[id].size(), nullptr);
 }
 
 void Model::initializePredictionInputMappings() {
@@ -97,18 +103,23 @@ Model::getEpochlevelLosses(std::vector<tf::tensor> &predicted_output,
                            const std::vector<tf::tensor> &target_ouput) {
 
   std::unordered_map<std::string, std::float64_t> temp_losses;
-  for (tf::loss::loss *loss : this->losses) {
+  for (tf::loss::loss_id id : this->losses) {
+    std::shared_ptr<Loss> loss = this->lockLoss(id);
+    if (!loss)
+      continue;
     std::vector<tf::tensor> predicted, target;
-    for (unsigned j = 0; j < loss->get_no_of_inputs(); j++) {
+    for (unsigned j = 0; j < LossRegistry::instance().noOfInputs(loss); j++) {
       auto it = std::find(this->outputs.begin(), this->outputs.end(),
-                          loss_input_mappings[loss][j]);
+                          loss_input_mappings[id][j]);
       if (it != outputs.end()) {
         auto index = std::distance(this->outputs.begin(), it);
         predicted.push_back(predicted_output[index].copy());
         target.push_back(target_ouput[index].copy());
       }
     }
-    temp_losses[loss->get_loss_name()] = loss->calculate(predicted, target);
+    const std::string name = LossRegistry::instance().lossName(loss);
+    temp_losses[name] =
+        LossRegistry::instance().calculate(loss, predicted, target);
   }
   return temp_losses;
 }
@@ -275,8 +286,9 @@ Model::fit(tf::model &model, const std::vector<tf::tensor> &training_inputs,
                 if (std::shared_ptr<Layer> layer = this->lockLayer(id))
                   layer->backward(optimizer.getPtr());
 
-              for (tf::loss::loss *loss : this->losses)
-                loss->backward();
+              for (tf::loss::loss_id id : this->losses)
+                if (std::shared_ptr<Loss> loss = this->lockLoss(id))
+                  LossRegistry::instance().backward(loss);
 
               this->auto_grad_created = true;
             }
@@ -483,18 +495,18 @@ void Model::doDummyAndTrainingTensorMapping() {
           training_layers.push(downstream_id);
       }
       /* map training layer output with loss training input */
-      for (tf::loss::loss *loss : this->losses) {
+      for (tf::loss::loss_id loss_id : this->losses) {
         unsigned i = 0;
         for (const tf::tensor *this_layer_output :
              this->layer_output_mappings[id]) {
-          auto it = std::find(this->loss_input_mappings[loss].begin(),
-                              this->loss_input_mappings[loss].end(),
+          auto it = std::find(this->loss_input_mappings[loss_id].begin(),
+                              this->loss_input_mappings[loss_id].end(),
                               this_layer_output->getPtr());
 
-          if (it != this->loss_input_mappings[loss].end()) {
+          if (it != this->loss_input_mappings[loss_id].end()) {
             unsigned index =
-                std::distance(this->loss_input_mappings[loss].begin(), it);
-            this->loss_training_input_mappings[loss][index] =
+                std::distance(this->loss_input_mappings[loss_id].begin(), it);
+            this->loss_training_input_mappings[loss_id][index] =
                 this_layer_training_outputs[i++];
           }
         }
@@ -505,10 +517,13 @@ void Model::doDummyAndTrainingTensorMapping() {
   }
 
   /* Call forward on loss to create forward graph on loss.*/
-  for (tf::loss::loss *loss : this->losses) {
-    if (!std::ranges::contains(this->loss_training_input_mappings[loss],
-                               nullptr))
-      loss->forward(this->loss_training_input_mappings[loss], this->batch_size);
+  for (tf::loss::loss_id id : this->losses) {
+    std::shared_ptr<Loss> loss = this->lockLoss(id);
+    if (!loss)
+      continue;
+    if (!std::ranges::contains(this->loss_training_input_mappings[id], nullptr))
+      LossRegistry::instance().forward(
+          loss, this->loss_training_input_mappings[id], this->batch_size);
     else {
       LOG(ERROR) << "Fatal! a loss is not properly mapped with layer output.";
       throw std::runtime_error(
@@ -620,37 +635,41 @@ void Model::compile(const OptimizerType optimizer_type,
     base_name = "mean_squared_loss";
 
   for (unsigned i = 0; i < outputs.size(); i++) {
-    tf::loss::loss *temp_loss = new tf::loss::loss(
+    LossRegistry::LossHandle loss = LossRegistry::instance().create(
         type_name,
         makeLossConfig({outputs[i]}, base_name + "_" + std::to_string(i + 1)));
-    this->losses.push_back(temp_loss);
-    loss_input_mappings[temp_loss].push_back(outputs[i]);
+    if (!loss)
+      throw std::runtime_error("Failed to create loss: " + type_name);
+
+    const tf::loss::loss_id id = LossRegistry::instance().idOf(loss);
+    this->owned_losses[id] = std::move(loss);
+    this->losses.push_back(id);
+    loss_input_mappings[id].push_back(outputs[i]);
   }
 }
 
 tf::loss::loss Model::getModelLoss(Tensor<std::float64_t> *output_tensor) {
-  tf::loss::loss *loss = nullptr;
-  for (tf::loss::loss *temp_loss : losses) {
-    if (std::ranges::contains(this->loss_input_mappings[temp_loss],
-                              output_tensor))
-      loss = temp_loss;
+  for (tf::loss::loss_id id : losses) {
+    if (!std::ranges::contains(this->loss_input_mappings[id], output_tensor))
+      continue;
+    if (std::shared_ptr<Loss> loss = this->lockLoss(id))
+      return tf::loss::loss(std::move(loss));
   }
-  if (loss)
-    return *loss;
-  else {
-    LOG(ERROR) << "Fatal! Can't retrive the loss for the given output.\n";
-    throw std::runtime_error("Exiting due to prior violation.\n");
-  }
+  LOG(ERROR) << "Fatal! Can't retrive the loss for the given output.\n";
+  throw std::runtime_error("Exiting due to prior violation.\n");
 }
 
 void Model::setTargetOutputForLoss(
     const std::vector<tf::tensor> &training_target,
     std::vector<tf::tensor> &local_temp_outputs, unsigned data_index) {
 
-  for (tf::loss::loss *loss : this->losses) {
-    std::vector<tf::tensor> temp_tensor(this->loss_input_mappings[loss].size());
+  for (tf::loss::loss_id id : this->losses) {
+    std::shared_ptr<Loss> loss = this->lockLoss(id);
+    if (!loss)
+      continue;
+    std::vector<tf::tensor> temp_tensor(this->loss_input_mappings[id].size());
     unsigned index = 0;
-    for (Tensor<std::float64_t> *tensor : this->loss_input_mappings[loss]) {
+    for (Tensor<std::float64_t> *tensor : this->loss_input_mappings[id]) {
       auto it = std::find(this->outputs.begin(), this->outputs.end(), tensor);
       unsigned index = 0;
       if (it != this->outputs.end()) {
@@ -667,7 +686,7 @@ void Model::setTargetOutputForLoss(
         temp_tensor[index].tensor_of(training_target[index].getData() +
                                      stride * data_index);
       }
-      loss->set_target_output(temp_tensor);
+      LossRegistry::instance().setTargetOutput(loss, temp_tensor);
     }
   }
 }

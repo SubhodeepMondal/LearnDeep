@@ -6,6 +6,7 @@
 #include <callback/callback.hpp>
 #include <gtest/gtest.h>
 #include <losses/loss.hpp>
+#include <losses/loss_registry.hpp>
 
 #include <iostream>
 #include <stdfloat>
@@ -1278,9 +1279,11 @@ public:
 
 TEST(EarlyStoppingTest, StopsAfterPatienceEpochsWithoutImprovement) {
   // Big improvement at epoch 2, then three consecutive stalls (< 0.2 change).
-  SequenceLoss loss({10.0, 8.0, 7.95, 7.93, 7.92});
-  CallbackEarlyStopping early_stopping(&loss, /*patience=*/3,
-                                       /*min_delta=*/0.2, /*minimize=*/true);
+  auto loss = LossRegistry::instance().adopt(std::make_unique<SequenceLoss>(
+      std::vector<std::float64_t>{10.0, 8.0, 7.95, 7.93, 7.92}));
+  CallbackEarlyStopping early_stopping(LossRegistry::instance().idOf(loss),
+                                       /*patience=*/3, /*min_delta=*/0.2,
+                                       /*minimize=*/true);
 
   EXPECT_FALSE(early_stopping.stopEpoch()); // no losses recorded yet
 
@@ -1301,9 +1304,11 @@ TEST(EarlyStoppingTest, StopsAfterPatienceEpochsWithoutImprovement) {
 }
 
 TEST(EarlyStoppingTest, ImprovementResetsThePatienceCounter) {
-  SequenceLoss loss({10.0, 9.95, 8.0, 7.99, 7.98});
-  CallbackEarlyStopping early_stopping(&loss, /*patience=*/2,
-                                       /*min_delta=*/0.1, /*minimize=*/true);
+  auto loss = LossRegistry::instance().adopt(std::make_unique<SequenceLoss>(
+      std::vector<std::float64_t>{10.0, 9.95, 8.0, 7.99, 7.98}));
+  CallbackEarlyStopping early_stopping(LossRegistry::instance().idOf(loss),
+                                       /*patience=*/2, /*min_delta=*/0.1,
+                                       /*minimize=*/true);
 
   early_stopping.callOnEpochEnd(); // baseline
   early_stopping.callOnEpochEnd(); // 9.95 -> small change, stall 1
@@ -1320,9 +1325,11 @@ TEST(EarlyStoppingTest, ImprovementResetsThePatienceCounter) {
 }
 
 TEST(EarlyStoppingTest, MaximizeModeUsesUpperBound) {
-  SequenceLoss loss({0.1, 0.5, 0.51, 0.505});
-  CallbackEarlyStopping early_stopping(&loss, /*patience=*/2,
-                                       /*min_delta=*/0.1, /*minimize=*/false);
+  auto loss = LossRegistry::instance().adopt(std::make_unique<SequenceLoss>(
+      std::vector<std::float64_t>{0.1, 0.5, 0.51, 0.505}));
+  CallbackEarlyStopping early_stopping(LossRegistry::instance().idOf(loss),
+                                       /*patience=*/2, /*min_delta=*/0.1,
+                                       /*minimize=*/false);
 
   early_stopping.callOnEpochEnd(); // baseline
   early_stopping.callOnEpochEnd(); // 0.5 -> improvement, counter reset

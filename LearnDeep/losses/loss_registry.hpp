@@ -2,13 +2,16 @@
 #define _TENSORFLOW_LOSS_REGISTRY_
 
 // C++ Headers
+#include <cstdint>
 #include <functional>
 #include <memory>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
+#include <vector>
 
 // Library Headers
 #include <api/tensor.h>
@@ -47,6 +50,8 @@ struct LossConfig {
   }
 };
 
+// The only component that knows the internal Loss ABI. API handles, Model,
+// Callback and history all route through this facade.
 class LossRegistry {
 public:
   using LossHandle = std::shared_ptr<Loss>;
@@ -59,8 +64,11 @@ public:
   bool registerLoss(const std::string &name, Factory factory,
                     ParameterSetter setter = {});
 
-  LossHandle create(const std::string &name,
-                    const LossConfig &config = {}) const;
+  LossHandle create(const std::string &name, const LossConfig &config = {});
+
+  // Track a loss created outside a factory (e.g. a test double), giving it a
+  // live id that callbacks can lock and prune like any registry loss.
+  LossHandle adopt(std::unique_ptr<Loss> loss);
 
   bool setParameter(const std::string &name, const LossHandle &loss,
                     const std::string &parameter,
@@ -70,12 +78,52 @@ public:
 
   const std::unordered_set<std::string> &names() const;
 
+  // Live-instance tracking. Callbacks hold ids only, so they need a way to
+  // tell a dead id from a foreign (live) one.
+  LossHandle lock(tf::loss::loss_id id) const;
+
+  bool contains(tf::loss::loss_id id) const;
+
+  void forget(tf::loss::loss_id id);
+
+  tf::loss::loss_id idOf(const LossHandle &loss) const;
+
+  std::string_view typeOf(const LossHandle &loss) const;
+
+  void forward(const LossHandle &loss, std::vector<tf::tensor *> inputs,
+               unsigned batch_size) const;
+
+  void backward(const LossHandle &loss) const;
+
+  std::float64_t calculate(const LossHandle &loss,
+                           std::vector<tf::tensor> &predicted_output,
+                           std::vector<tf::tensor> &target_output) const;
+
+  std::float64_t scalerLoss(const LossHandle &loss) const;
+
+  std::float64_t epochEndScalerLoss(const LossHandle &loss) const;
+
+  std::string lossName(const LossHandle &loss) const;
+
+  unsigned noOfInputs(const LossHandle &loss) const;
+
+  void setTargetOutput(const LossHandle &loss,
+                       std::vector<tf::tensor> target_output) const;
+
+  std::vector<tf::tensor *> lossParameters(const LossHandle &loss,
+                                           std::string_view parameter) const;
+
+  std::unordered_set<std::string> lossParameterNames(
+      const LossHandle &loss) const;
+
 private:
   LossRegistry() = default;
 
   std::unordered_set<std::string> loss_names_;
   std::unordered_map<std::string, Factory> factories_;
   std::unordered_map<std::string, ParameterSetter> parameter_setters_;
+  mutable std::unordered_map<tf::loss::loss_id, std::weak_ptr<Loss>>
+      live_losses_;
 };
 
 inline LossConfig

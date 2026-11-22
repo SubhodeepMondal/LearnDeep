@@ -1,4 +1,5 @@
 #include <LearnDeep/api/tensor.h>
+#include <callback/callback.hpp>
 #include <gtest/gtest.h>
 #include <losses/loss_registry.hpp>
 
@@ -35,7 +36,7 @@ TEST(LossRegistryTest, GenericHandleSupportsRegistryConstruction) {
 
   auto se_copy = se;
   EXPECT_EQ(se_copy.id(), se.id());
-  EXPECT_EQ(se_copy.get_loss_ptr(), se.get_loss_ptr());
+  EXPECT_TRUE(LossRegistry::instance().contains(se.id()));
 }
 
 TEST(LossRegistryTest, GenericHandleRejectsUnknownType) {
@@ -100,4 +101,34 @@ TEST(LossRegistryTest, CompileUsesStringLossType) {
   tf::model unknown_model({x}, dense_output);
   EXPECT_THROW(unknown_model.compile(OptimizerType::SGD, "not_a_loss"),
                std::invalid_argument);
+}
+
+TEST(LossRegistryTest, StaleLossCallbackIdsDoNotBlockTraining) {
+  tf::tensor x;
+  x.tf_create(tf_float64, 2, 2);
+  x.tensor_of(0.0, 1.0);
+
+  tf::callback::trace trace;
+  tf::loss::loss_id stale_id = tf::loss::invalid_loss_id;
+  {
+    auto dead = tf::loss::loss(
+        tf::loss::type::squared_error,
+        makeLossConfig({x.getPtr()}, "stale_loss"));
+    stale_id = dead.id();
+    trace.record_scalar_loss_on_batch_end(dead);
+  }
+  ASSERT_NE(stale_id, tf::loss::invalid_loss_id);
+  ASSERT_FALSE(LossRegistry::instance().contains(stale_id));
+
+  auto dense = tf::layer::dense(3);
+  const std::vector<tf::tensor> dense_output = dense({x});
+  tf::model model({x}, dense_output);
+  model.compile(OptimizerType::SGD, tf::loss::type::squared_error);
+  EXPECT_TRUE(trace.callback()->callOnTrainingBegin(model));
+
+  tf::tensor target;
+  target.tf_create(tf_float64, 3, 2);
+  target.tensor_of(0.0, 0.0);
+  model.shuffle(false);
+  model.fit({x}, {target}, {trace.callback()}, 1, 2);
 }

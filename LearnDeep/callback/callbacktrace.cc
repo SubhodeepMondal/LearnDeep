@@ -7,7 +7,7 @@
 #include <absl/log/log.h>
 #include <layers/layer_graph.hpp>
 #include <layers/layers.hpp>
-#include <losses/loss.hpp>
+#include <losses/loss_registry.hpp>
 #include <vector>
 
 namespace {
@@ -20,6 +20,24 @@ void eraseDeadLayerIds(LayerRegistrationMap &registrations) {
   for (auto it = registrations.begin(); it != registrations.end();) {
     if (!global_layer_graph.contains(it->first))
       it = registrations.erase(it);
+    else
+      ++it;
+  }
+}
+
+template <typename Map> void eraseDeadLossMapIds(Map &registrations) {
+  for (auto it = registrations.begin(); it != registrations.end();) {
+    if (!LossRegistry::instance().contains(it->first))
+      it = registrations.erase(it);
+    else
+      ++it;
+  }
+}
+
+template <typename Set> void eraseDeadLossSetIds(Set &ids) {
+  for (auto it = ids.begin(); it != ids.end();) {
+    if (!LossRegistry::instance().contains(*it))
+      it = ids.erase(it);
     else
       ++it;
   }
@@ -109,22 +127,22 @@ void CallbackTrace::recordTrainableParameterOnBatchEnd(
   }
 }
 
-void CallbackTrace::recordScalerLossEpochEnd(Loss *const loss_ptr) {
-  this->losses_on_epoch_end.insert(loss_ptr);
+void CallbackTrace::recordScalerLossEpochEnd(tf::loss::loss_id id) {
+  this->losses_on_epoch_end.insert(id);
 }
 
-void CallbackTrace::recordTensorLossEpochEnd(Loss *const loss_ptr,
+void CallbackTrace::recordTensorLossEpochEnd(tf::loss::loss_id id,
                                              std::string_view loss_parameter) {
-  this->loss_parameters_on_epoch_end[loss_ptr].emplace_back(loss_parameter);
+  this->loss_parameters_on_epoch_end[id].emplace_back(loss_parameter);
 }
 
-void CallbackTrace::recordScalerLossBatchEnd(Loss *const loss_ptr) {
-  this->losses_on_batch_end.insert(loss_ptr);
+void CallbackTrace::recordScalerLossBatchEnd(tf::loss::loss_id id) {
+  this->losses_on_batch_end.insert(id);
 }
 
-void CallbackTrace::recordTensorLossBatchEnd(Loss *const loss_ptr,
+void CallbackTrace::recordTensorLossBatchEnd(tf::loss::loss_id id,
                                              std::string_view loss_parameter) {
-  this->loss_parameters_on_batch_end[loss_ptr].emplace_back(loss_parameter);
+  this->loss_parameters_on_batch_end[id].emplace_back(loss_parameter);
 }
 
 std::vector<std::vector<tf::tensor *>>
@@ -207,25 +225,26 @@ CallbackTrace::getTrainableParameterBatchOnEnd(
   return parameter->second;
 }
 
-std::vector<std::float64_t> CallbackTrace::getScalerLossEpochEnd(Loss *loss) {
-  return this->scalar_loss_epoch_end[loss];
+std::vector<std::float64_t>
+CallbackTrace::getScalerLossEpochEnd(tf::loss::loss_id id) {
+  return this->scalar_loss_epoch_end[id];
 }
 
 std::vector<std::vector<tf::tensor *>>
-CallbackTrace::getLossParameterEpochEnd(Loss *loss,
+CallbackTrace::getLossParameterEpochEnd(tf::loss::loss_id id,
                                         std::string_view loss_parameter) {
-  return this->tensor_loss_epoch_end[loss][std::string(loss_parameter)];
+  return this->tensor_loss_epoch_end[id][std::string(loss_parameter)];
 }
 
 std::vector<std::vector<std::float64_t>>
-CallbackTrace::getScalerLossBatchEnd(Loss *const loss) {
-  return this->scalar_loss_batch_end[loss];
+CallbackTrace::getScalerLossBatchEnd(tf::loss::loss_id id) {
+  return this->scalar_loss_batch_end[id];
 }
 
 std::vector<std::vector<std::vector<tf::tensor *>>>
-CallbackTrace::getLossParameterBatchEnd(Loss *loss,
+CallbackTrace::getLossParameterBatchEnd(tf::loss::loss_id id,
                                         std::string_view loss_parameter) {
-  return this->tensor_loss_batch_end[loss][std::string(loss_parameter)];
+  return this->tensor_loss_batch_end[id][std::string(loss_parameter)];
 }
 
 void CallbackTrace::callOnEpochBegin() {
@@ -291,19 +310,26 @@ void CallbackTrace::callOnEpochEnd() {
 
   /* --- scalar loss --- */
   {
-    for (Loss *loss_ptr : this->losses_on_epoch_end) {
-      this->scalar_loss_epoch_end[loss_ptr].push_back(
-          loss_ptr->getEpochEndScalerLoss());
+    for (tf::loss::loss_id id : this->losses_on_epoch_end) {
+      LossRegistry::LossHandle loss = LossRegistry::instance().lock(id);
+      if (!loss)
+        continue;
+      this->scalar_loss_epoch_end[id].push_back(
+          LossRegistry::instance().epochEndScalerLoss(loss));
     }
   }
 
   /* --- tensor loss --- */
   {
-    for (auto &[loss, loss_parameters] : this->loss_parameters_on_epoch_end) {
+    for (auto &[id, loss_parameters] : this->loss_parameters_on_epoch_end) {
+      LossRegistry::LossHandle loss = LossRegistry::instance().lock(id);
+      if (!loss)
+        continue;
 
       for (const std::string &loss_parameter : loss_parameters) {
         std::vector<tf::tensor *> temp_tensor;
-        for (tf::tensor *tensor : loss->getLossParameter(loss_parameter)) {
+        for (tf::tensor *tensor :
+             LossRegistry::instance().lossParameters(loss, loss_parameter)) {
 
           std::vector<unsigned> dims;
           for (unsigned i = 0; i < tensor->getNoOfDimensions(); i++)
@@ -313,8 +339,7 @@ void CallbackTrace::callOnEpochEnd() {
           temp_tensor.back()->tf_create(dims, tensor->dt_type);
           temp_tensor.back()->tensor_of(tensor->getData());
         }
-        this->tensor_loss_epoch_end[loss][loss_parameter].push_back(
-            temp_tensor);
+        this->tensor_loss_epoch_end[id][loss_parameter].push_back(temp_tensor);
       }
     }
   }
@@ -392,22 +417,29 @@ void CallbackTrace::callOnBatchEnd(unsigned const epoch_no) {
 
   /* --- scalar loss --- */
   {
-    for (Loss *loss_ptr : this->losses_on_batch_end) {
-      if (this->scalar_loss_batch_end[loss_ptr].size() == epoch_no)
-        this->scalar_loss_batch_end[loss_ptr].resize(epoch_no + 1);
+    for (tf::loss::loss_id id : this->losses_on_batch_end) {
+      LossRegistry::LossHandle loss = LossRegistry::instance().lock(id);
+      if (!loss)
+        continue;
+      if (this->scalar_loss_batch_end[id].size() == epoch_no)
+        this->scalar_loss_batch_end[id].resize(epoch_no + 1);
 
-      this->scalar_loss_batch_end[loss_ptr][epoch_no].push_back(
-          loss_ptr->getScalerLoss());
+      this->scalar_loss_batch_end[id][epoch_no].push_back(
+          LossRegistry::instance().scalerLoss(loss));
     }
   }
 
   /* --- tensor loss --- */
   {
-    for (auto &[loss, loss_parameters] : this->loss_parameters_on_batch_end) {
+    for (auto &[id, loss_parameters] : this->loss_parameters_on_batch_end) {
+      LossRegistry::LossHandle loss = LossRegistry::instance().lock(id);
+      if (!loss)
+        continue;
 
       for (const std::string &loss_parameter : loss_parameters) {
         std::vector<tf::tensor *> temp_tensor;
-        for (tf::tensor *tensor : loss->getLossParameter(loss_parameter)) {
+        for (tf::tensor *tensor :
+             LossRegistry::instance().lossParameters(loss, loss_parameter)) {
 
           std::vector<unsigned> dims;
           for (unsigned i = 0; i < tensor->getNoOfDimensions(); i++)
@@ -417,12 +449,10 @@ void CallbackTrace::callOnBatchEnd(unsigned const epoch_no) {
           temp_tensor.back()->tf_create(dims, tensor->dt_type);
           temp_tensor.back()->tensor_of(tensor->getData());
         }
-        if (this->tensor_loss_batch_end[loss][loss_parameter].size() ==
-            epoch_no)
-          this->tensor_loss_batch_end[loss][loss_parameter].resize(epoch_no +
-                                                                   1);
+        if (this->tensor_loss_batch_end[id][loss_parameter].size() == epoch_no)
+          this->tensor_loss_batch_end[id][loss_parameter].resize(epoch_no + 1);
 
-        this->tensor_loss_batch_end[loss][loss_parameter][epoch_no].push_back(
+        this->tensor_loss_batch_end[id][loss_parameter][epoch_no].push_back(
             temp_tensor);
       }
     }
@@ -430,17 +460,28 @@ void CallbackTrace::callOnBatchEnd(unsigned const epoch_no) {
 }
 
 void CallbackTrace::pruneStaleLayerIds() {
-  // Phase 3 made layer ownership shared: a handle can die after a callback
-  // recorded its id. Drop those registrations so dead layers cannot block
-  // training, while still rejecting live layers that belong to another model.
+  // Layer ownership is shared: a handle can die after a callback recorded its
+  // id. Drop those registrations so dead layers cannot block training, while
+  // still rejecting live layers that belong to another model.
   eraseDeadLayerIds(this->layers_on_epoch_begin);
   eraseDeadLayerIds(this->layers_on_epoch_end);
   eraseDeadLayerIds(this->layers_on_batch_begin);
   eraseDeadLayerIds(this->layers_on_batch_end);
 }
 
+void CallbackTrace::pruneStaleLossIds() {
+  // Same rule for losses: an id whose loss is gone is harmless and must not
+  // block a different model, but a live id from another model is still
+  // rejected by verifyLossCallbackSetup().
+  eraseDeadLossSetIds(this->losses_on_epoch_end);
+  eraseDeadLossMapIds(this->loss_parameters_on_epoch_end);
+  eraseDeadLossSetIds(this->losses_on_batch_end);
+  eraseDeadLossMapIds(this->loss_parameters_on_batch_end);
+}
+
 bool CallbackTrace::callOnTrainingBegin(tf::model &model) {
   this->pruneStaleLayerIds();
+  this->pruneStaleLossIds();
   bool flag = this->verifyLayerCallbackSetup(model.get_layers());
   if (flag) {
     this->layers_verification_epoch_begin = true;
@@ -528,12 +569,13 @@ bool CallbackTrace::verifyLayerCallbackSetup(
   return flag;
 }
 
-bool CallbackTrace::verifyLossCallbackSetup(std::vector<Loss *> losses) {
+bool CallbackTrace::verifyLossCallbackSetup(
+    std::vector<tf::loss::loss_id> losses) {
   bool flag = true;
   // verify scalar loss callback setup on epoch end
   if (flag) {
-    for (Loss *loss : this->losses_on_epoch_end) {
-      auto idx = std::find(losses.begin(), losses.end(), loss);
+    for (tf::loss::loss_id id : this->losses_on_epoch_end) {
+      auto idx = std::find(losses.begin(), losses.end(), id);
       if (idx == losses.end()) {
         flag = false;
         std::cerr
@@ -546,8 +588,8 @@ bool CallbackTrace::verifyLossCallbackSetup(std::vector<Loss *> losses) {
 
   // verify scalar loss callback setup on batch end
   if (flag) {
-    for (Loss *loss : this->losses_on_batch_end) {
-      auto idx = std::find(losses.begin(), losses.end(), loss);
+    for (tf::loss::loss_id id : this->losses_on_batch_end) {
+      auto idx = std::find(losses.begin(), losses.end(), id);
       if (idx == losses.end()) {
         flag = false;
         std::cerr
@@ -560,8 +602,9 @@ bool CallbackTrace::verifyLossCallbackSetup(std::vector<Loss *> losses) {
 
   // verify tensor loss callback setup on epoch end
   if (flag) {
-    for (Loss *loss : std::views::keys(this->loss_parameters_on_epoch_end)) {
-      auto idx = std::find(losses.begin(), losses.end(), loss);
+    for (tf::loss::loss_id id :
+         std::views::keys(this->loss_parameters_on_epoch_end)) {
+      auto idx = std::find(losses.begin(), losses.end(), id);
       if (idx == losses.end()) {
         flag = false;
         std::cerr
@@ -574,8 +617,9 @@ bool CallbackTrace::verifyLossCallbackSetup(std::vector<Loss *> losses) {
 
   // verify tensor loss callback setup on batch end
   if (flag) {
-    for (Loss *loss : std::views::keys(this->loss_parameters_on_batch_end)) {
-      auto idx = std::find(losses.begin(), losses.end(), loss);
+    for (tf::loss::loss_id id :
+         std::views::keys(this->loss_parameters_on_batch_end)) {
+      auto idx = std::find(losses.begin(), losses.end(), id);
       if (idx == losses.end()) {
         flag = false;
         std::cerr

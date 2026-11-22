@@ -342,6 +342,9 @@ public:
 
   loss(std::string_view type_name, const LossConfig &config);
 
+  // Internal: wrap a registry-owned loss without creating a new instance.
+  explicit loss(std::shared_ptr<Loss> owned);
+
   virtual ~loss() = default;
 
   void forward(std::vector<tf::tensor *> inputs, unsigned batch_size);
@@ -372,9 +375,6 @@ public:
   bool valid() const;
 
   explicit operator bool() const;
-
-  // Compatibility accessor; removed once all callers use the handle only.
-  Loss *const get_loss_ptr();
 };
 
 struct squared_error : public loss {
@@ -487,7 +487,7 @@ typedef struct history_container {
       history;
 
   void record_history_on_batch_end(unsigned const epoch_no,
-                                   std::vector<tf::loss::loss *> losses);
+                                   std::vector<tf::loss::loss_id> losses);
 
   void record_history_on_epoch_end(
       std::unordered_map<std::string, std::float64_t> epoch_loss);
@@ -572,7 +572,7 @@ public:
 
   std::vector<layer::layer_id> get_layers();
 
-  std::vector<Loss *> get_losses();
+  std::vector<tf::loss::loss_id> get_losses();
 
 } model;
 typedef struct optimizer {
