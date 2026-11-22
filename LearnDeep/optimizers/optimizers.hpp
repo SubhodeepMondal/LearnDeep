@@ -17,6 +17,13 @@ private:
 protected:
   Graph *optimizer_graph;
 
+  // Replaces the recording graph after its tensors and ops have been spared.
+  // Concrete optimizers drop any buffers that kept update tensors alive for
+  // the previous graph.
+  void resetOptimizerGraph();
+
+  virtual void clearUpdateState() {}
+
 public:
   Optimizer();
 
@@ -33,6 +40,9 @@ public:
 
   virtual void executeOptimizer();
 
+  // Prepares this optimizer for a fresh training graph.
+  void reset();
+
   virtual std::vector<tf::tensor *>
   getParameter(std::string_view parameter) {
     return {};
@@ -42,8 +52,22 @@ public:
 };
 
 class SGD : public Optimizer {
+  // Owned value tensors for one update-graph build. The aliases keep the
+  // parameter and gradient tensors reachable for the graph's lifetime; the
+  // scaled gradient is an owned intermediate that would otherwise die at the
+  // end of createParameterUpdateGraph(). The vector is cleared on reset() so
+  // repeated fits do not accumulate stale update ops.
+  struct UpdateState {
+    tf::tensor param;
+    tf::tensor gradient;
+    tf::tensor scaled_gradient;
+  };
+
   double learning_rate;
-  std::vector<tf::tensor> scaler_param;
+  std::vector<UpdateState> update_states;
+
+protected:
+  void clearUpdateState() override;
 
 public:
   SGD();

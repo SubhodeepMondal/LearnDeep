@@ -97,6 +97,11 @@ void SquaredError::backward() {
   }
 }
 
+void SquaredError::resetGradientRecording() {
+  this->grad_training_inputs.release();
+  this->isGradRecorded = false;
+}
+
 std::float64_t
 SquaredError::calculate(std::vector<tf::tensor> &predicted_output,
                         std::vector<tf::tensor> &target_outptut) {

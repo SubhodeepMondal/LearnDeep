@@ -123,6 +123,11 @@ void OptimizerRegistry::execute(const OptimizerHandle &optimizer) const {
     optimizer->executeOptimizer();
 }
 
+void OptimizerRegistry::reset(const OptimizerHandle &optimizer) const {
+  if (optimizer)
+    optimizer->reset();
+}
+
 std::vector<tf::tensor>
 OptimizerRegistry::optimizerParameters(const OptimizerHandle &optimizer,
                                        std::string_view parameter) const {

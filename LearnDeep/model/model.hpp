@@ -23,8 +23,9 @@ private:
   std::vector<Tensor<std::float64_t> *> outputs;
   std::vector<tf::tensor> prediction_outputs;
 
-  tf::tensor *temp_training_input_tensor;
-
+  // Owned batch buffers; local_training_inputs holds non-owning views into
+  // these tensors for the mapping tables.
+  std::vector<std::unique_ptr<tf::tensor>> owned_training_inputs;
   std::vector<tf::tensor *> local_training_inputs;
 
   std::unordered_map<tf::layer::layer_id,
@@ -69,6 +70,9 @@ private:
       std::queue<const Tensor<std::float64_t> *> &output_queue);
 
   void initializeTrainingMappings();
+
+  // Clears state that is only valid for one training graph.
+  void resetTrainingGraphState();
 
   void initializePredictionInputMappings();
 

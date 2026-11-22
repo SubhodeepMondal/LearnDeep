@@ -51,6 +51,9 @@ public:
 
   virtual void backward(const tf::optimizer::optimizer &optimizer) = 0;
 
+  // Clears one-shot gradient-recording state before a new training graph.
+  virtual void resetGradientRecording() {}
+
   virtual const std::vector<tf::tensor *> &
   operator()(std::vector<tf::tensor> input_tensors) = 0;
 

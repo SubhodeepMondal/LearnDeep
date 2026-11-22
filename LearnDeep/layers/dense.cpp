@@ -169,6 +169,17 @@ void Dense::backward(const tf::optimizer::optimizer &optimizer) {
   }
 }
 
+void Dense::resetGradientRecording() {
+  // Gradient tensors belong to the previous training graph. Drop the aliases
+  // before the next backward() replaces them so assignment cannot delete
+  // tensors that have already been invalidated by graph teardown.
+  this->grad_weight.release();
+  this->grad_bias.release();
+  this->grad_input.release();
+  this->incoming_grad.release();
+  this->isGradRecorded = false;
+}
+
 std::string_view Dense::type() const { return tf::layer::type::dense; }
 
 const std::vector<tf::tensor *> &Dense::getOutputTensors() {

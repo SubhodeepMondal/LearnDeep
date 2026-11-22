@@ -152,6 +152,10 @@ public:
 
   const void setPtr(Tensor<std::float64_t> *ptr);
 
+  // Drops this wrapper's pointer without deleting the underlying tensor.
+  // Used when discarding stale gradient aliases before a new training graph.
+  void release() noexcept;
+
   std::float64_t *getData() const { return ptr->getData(); }
 };
 
@@ -751,6 +755,9 @@ public:
                                      tf::tensor gradient_param) const;
 
   void execute() const;
+
+  // Drops update ops from a previous training graph.
+  void reset_update_graph() const;
 
   std::unordered_set<std::string> parameterNames() const;
 

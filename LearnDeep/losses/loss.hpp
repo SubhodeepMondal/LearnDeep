@@ -48,6 +48,9 @@ public:
 
   virtual void backward() = 0;
 
+  // Clears one-shot gradient-recording state before a new training graph.
+  virtual void resetGradientRecording() { this->isGradRecorded = false; }
+
   virtual void
   setTargetOutput(const std::vector<tf::tensor> output_predicts) = 0;
   virtual void
@@ -93,6 +96,8 @@ public:
 
   void backward() override;
 
+  void resetGradientRecording() override;
+
   std::float64_t calculate(std::vector<tf::tensor> &predicted_value,
                            std::vector<tf::tensor> &target_output) override;
 
@@ -134,6 +139,8 @@ public:
                const unsigned batch_size) override;
 
   void backward() override;
+
+  void resetGradientRecording() override;
 
   std::float64_t calculate(std::vector<tf::tensor> &predicted_value,
                            std::vector<tf::tensor> &target_output) override;

@@ -82,6 +82,11 @@ void CategoricalCrossEntropy::backward() {
   }
 }
 
+void CategoricalCrossEntropy::resetGradientRecording() {
+  this->grad_training_inputs.release();
+  this->isGradRecorded = false;
+}
+
 std::float64_t
 CategoricalCrossEntropy::calculate(std::vector<tf::tensor> &predicted_output,
                                    std::vector<tf::tensor> &target_output) {

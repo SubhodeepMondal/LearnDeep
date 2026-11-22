@@ -67,6 +67,9 @@ public:
 
   void execute(const OptimizerHandle &optimizer) const;
 
+  // Discards update ops/buffers from a previous training graph.
+  void reset(const OptimizerHandle &optimizer) const;
+
   std::vector<tf::tensor>
   optimizerParameters(const OptimizerHandle &optimizer,
                       std::string_view parameter) const;

@@ -161,6 +161,16 @@ Tensor<std::float64_t> *tf::tensor::getPtr() const { return this->ptr; }
 
 const void tf::tensor::setPtr(Tensor<std::float64_t> *ptr) { this->ptr = ptr; }
 
+void tf::tensor::release() noexcept {
+  if (!this->ptr)
+    return;
+
+  auto owner = tf::tensor_nodes.find(this->ptr);
+  if (owner != tf::tensor_nodes.end() && owner->second == this)
+    tf::tensor_nodes.erase(owner);
+  this->ptr = nullptr;
+}
+
 unsigned tf::tensor::getNoOfDimensions() {
   return this->ptr->getNoOfDimensions();
 }
@@ -1068,6 +1078,10 @@ void tf::optimizer::optimizer::create_parameter_update_graph(
 
 void tf::optimizer::optimizer::execute() const {
   OptimizerRegistry::instance().execute(this->optimizer_ptr_);
+}
+
+void tf::optimizer::optimizer::reset_update_graph() const {
+  OptimizerRegistry::instance().reset(this->optimizer_ptr_);
 }
 
 std::unordered_set<std::string>

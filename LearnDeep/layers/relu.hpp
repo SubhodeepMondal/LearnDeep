@@ -44,6 +44,8 @@ public:
 
   void backward(const tf::optimizer::optimizer &optimizer) override;
 
+  void resetGradientRecording() override;
+
   const std::vector<tf::tensor *> &getOutputTensors() override;
 
   std::vector<const tf::tensor *> getInputTrainingTensors() override;

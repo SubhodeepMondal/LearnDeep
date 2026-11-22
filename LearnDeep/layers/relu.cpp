@@ -86,6 +86,11 @@ void Relu::backward(const tf::optimizer::optimizer &) {
   }
 }
 
+void Relu::resetGradientRecording() {
+  this->grad_input.release();
+  this->isGradRecorded = false;
+}
+
 std::string_view Relu::type() const { return tf::layer::type::relu; }
 
 const std::vector<tf::tensor *> &Relu::getOutputTensors() {

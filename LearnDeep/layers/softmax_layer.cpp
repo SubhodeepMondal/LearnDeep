@@ -87,6 +87,11 @@ void Softmax::backward(const tf::optimizer::optimizer &) {
   }
 }
 
+void Softmax::resetGradientRecording() {
+  this->grad_input.release();
+  this->isGradRecorded = false;
+}
+
 std::string_view Softmax::type() const { return tf::layer::type::softmax; }
 
 const std::vector<tf::tensor *> &Softmax::getOutputTensors() {
