@@ -17,6 +17,18 @@ TEST(LossRegistryTest, ContainsBuiltInLosses) {
       std::string(tf::loss::type::categorical_cross_entropy)));
 }
 
+TEST(LossRegistryTest, DuplicateBehaviorRegistrationIsRejected) {
+  const std::string name = "duplicate_behavior_regression";
+  const tf::loss::behavior_factory factory =
+      [](const tf::loss::config &) -> std::unique_ptr<tf::loss::behavior> {
+    return nullptr;
+  };
+
+  EXPECT_TRUE(tf::loss::registerBehavior(name, factory));
+  EXPECT_FALSE(tf::loss::registerBehavior(name, factory));
+  EXPECT_TRUE(LossRegistry::instance().contains(name));
+}
+
 TEST(LossRegistryTest, GenericHandleSupportsRegistryConstruction) {
   tf::tensor x;
   x.tf_create(tf_float64, 3, 2);

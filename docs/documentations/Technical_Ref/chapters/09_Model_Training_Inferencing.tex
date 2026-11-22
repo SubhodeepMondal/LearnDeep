@@ -143,7 +143,9 @@ are evaluated against the target outputs.
 
 For example, the configuration shown above selects
 stochastic gradient descent (SGD) as the optimizer and
-squared error as the loss function.
+squared error as the loss function. The second argument is a registry key,
+so any self-registered loss works here, including a custom key such as
+\texttt{"custom\_scaled\_mse"}. Unknown keys are rejected at compile time.
 
 Based on these selections, LearnDeep creates the corresponding
 optimizer and loss instances. This separates the choice of

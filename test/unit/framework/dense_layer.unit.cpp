@@ -5,11 +5,12 @@
 #include <LearnDeep/api/tensor.h>
 #include <callback/callback.hpp>
 #include <gtest/gtest.h>
-#include <losses/loss.hpp>
-#include <losses/loss_registry.hpp>
 
 #include <iostream>
 #include <stdfloat>
+#include <string>
+#include <string_view>
+#include <vector>
 
 TEST_F(FrameworkTest, DenseLayer_Test_1) {
 
@@ -1247,41 +1248,69 @@ TEST_F(FrameworkTest, Sin_x_Func_Fit_Test) {
 // --- Early stopping callback tests -----------------------------------------
 
 namespace {
-// Minimal Loss stub that feeds a predetermined sequence of epoch-end losses
-// into the callback, so the stopping logic can be checked without training.
-class SequenceLoss final : public Loss {
-  std::vector<std::float64_t> values;
-  std::size_t cursor{0};
+// Minimal public-API loss behavior that feeds a predetermined sequence of
+// epoch-end losses into the callback, so the stopping logic can be checked
+// without training. It registers itself exactly like an out-of-tree plugin.
+inline constexpr std::string_view kSequenceLossType{"sequence_loss"};
+inline constexpr std::string_view kSequenceLossValues{"sequence_loss_values"};
 
+class SequenceLoss final : public tf::loss::behavior {
 public:
-  explicit SequenceLoss(std::vector<std::float64_t> epoch_losses)
-      : values(std::move(epoch_losses)) {}
-
-  void forward(std::vector<tf::tensor *>, const unsigned) override {}
-  void backward() override {}
-  void setTargetOutput(const std::vector<tf::tensor>) override {}
-  void setPredictedOutput(const std::vector<tf::tensor *> &) override {}
-  const std::float64_t getScalerLoss() override { return 0.0; }
-  const std::float64_t getEpochEndScalerLoss() override {
-    return values[cursor++];
+  explicit SequenceLoss(const tf::loss::config &config) {
+    const auto *values =
+        config.getAs<std::vector<double>>(std::string(kSequenceLossValues));
+    if (values)
+      this->values = *values;
   }
+
+  std::string_view type() const override { return kSequenceLossType; }
+  void forward(std::vector<tf::tensor *>,
+               unsigned) override {}
+  void backward() override {}
+  void setTargetOutput(const std::vector<tf::tensor> &) override {}
   std::float64_t calculate(std::vector<tf::tensor> &,
                            std::vector<tf::tensor> &) override {
     return 0.0;
   }
-  std::vector<tf::tensor *> getLossParameter(std::string_view) override {
+  std::float64_t getScalerLoss() override { return 0.0; }
+  std::float64_t getEpochEndScalerLoss() override {
+    if (this->values.empty())
+      return 0.0;
+    if (this->cursor >= this->values.size())
+      return this->values.back();
+    return this->values[this->cursor++];
+  }
+  std::vector<tf::tensor *> getParameter(std::string_view) override {
     return {};
   }
-  unsigned getNoOfInputs() override { return 1; }
-  std::string getLossName() override { return "sequence_loss"; }
+  std::unordered_set<std::string> parameterNames() const override {
+    return {std::string(kSequenceLossValues)};
+  }
+  unsigned getNoOfInputs() const override { return 1; }
+
+private:
+  std::vector<double> values;
+  std::size_t cursor{0};
 };
+
+REGISTER_LOSS(std::string(kSequenceLossType),
+              [](const tf::loss::config &config)
+                  -> std::unique_ptr<tf::loss::behavior> {
+                return std::make_unique<SequenceLoss>(config);
+              });
+
+tf::loss::loss makeSequenceLoss(const std::vector<std::float64_t> &values) {
+  tf::loss::config config;
+  config.set(std::string(kSequenceLossValues),
+             std::vector<double>(values.begin(), values.end()));
+  return tf::loss::loss(kSequenceLossType, config);
+}
 } // namespace
 
 TEST(EarlyStoppingTest, StopsAfterPatienceEpochsWithoutImprovement) {
   // Big improvement at epoch 2, then three consecutive stalls (< 0.2 change).
-  auto loss = LossRegistry::instance().adopt(std::make_unique<SequenceLoss>(
-      std::vector<std::float64_t>{10.0, 8.0, 7.95, 7.93, 7.92}));
-  CallbackEarlyStopping early_stopping(LossRegistry::instance().idOf(loss),
+  auto loss = makeSequenceLoss({10.0, 8.0, 7.95, 7.93, 7.92});
+  CallbackEarlyStopping early_stopping(loss.id(),
                                        /*patience=*/3, /*min_delta=*/0.2,
                                        /*minimize=*/true);
 
@@ -1304,9 +1333,8 @@ TEST(EarlyStoppingTest, StopsAfterPatienceEpochsWithoutImprovement) {
 }
 
 TEST(EarlyStoppingTest, ImprovementResetsThePatienceCounter) {
-  auto loss = LossRegistry::instance().adopt(std::make_unique<SequenceLoss>(
-      std::vector<std::float64_t>{10.0, 9.95, 8.0, 7.99, 7.98}));
-  CallbackEarlyStopping early_stopping(LossRegistry::instance().idOf(loss),
+  auto loss = makeSequenceLoss({10.0, 9.95, 8.0, 7.99, 7.98});
+  CallbackEarlyStopping early_stopping(loss.id(),
                                        /*patience=*/2, /*min_delta=*/0.1,
                                        /*minimize=*/true);
 
@@ -1325,9 +1353,8 @@ TEST(EarlyStoppingTest, ImprovementResetsThePatienceCounter) {
 }
 
 TEST(EarlyStoppingTest, MaximizeModeUsesUpperBound) {
-  auto loss = LossRegistry::instance().adopt(std::make_unique<SequenceLoss>(
-      std::vector<std::float64_t>{0.1, 0.5, 0.51, 0.505}));
-  CallbackEarlyStopping early_stopping(LossRegistry::instance().idOf(loss),
+  auto loss = makeSequenceLoss({0.1, 0.5, 0.51, 0.505});
+  CallbackEarlyStopping early_stopping(loss.id(),
                                        /*patience=*/2, /*min_delta=*/0.1,
                                        /*minimize=*/false);
 

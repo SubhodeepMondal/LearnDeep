@@ -141,11 +141,25 @@ Let's see how MeanSquaredError(MSE) is layed out.
     };
 \end{lstlisting}
 
-but sadly I've don't have any standalone
-configuration to showcase how a user can
-use losses. Most of its usage are inside
-model. As of now simple eager execution is
-not ready yet.
+Losses are now selected by string key instead of an enum. The same
+registry powers standalone handles, model.compile(), and out-of-tree
+plugins:
+
+\begin{lstlisting}[
+    caption={Using a loss through the public API},
+    label={lst:loss public api}
+]
+auto se = tf::loss::loss(tf::loss::type::squared_error);
+auto value = se.calculate(predictions, targets);
+
+tf::model model({x}, dense_output);
+model.compile(OptimizerType::SGD, "custom_scaled_mse");
+\end{lstlisting}
+
+A standalone handle owns its loss instance, while callbacks and a compiled
+model refer to it through a stable \texttt{loss\_id}. This keeps loss state
+alive for the whole training run and rejects ids that belong to a different
+loss.
 
 \section{Loss Function: Categorical Cross Entropy (CCE)}
 
@@ -205,8 +219,20 @@ assign higher probabilities to the correct classes.
 
 \subsection{CCE: In practice}
 
-Like MSE I've don't have eager mode calculate()
-is still not ready. So I don't have much ex.
-to showcase.
+CCE is available under the string key
+\texttt{tf::loss::type::categorical\_cross\_entropy} and supports the same
+standalone \texttt{calculate()} path and model-compilation flow as MSE.
+Callbacks can inspect its loss tensor, target tensor, and gradient tensor via
+the canonical string parameter names.
+
+\section{Custom losses}
+
+Out-of-tree losses implement the public \texttt{tf::loss::behavior} interface
+and self-register with \texttt{REGISTER\_LOSS}. The plugin includes only
+\texttt{<api/tensor.h>}; the framework adapts the behavior to its internal
+\texttt{Loss} ABI, so plugin authors do not depend on private headers. The
+\texttt{custom/loss/} example demonstrates parameter configuration, graph
+forward/backward wiring, and gradient access through
+\texttt{tf::loss::gradient\_of()}.
 
 % Document layers, loss functions, and model APIs here.

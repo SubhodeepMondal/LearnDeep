@@ -25,6 +25,9 @@ framework `CMakeLists.txt` is edited to add an experiment here.
   - `custom_layer_test.cpp` — registration, handle validity, parameter access.
   - `custom_loss_test.cpp` — registration and id/type, `setParameter("scale",
     ...)`, `calculate()`, and `compile()` + `fit()` with `custom_scaled_mse`.
+  - `custom_loss_integration.cpp` — full `tf::model` training pipeline with
+    `custom_scaled_mse` configured to scale 1.0, reusing the NumPy squared-error
+    fixtures and checking the loss tensor, gradient tensor, and scalar loss.
   - `custom_scale_integration.cpp` — full `tf::model` training pipeline: the
     custom `scale` layer feeds `squared_error`, callbacks record
     `training_output`, `grad_input`, the loss tensor and its gradient, and all
@@ -54,18 +57,20 @@ calls `LayerRegistry::instance().registerLayer(...)` when the plugin shared
 library is loaded. The registry is a function-local singleton living in
 `liblayer.so`, so the plugin and the framework share one registry instance.
 
-`REGISTER_LOSS` works the same way for `custom/loss/scaled_squared_error.cpp`,
-except the singleton lives in `libloss.so`. Its third argument is a parameter
-setter, so the public `tf::loss::loss::setParameter("scale", 3.0)` path works
-for the generic handle. `model.compile(OptimizerType::SGD,
-"custom_scaled_mse")` creates the loss by its registry key, and callbacks refer
-to it only by `loss_id`.
+`REGISTER_LOSS` is a public macro for `custom/loss/scaled_squared_error.cpp`.
+The plugin implements `tf::loss::behavior`, uses `tf::loss::config` for
+construction parameters, and the framework adapts that object to the internal
+`Loss` ABI inside `libloss.so`. Its third argument is a public parameter setter,
+so `tf::loss::loss::setParameter("scale", 3.0)` works for the generic handle.
+`model.compile(OptimizerType::SGD, "custom_scaled_mse")` creates the loss by its
+registry key, and callbacks refer to it only by `loss_id`.
 
-`custom/test/custom_layer_test.cpp` and `custom/test/custom_loss_test.cpp` call
-the tiny exported anchors `ld_custom_layers_load()` and
-`ld_custom_losses_load()` so each plugin is actually linked and loaded before a
-handle is created; without them, `--as-needed` linkers may drop an otherwise
-unreferenced `DT_NEEDED` entry and the static initializer would never run.
+`custom/test/custom_layer_test.cpp`, `custom/test/custom_loss_test.cpp`, and
+`custom/test/custom_loss_integration.cpp` call the tiny exported anchors
+`ld_custom_layers_load()` and `ld_custom_losses_load()` so each plugin is
+actually linked and loaded before a handle is created; without them,
+`--as-needed` linkers may drop an otherwise unreferenced `DT_NEEDED` entry and
+the static initializer would never run.
 
 ## Limitations of the "libraries + public header only" boundary
 
@@ -78,9 +83,11 @@ unreferenced `DT_NEEDED` entry and the static initializer would never run.
 - Consequently a custom layer is compiled against internal C++ headers and is
   tied to the internal `Layer` ABI (`Tensor<std::float64_t>*`, `Optimizer*`,
   pure-virtual layout). An `Optimizer`/`Tensor` change requires recompiling it.
-- The custom loss has the same constraint: it subclasses the internal `Loss`
-  base, so it must be recompiled against the framework headers and library if
-  that ABI changes. The *tests* still use only the public string-key API.
+- The custom loss has **no** internal-header dependency: it implements the
+  public `tf::loss::behavior` contract and registers through the public
+  `REGISTER_LOSS` macro. It still links against the framework libraries, so an
+  ABI change in the public header requires recompilation. Gradient access is
+  provided by `tf::loss::gradient_of()` instead of internal graph headers.
 - The public header itself includes internal headers
   (`core/framework/MathLibrary.h`, `core/graph/graph_context.hpp`,
   `core/ops/opskernel.h`, `optimizers/optimizer_type.hpp`), so "public header
@@ -95,7 +102,7 @@ unreferenced `DT_NEEDED` entry and the static initializer would never run.
   wrapper struct in `api/tensor.h`. The generic `tf::layer::layer("name", cfg)`
   path needs none of that.
 
-To make a truly public extension point, the framework would need to expose a
-public layer-behavior interface and a public config/registration API in
-`<api/tensor.h>`, with an internal adapter bridging it to `Layer`. That is a
-separate design change and is not done here.
+The loss extension point is now public: `tf::loss::behavior`,
+`tf::loss::config`, `tf::loss::registerBehavior()`, and `REGISTER_LOSS()` are
+declared in `<api/tensor.h>`. The same treatment for layers is still a separate
+design change; custom layers continue to use internal headers.
