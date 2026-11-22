@@ -48,19 +48,20 @@ struct LayerConfig {
 
 class LayerRegistry {
 public:
-  using Factory = std::function<Layer *(const LayerConfig &)>;
+  using LayerHandle = std::shared_ptr<Layer>;
+  using Factory = std::function<std::unique_ptr<Layer>(const LayerConfig &)>;
   using ParameterSetter = std::function<bool(
-      Layer *, const std::string &, const tf::LayerParameterValue &)>;
+      const LayerHandle &, const std::string &, const tf::LayerParameterValue &)>;
 
   static LayerRegistry &instance();
 
   bool registerLayer(const std::string &name, Factory factory,
                      ParameterSetter setter = {});
 
-  std::unique_ptr<Layer> create(const std::string &name,
-                                const LayerConfig &config = {}) const;
+  LayerHandle create(const std::string &name,
+                     const LayerConfig &config = {}) const;
 
-  bool setParameter(const std::string &name, Layer *layer,
+  bool setParameter(const std::string &name, const LayerHandle &layer,
                     const std::string &parameter,
                     const tf::LayerParameterValue &value) const;
 

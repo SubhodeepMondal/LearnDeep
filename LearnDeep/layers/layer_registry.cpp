@@ -1,5 +1,6 @@
 // Library Headers
 #include "layer_registry.hpp"
+#include <layers/layer_graph.hpp>
 #include <layers/layers.hpp>
 
 // Third party
@@ -29,18 +30,33 @@ bool LayerRegistry::registerLayer(const std::string &name, Factory factory,
   return true;
 }
 
-std::unique_ptr<Layer> LayerRegistry::create(const std::string &name,
-                                             const LayerConfig &config) const {
+LayerRegistry::LayerHandle
+LayerRegistry::create(const std::string &name, const LayerConfig &config) const {
   auto factory = factories_.find(name);
   if (factory == factories_.end()) {
     LOG(ERROR) << "Fatal! Unknown layer type '" << name << "'.\n";
     return nullptr;
   }
 
-  return std::unique_ptr<Layer>(factory->second(config));
+  std::unique_ptr<Layer> created = factory->second(config);
+  if (!created) {
+    LOG(ERROR) << "Fatal! Failed to create layer type '" << name << "'.\n";
+    return nullptr;
+  }
+
+  LayerHandle layer(created.release(), [](Layer *owned_layer) {
+    if (!owned_layer)
+      return;
+
+    global_layer_graph.removeNode(owned_layer->id());
+    delete owned_layer;
+  });
+  global_layer_graph.addNode(layer);
+  return layer;
 }
 
-bool LayerRegistry::setParameter(const std::string &name, Layer *layer,
+bool LayerRegistry::setParameter(const std::string &name,
+                                 const LayerHandle &layer,
                                  const std::string &parameter,
                                  const tf::LayerParameterValue &value) const {
   auto setter = parameter_setters_.find(name);

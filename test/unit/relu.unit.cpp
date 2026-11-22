@@ -163,31 +163,31 @@ TEST_F(FrameworkTest, ReluLayer_Test_1) {
   /* --- call back setting --- */
   tf::callback::trace call_back;
   call_back.record_parameter_on_batch_begin(
-      dense_1.getLayerPtr(), "training_input", false);
+      dense_1, "training_input", false);
 
   call_back.record_parameter_on_batch_end(
-      dense_1.getLayerPtr(), "training_weight", false);
+      dense_1, "training_weight", false);
 
   call_back.record_parameter_on_batch_end(
-      dense_1.getLayerPtr(), "training_bias", false);
+      dense_1, "training_bias", false);
 
   call_back.record_parameter_on_batch_end(
-      dense_1.getLayerPtr(), "training_output", false);
+      dense_1, "training_output", false);
 
   call_back.record_parameter_on_batch_end(
-      relu_layer.getLayerPtr(), "training_output", false);
+      relu_layer, "training_output", false);
 
   call_back.record_parameter_on_batch_end(
-      dense_1.getLayerPtr(), "grad_weight", false);
+      dense_1, "grad_weight", false);
 
   call_back.record_parameter_on_batch_end(
-      dense_1.getLayerPtr(), "grad_bias", false);
+      dense_1, "grad_bias", false);
 
   call_back.record_parameter_on_batch_end(
-      dense_1.getLayerPtr(), "updated_weight", false);
+      dense_1, "updated_weight", false);
 
   call_back.record_parameter_on_batch_end(
-      dense_1.getLayerPtr(), "updated_bias", false);
+      dense_1, "updated_bias", false);
   /* --- call back setting end --- */
 
   /* --- model creation --- */
@@ -212,22 +212,22 @@ TEST_F(FrameworkTest, ReluLayer_Test_1) {
 
   /* --- Intercepting training parameters --- */
   auto dense_outputs = call_back.get_parameter_on_batch_end(
-      dense_1.getLayerPtr(), "training_output");
+      dense_1, "training_output");
 
   auto relu_outputs = call_back.get_parameter_on_batch_end(
-      relu_layer.getLayerPtr(), "training_output");
+      relu_layer, "training_output");
 
   auto train_dense_1_grad_weights = call_back.get_parameter_on_batch_end(
-      dense_1.getLayerPtr(), "grad_weight");
+      dense_1, "grad_weight");
 
   auto train_dense_1_grad_bias = call_back.get_parameter_on_batch_end(
-      dense_1.getLayerPtr(), "grad_bias");
+      dense_1, "grad_bias");
 
   auto train_dense_1_updated_weights = call_back.get_parameter_on_batch_end(
-      dense_1.getLayerPtr(), "updated_weight");
+      dense_1, "updated_weight");
 
   auto train_dense_1_updated_bias = call_back.get_parameter_on_batch_end(
-      dense_1.getLayerPtr(), "updated_bias");
+      dense_1, "updated_bias");
 
   auto training_losses = call_back.get_tensor_loss_on_batch_end(
       loss_sgd, Loss_Parameter::squared_error_predicted_output);

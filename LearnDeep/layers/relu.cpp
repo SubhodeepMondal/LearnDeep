@@ -1,7 +1,6 @@
 // Library Headers
 #include "relu.hpp"
 #include "layer_enum.hpp"
-#include "layer_graph.hpp"
 #include "layer_registry.hpp"
 #include "layers.hpp"
 #include <core/graph/graph_framework.hpp>
@@ -11,8 +10,9 @@
 // Third party
 #include <absl/log/log.h>
 
-REGISTER_LAYER("relu",
-               [](const LayerConfig &) -> Layer * { return new Relu(); });
+REGISTER_LAYER("relu", [](const LayerConfig &) -> std::unique_ptr<Layer> {
+  return std::make_unique<Relu>();
+});
 
 Relu::Relu() {
   this->isForwardGraphCreated = false;

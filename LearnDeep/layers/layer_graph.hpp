@@ -2,39 +2,37 @@
 #define _CORE_LAYER_GRAPH_
 
 // C++ Headers
+#include <memory>
 #include <stdfloat>
 #include <unordered_map>
-#include <unordered_set>
 #include <vector>
 
 // Library Headers
-#include <core/framework/MathLibrary.h>
-#include <layers/layers.hpp>
-#include <model/model.hpp>
+#include <api/tensor.h>
 
-enum LayerGraphFunctions { compute };
+class Layer;
 
 class LayerGraph {
-  std::unordered_set<Layer *> layers;
-  std::unordered_map<Model *, std::unordered_map<Layer *, std::vector<Layer *>>>
-      model_layer_graph; // for a model for a layer it has multiple outgoing
-                         // edge to other layers
+  std::unordered_map<tf::layer::layer_id, std::weak_ptr<Layer>> layers;
 
 public:
-  LayerGraph();
-  ~LayerGraph();
+  LayerGraph() = default;
+  ~LayerGraph() = default;
 
-  void addNode(Layer *node);
-  void removeNode(Layer *node);
+  void addNode(const std::shared_ptr<Layer> &node);
+  void removeNode(tf::layer::layer_id id);
+  void prune();
 
-  void addLayerGraphEdge(Model *model, Layer *srcNode, Layer *desNode);
+  std::shared_ptr<Layer> lock(tf::layer::layer_id id);
+  bool contains(tf::layer::layer_id id);
 
-  std::vector<Layer *>
+  std::vector<tf::layer::layer_id>
   getLayersOfIncomingTensor(const Tensor<std::float64_t> *tensor);
 
-  Layer *getLayerOfOutgoingTensor(const Tensor<std::float64_t> *tensor);
+  tf::layer::layer_id
+  getLayerOfOutgoingTensor(const Tensor<std::float64_t> *tensor);
 
-  std::vector<Layer *> getAllLayers();
+  std::vector<tf::layer::layer_id> getAllLayerIds();
 };
 
 extern LayerGraph global_layer_graph;

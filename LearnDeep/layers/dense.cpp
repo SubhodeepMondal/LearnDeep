@@ -2,7 +2,6 @@
 #include "dense.hpp"
 #include "layer_enum.hpp"
 #include "layer_registry.hpp"
-#include "layer_graph.hpp"
 #include "layers.hpp"
 #include <absl/log/log.h>
 #include <core/graph/graph_framework.hpp>
@@ -12,27 +11,31 @@
 
 REGISTER_LAYER(
     "dense",
-    [](const LayerConfig &config) -> Layer * {
+    [](const LayerConfig &config) -> std::unique_ptr<Layer> {
       const unsigned *units = config.getAs<unsigned>("units");
       if (!units)
         units = config.getAs<unsigned>("unit");
 
-      Layer *layer = new Dense(units ? *units : 1u);
+      std::unique_ptr<Dense> dense =
+          std::make_unique<Dense>(units ? *units : 1u);
 
       if (const tf::tensor *weight = config.getAs<tf::tensor>("weight"))
-        static_cast<Dense *>(layer)->setWeight(*weight);
+        dense->setWeight(*weight);
       if (const tf::tensor *bias = config.getAs<tf::tensor>("bias"))
-        static_cast<Dense *>(layer)->setBias(*bias);
+        dense->setBias(*bias);
 
-      return layer;
+      return dense;
     },
-    [](Layer *layer, const std::string &name,
+    [](const LayerRegistry::LayerHandle &layer, const std::string &name,
        const tf::LayerParameterValue &value) -> bool {
       const tf::tensor *tensor = std::get_if<tf::tensor>(&value);
       if (!tensor)
         return false;
 
-      Dense *dense = static_cast<Dense *>(layer);
+      std::shared_ptr<Dense> dense = std::dynamic_pointer_cast<Dense>(layer);
+      if (!dense)
+        return false;
+
       if (name == tf::layer::parameter::weight) {
         dense->setWeight(*tensor);
         return true;

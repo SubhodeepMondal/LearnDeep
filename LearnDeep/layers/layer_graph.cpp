@@ -1,8 +1,6 @@
 // C++ Headers
 #include <algorithm>
-#include <cstddef>
 #include <ranges>
-#include <unordered_set>
 
 // Library Headers
 #include "layer_graph.hpp"
@@ -10,53 +8,82 @@
 
 LayerGraph global_layer_graph;
 
-LayerGraph::LayerGraph(){};
+void LayerGraph::addNode(const std::shared_ptr<Layer> &node) {
+  if (!node)
+    return;
 
-LayerGraph::~LayerGraph() { this->layers.clear(); }
+  layers.insert_or_assign(node->id(), node);
+}
 
-void LayerGraph::addNode(Layer *layer) { this->layers.insert(layer); }
+void LayerGraph::removeNode(tf::layer::layer_id id) { layers.erase(id); }
 
-std::vector<Layer *>
-LayerGraph::getLayersOfIncomingTensor(const Tensor<std::float64_t> *tensor) {
-  std::vector<Layer *> outgoing_layer;
-  for (Layer *layer : layers) {
+void LayerGraph::prune() {
+  for (auto it = layers.begin(); it != layers.end();) {
+    if (it->second.expired())
+      it = layers.erase(it);
+    else
+      ++it;
+  }
+}
+
+std::shared_ptr<Layer> LayerGraph::lock(tf::layer::layer_id id) {
+  auto entry = layers.find(id);
+  if (entry == layers.end())
+    return {};
+
+  std::shared_ptr<Layer> layer = entry->second.lock();
+  if (!layer)
+    layers.erase(entry);
+  return layer;
+}
+
+bool LayerGraph::contains(tf::layer::layer_id id) {
+  return static_cast<bool>(this->lock(id));
+}
+
+std::vector<tf::layer::layer_id> LayerGraph::getLayersOfIncomingTensor(
+    const Tensor<std::float64_t> *tensor) {
+  this->prune();
+
+  std::vector<tf::layer::layer_id> layers_with_incoming_tensor;
+  for (const auto &[id, weak_layer] : layers) {
+    std::shared_ptr<Layer> layer = weak_layer.lock();
+    if (!layer)
+      continue;
+
     if (std::ranges::contains(layer->getInputTensors(), tensor)) {
-      outgoing_layer.push_back(layer);
+      layers_with_incoming_tensor.push_back(id);
       break;
     }
   }
-  return outgoing_layer;
+  return layers_with_incoming_tensor;
 }
 
-void LayerGraph::addLayerGraphEdge(Model *model, Layer *srcNode,
-                                   Layer *desNode) {
-  this->model_layer_graph[model][srcNode].push_back(desNode);
-}
+tf::layer::layer_id LayerGraph::getLayerOfOutgoingTensor(
+    const Tensor<std::float64_t> *tensor) {
+  this->prune();
 
-void LayerGraph::removeNode(Layer *layer) { layers.erase(layer); }
+  for (const auto &[id, weak_layer] : layers) {
+    std::shared_ptr<Layer> layer = weak_layer.lock();
+    if (!layer)
+      continue;
 
-Layer *
-LayerGraph::getLayerOfOutgoingTensor(const Tensor<std::float64_t> *tensor) {
-  Layer *incoming_layer = nullptr;
-  for (Layer *layer : this->layers) {
     std::vector<Tensor<std::float64_t> *> reference_output_tensors;
-
     for (tf::tensor *output_tensor : layer->getOutputTensors())
       reference_output_tensors.push_back(output_tensor->getPtr());
 
-    if (std::ranges::contains(reference_output_tensors, tensor)) {
-      incoming_layer = layer;
-      break;
-    }
+    if (std::ranges::contains(reference_output_tensors, tensor))
+      return id;
   }
-  return incoming_layer;
+  return tf::layer::invalid_layer_id;
 }
 
-std::vector<Layer *> LayerGraph::getAllLayers() {
-  std::vector<Layer *> output_layers;
+std::vector<tf::layer::layer_id> LayerGraph::getAllLayerIds() {
+  this->prune();
 
-  for (Layer *layer : this->layers)
-    output_layers.push_back(layer);
-
-  return output_layers;
+  std::vector<tf::layer::layer_id> ids;
+  ids.reserve(layers.size());
+  for (const auto &[id, weak_layer] : layers)
+    ids.push_back(id);
+  return ids;
 }

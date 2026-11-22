@@ -14,9 +14,16 @@
 class Optimizer;
 
 class Layer {
+private:
+  tf::layer::layer_id id_;
+
 protected:
+  Layer();
+
 public:
   virtual ~Layer() = default;
+
+  tf::layer::layer_id id() const noexcept { return id_; }
 
   std::vector<const Tensor<std::float64_t> *>
       layer_inputs; // not own by any layer

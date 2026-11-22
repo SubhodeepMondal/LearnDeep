@@ -4,6 +4,7 @@
 // C++ Headers
 #include <algorithm>
 #include <cstddef>
+#include <cstdint>
 #include <iostream>
 #include <iterator>
 #include <memory>
@@ -183,6 +184,9 @@ public:
 
 namespace layer {
 
+using layer_id = std::uint64_t;
+inline constexpr layer_id invalid_layer_id = 0;
+
 namespace type {
 inline constexpr std::string_view dense{"dense"};
 inline constexpr std::string_view relu{"relu"};
@@ -247,9 +251,7 @@ public:
 
   bool valid() const;
 
-  Layer *getLayerPtr() const;
-
-  const void *identity() const;
+  layer_id id() const;
 };
 
 struct dense : public layer {
@@ -302,21 +304,21 @@ public:
 
   ~trace();
 
-  void record_parameter_on_epoch_begin(Layer *const layer_ptr,
-                                       const std::string &trainable_parameter,
-                                       bool print_flag = false);
+  void record_parameter_on_epoch_begin(
+      const tf::layer::layer &layer_handle,
+      const std::string &trainable_parameter, bool print_flag = false);
 
-  void record_parameter_on_epoch_end(Layer *const layer_ptr,
-                                     const std::string &trainable_parameter,
-                                     bool print_flag = false);
+  void record_parameter_on_epoch_end(
+      const tf::layer::layer &layer_handle,
+      const std::string &trainable_parameter, bool print_flag = false);
 
-  void record_parameter_on_batch_begin(Layer *const layer_ptr,
-                                       const std::string &trainable_parameter,
-                                       bool print_flag = false);
+  void record_parameter_on_batch_begin(
+      const tf::layer::layer &layer_handle,
+      const std::string &trainable_parameter, bool print_flag = false);
 
-  void record_parameter_on_batch_end(Layer *const layer_ptr,
-                                     const std::string &trainable_parameter,
-                                     bool print_flag = false);
+  void record_parameter_on_batch_end(
+      const tf::layer::layer &layer_handle,
+      const std::string &trainable_parameter, bool print_flag = false);
 
   void record_scalar_loss_on_epoch_end(tf::loss loss);
 
@@ -329,19 +331,19 @@ public:
                                        Loss_Parameter loss_parameter);
 
   std::vector<std::vector<tf::tensor>>
-  get_parameter_on_epoch_begin(Layer *const layer_ptr,
+  get_parameter_on_epoch_begin(const tf::layer::layer &layer_handle,
                                const std::string &trainable_parameter);
 
   std::vector<std::vector<tf::tensor>>
-  get_parameter_on_epoch_end(Layer *const layer_ptr,
+  get_parameter_on_epoch_end(const tf::layer::layer &layer_handle,
                              const std::string &trainable_parameter);
 
   std::vector<std::vector<std::vector<tf::tensor>>>
-  get_parameter_on_batch_begin(Layer *const layer_ptr,
+  get_parameter_on_batch_begin(const tf::layer::layer &layer_handle,
                                const std::string &trainable_parameter);
 
   std::vector<std::vector<std::vector<tf::tensor>>>
-  get_parameter_on_batch_end(Layer *const layer_ptr,
+  get_parameter_on_batch_end(const tf::layer::layer &layer_handle,
                              const std::string &trainable_parameter);
 
   std::vector<std::float64_t> get_scaler_loss_on_epoch_end(tf::loss loss);
@@ -469,7 +471,7 @@ public:
 
   tf::loss get_model_loss(tf::tensor output) const;
 
-  std::vector<Layer *> &get_layers();
+  std::vector<layer::layer_id> get_layers();
 
   std::vector<Loss *> get_losses();
 

@@ -39,7 +39,7 @@ TEST_F(FrameworkTest, SoftmaxLayer_Test_1) {
   tf::callback::trace call_back;
 
   call_back.record_parameter_on_batch_end(
-      softmax.getLayerPtr(), "training_output");
+      softmax, "training_output");
 
   auto dense_output = dense({x});
   auto softmax_output = softmax({dense_output});
@@ -55,7 +55,7 @@ TEST_F(FrameworkTest, SoftmaxLayer_Test_1) {
 
   std::vector<std::vector<std::vector<tf::tensor>>> predicted_output =
       call_back.get_parameter_on_batch_end(
-          softmax.getLayerPtr(), "training_output");
+          softmax, "training_output");
 
   ASSERT_EQ(predicted_output.size(), 1u);
   ASSERT_EQ(predicted_output[0].size(), 1u);

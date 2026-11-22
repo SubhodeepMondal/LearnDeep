@@ -1,8 +1,10 @@
 #include "../LinearAlgebraFixtures.unit.hpp"
 #include <LearnDeep/api/tensor.h>
 #include <gtest/gtest.h>
+#include <layers/layer_graph.hpp>
 #include <layers/layer_registry.hpp>
 
+#include <memory>
 #include <stdfloat>
 
 TEST_F(FrameworkTest, LayerRegistryContainsBuiltInLayers) {
@@ -33,7 +35,10 @@ TEST_F(FrameworkTest, GenericLayerHandleSupportsRegistryAndParameters) {
   ASSERT_EQ(dense.type(), "dense");
   ASSERT_TRUE(dense.valid());
   EXPECT_TRUE(static_cast<bool>(dense));
-  EXPECT_EQ(dense.identity(), static_cast<const void *>(dense.getLayerPtr()));
+  EXPECT_NE(dense.id(), tf::layer::invalid_layer_id);
+
+  tf::layer::layer dense_copy = dense;
+  EXPECT_EQ(dense_copy.id(), dense.id());
 
   std::unordered_set<std::string> parameter_names = dense.parameterNames();
   EXPECT_TRUE(parameter_names.count("weight"));
@@ -61,6 +66,30 @@ TEST_F(FrameworkTest, GenericLayerHandleRejectsUnknownType) {
   EXPECT_TRUE(missing.type().empty());
   EXPECT_FALSE(missing.valid());
   EXPECT_FALSE(static_cast<bool>(missing));
-  EXPECT_EQ(missing.identity(), nullptr);
+  EXPECT_EQ(missing.id(), tf::layer::invalid_layer_id);
   EXPECT_TRUE(missing({}).empty());
+}
+
+TEST_F(FrameworkTest, LayerOwnershipIsSharedByModelAndApiHandle) {
+  tf::tensor x;
+  x.tf_create(tf_float64, 3, 2);
+
+  tf::layer::layer_id id = tf::layer::invalid_layer_id;
+  std::unique_ptr<tf::model> model;
+
+  {
+    tf::layer::dense dense(4);
+    id = dense.id();
+    ASSERT_NE(id, tf::layer::invalid_layer_id);
+
+    std::vector<tf::tensor> outputs = dense({x});
+    model = std::make_unique<tf::model>(std::vector<tf::tensor>{x}, outputs);
+    EXPECT_TRUE(global_layer_graph.contains(id));
+  }
+
+  EXPECT_TRUE(global_layer_graph.contains(id));
+  EXPECT_NE(global_layer_graph.lock(id), nullptr);
+
+  model.reset();
+  EXPECT_FALSE(global_layer_graph.contains(id));
 }

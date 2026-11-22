@@ -2,13 +2,13 @@
 #define _TENSOR_CORE_LAYER_
 
 // C++ Headers
+#include <memory>
 #include <stdfloat>
 #include <unordered_map>
 #include <vector>
 
 // Library headers
 #include <api/tensor.h>
-#include <layers/layer_graph.hpp>
 
 class Model {
 private:
@@ -24,21 +24,26 @@ private:
 
   std::vector<tf::tensor *> local_training_inputs;
 
-  std::unordered_map<Layer *, std::vector<const Tensor<std::float64_t> *>>
+  std::unordered_map<tf::layer::layer_id,
+                     std::vector<const Tensor<std::float64_t> *>>
       layer_input_mappings;
-  std::unordered_map<Layer *, std::vector<const tf::tensor *>>
+  std::unordered_map<tf::layer::layer_id, std::vector<const tf::tensor *>>
       layer_output_mappings;
 
-  std::unordered_map<Layer *, std::vector<const tf::tensor *>>
+  std::unordered_map<tf::layer::layer_id, std::vector<const tf::tensor *>>
       layer_training_input_mappings;
-  std::unordered_map<Layer *, std::vector<tf::tensor>>
+  std::unordered_map<tf::layer::layer_id, std::vector<tf::tensor>>
       layer_prediction_input_mappings;
 
-  std::unordered_map<const Tensor<std::float64_t> *, std::vector<Layer *>>
+  std::unordered_map<const Tensor<std::float64_t> *,
+                     std::vector<tf::layer::layer_id>>
       input_layer_mappings;
 
-  std::vector<Layer *> layers;
-  std::vector<Layer *> input_layers;
+  std::unordered_map<tf::layer::layer_id, std::shared_ptr<Layer>> owned_layers;
+  std::vector<tf::layer::layer_id> layers;
+  std::vector<tf::layer::layer_id> input_layers;
+
+  std::shared_ptr<Layer> lockLayer(tf::layer::layer_id id) const;
 
   tf::optimizer optimizer;
   std::vector<tf::loss *> losses;
@@ -104,8 +109,6 @@ private:
   void doLayerCalculation();
 
   void doTensorAndLayerMappings();
-
-  void createLayerGraph();
 
   void initializeLayerGraph();
 
@@ -183,7 +186,7 @@ public:
 
   std::vector<tf::loss *> getLosses() { return this->losses; }
 
-  std::vector<Layer *> &getLayers() { return this->layers; }
+  std::vector<tf::layer::layer_id> getLayers() const { return this->layers; }
 };
 
 #endif // _TENSOR_CORE_MODEL_

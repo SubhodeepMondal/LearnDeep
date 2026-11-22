@@ -64,28 +64,28 @@ TEST_F(FrameworkTest, DenseLayer_Test_1) {
   /* --- call back setting --- */
   tf::callback::trace call_back;
   call_back.record_parameter_on_batch_begin(
-      dense_1.getLayerPtr(), "training_input", false);
+      dense_1, "training_input", false);
 
   call_back.record_parameter_on_batch_end(
-      dense_1.getLayerPtr(), "training_weight", false);
+      dense_1, "training_weight", false);
 
   call_back.record_parameter_on_batch_end(
-      dense_1.getLayerPtr(), "training_bias", false);
+      dense_1, "training_bias", false);
 
   call_back.record_parameter_on_batch_end(
-      dense_1.getLayerPtr(), "training_output", false);
+      dense_1, "training_output", false);
 
   call_back.record_parameter_on_batch_end(
-      dense_1.getLayerPtr(), "grad_weight", false);
+      dense_1, "grad_weight", false);
 
   call_back.record_parameter_on_batch_end(
-      dense_1.getLayerPtr(), "grad_bias", false);
+      dense_1, "grad_bias", false);
 
   call_back.record_parameter_on_batch_end(
-      dense_1.getLayerPtr(), "updated_weight", false);
+      dense_1, "updated_weight", false);
 
   call_back.record_parameter_on_batch_end(
-      dense_1.getLayerPtr(), "updated_bias", false);
+      dense_1, "updated_bias", false);
   /* --- call back setting end --- */
 
   /* --- model creation --- */
@@ -111,22 +111,22 @@ TEST_F(FrameworkTest, DenseLayer_Test_1) {
 
   /* --- Intercepting  training parameters --- */
   auto outputs = call_back.get_parameter_on_batch_end(
-      dense_1.getLayerPtr(), "training_output");
+      dense_1, "training_output");
 
   auto training_weights = call_back.get_parameter_on_batch_end(
-      dense_1.getLayerPtr(), "training_weight");
+      dense_1, "training_weight");
 
   auto train_dense_1_grad_weights = call_back.get_parameter_on_batch_end(
-      dense_1.getLayerPtr(), "grad_weight");
+      dense_1, "grad_weight");
 
   auto train_dense_1_grad_bias = call_back.get_parameter_on_batch_end(
-      dense_1.getLayerPtr(), "grad_bias");
+      dense_1, "grad_bias");
 
   auto train_dense_1_updated_weights = call_back.get_parameter_on_batch_end(
-      dense_1.getLayerPtr(), "updated_weight");
+      dense_1, "updated_weight");
 
   auto train_dense_1_updated_bias = call_back.get_parameter_on_batch_end(
-      dense_1.getLayerPtr(), "updated_bias");
+      dense_1, "updated_bias");
 
   auto training_losses = call_back.get_tensor_loss_on_batch_end(
       loss_sgd, Loss_Parameter::squared_error_predicted_output);
@@ -226,22 +226,22 @@ TEST_F(FrameworkTest, DenseLayer_Test_2) {
   /* --- call back setting --- */
   tf::callback::trace call_back;
   call_back.record_parameter_on_batch_begin(
-      dense_1.getLayerPtr(), "training_input", false);
+      dense_1, "training_input", false);
 
   call_back.record_parameter_on_batch_end(
-      dense_1.getLayerPtr(), "updated_weight", false);
+      dense_1, "updated_weight", false);
 
   call_back.record_parameter_on_batch_end(
-      dense_1.getLayerPtr(), "updated_bias", false);
+      dense_1, "updated_bias", false);
 
   call_back.record_parameter_on_batch_end(
-      dense_1.getLayerPtr(), "training_output", false);
+      dense_1, "training_output", false);
 
   call_back.record_parameter_on_batch_end(
-      dense_1.getLayerPtr(), "grad_weight", false);
+      dense_1, "grad_weight", false);
 
   call_back.record_parameter_on_batch_end(
-      dense_1.getLayerPtr(), "grad_bias", false);
+      dense_1, "grad_bias", false);
 
   /* --- call back setting end --- */
 
@@ -274,19 +274,19 @@ TEST_F(FrameworkTest, DenseLayer_Test_2) {
   /* --- Intercepting  training parameters --- */
   std::vector<std::vector<std::vector<tf::tensor>>> dense_training_inputs =
       call_back.get_parameter_on_batch_begin(
-          dense_1.getLayerPtr(), "training_input");
+          dense_1, "training_input");
 
   std::vector<std::vector<std::vector<tf::tensor>>> update_weights =
       call_back.get_parameter_on_batch_end(
-          dense_1.getLayerPtr(), "updated_weight");
+          dense_1, "updated_weight");
 
   std::vector<std::vector<std::vector<tf::tensor>>> updated_bias =
-      call_back.get_parameter_on_batch_end(dense_1.getLayerPtr(),
+      call_back.get_parameter_on_batch_end(dense_1,
                                            "updated_bias");
 
   std::vector<std::vector<std::vector<tf::tensor>>> outputs =
       call_back.get_parameter_on_batch_end(
-          dense_1.getLayerPtr(), "training_output");
+          dense_1, "training_output");
 
   std::vector<std::vector<std::vector<tf::tensor>>> training_losses =
       call_back.get_tensor_loss_on_batch_end(
@@ -301,11 +301,11 @@ TEST_F(FrameworkTest, DenseLayer_Test_2) {
           loss_sgd, Loss_Parameter::squared_error_target_output);
 
   std::vector<std::vector<std::vector<tf::tensor>>> grad_weights =
-      call_back.get_parameter_on_batch_end(dense_1.getLayerPtr(),
+      call_back.get_parameter_on_batch_end(dense_1,
                                            "grad_weight");
 
   std::vector<std::vector<std::vector<tf::tensor>>> grad_bias =
-      call_back.get_parameter_on_batch_end(dense_1.getLayerPtr(),
+      call_back.get_parameter_on_batch_end(dense_1,
                                            "grad_bias");
 
   unsigned const no_of_batches = sample_size / batch_size;
@@ -782,17 +782,17 @@ TEST_F(FrameworkTest, Quadratic_Func_Fit_Test) {
 
   tf::callback::trace call_back;
   call_back.record_parameter_on_batch_begin(
-      dense_1.getLayerPtr(), "training_input", false);
+      dense_1, "training_input", false);
   call_back.record_parameter_on_batch_end(
-      dense_2.getLayerPtr(), "training_output", false);
+      dense_2, "training_output", false);
   call_back.record_parameter_on_batch_end(
-      dense_1.getLayerPtr(), "updated_weight", false);
+      dense_1, "updated_weight", false);
   call_back.record_parameter_on_batch_end(
-      dense_1.getLayerPtr(), "updated_bias", false);
+      dense_1, "updated_bias", false);
   call_back.record_parameter_on_batch_end(
-      dense_2.getLayerPtr(), "updated_weight", false);
+      dense_2, "updated_weight", false);
   call_back.record_parameter_on_batch_end(
-      dense_2.getLayerPtr(), "updated_bias", false);
+      dense_2, "updated_bias", false);
 
   tf::model mymodel({x}, predicted_output);
   mymodel.shuffle(false);
@@ -820,10 +820,10 @@ TEST_F(FrameworkTest, Quadratic_Func_Fit_Test) {
 
   std::vector<std::vector<std::vector<tf::tensor>>> input_batches =
       call_back.get_parameter_on_batch_begin(
-          dense_1.getLayerPtr(), "training_input");
+          dense_1, "training_input");
   std::vector<std::vector<std::vector<tf::tensor>>> output_batches =
       call_back.get_parameter_on_batch_end(
-          dense_2.getLayerPtr(), "training_output");
+          dense_2, "training_output");
   std::vector<std::vector<std::vector<tf::tensor>>> target_output_batches =
       call_back.get_tensor_loss_on_batch_end(
           loss_sgd, Loss_Parameter::squared_error_target_output);
@@ -962,17 +962,17 @@ TEST_F(FrameworkTest, Cubic_Func_Fit_Test) {
 
   tf::callback::trace call_back;
   call_back.record_parameter_on_batch_begin(
-      dense_1.getLayerPtr(), "training_input", false);
+      dense_1, "training_input", false);
   call_back.record_parameter_on_batch_end(
-      dense_2.getLayerPtr(), "training_output", false);
+      dense_2, "training_output", false);
   call_back.record_parameter_on_batch_end(
-      dense_1.getLayerPtr(), "updated_weight", false);
+      dense_1, "updated_weight", false);
   call_back.record_parameter_on_batch_end(
-      dense_1.getLayerPtr(), "updated_bias", false);
+      dense_1, "updated_bias", false);
   call_back.record_parameter_on_batch_end(
-      dense_2.getLayerPtr(), "updated_weight", false);
+      dense_2, "updated_weight", false);
   call_back.record_parameter_on_batch_end(
-      dense_2.getLayerPtr(), "updated_bias", false);
+      dense_2, "updated_bias", false);
 
   tf::model mymodel({x}, predicted_output);
   mymodel.shuffle(false);
@@ -999,10 +999,10 @@ TEST_F(FrameworkTest, Cubic_Func_Fit_Test) {
 
   std::vector<std::vector<std::vector<tf::tensor>>> input_batches =
       call_back.get_parameter_on_batch_begin(
-          dense_1.getLayerPtr(), "training_input");
+          dense_1, "training_input");
   std::vector<std::vector<std::vector<tf::tensor>>> output_batches =
       call_back.get_parameter_on_batch_end(
-          dense_2.getLayerPtr(), "training_output");
+          dense_2, "training_output");
   std::vector<std::vector<std::vector<tf::tensor>>> target_output_batches =
       call_back.get_tensor_loss_on_batch_end(
           loss_sgd, Loss_Parameter::squared_error_target_output);
@@ -1010,15 +1010,15 @@ TEST_F(FrameworkTest, Cubic_Func_Fit_Test) {
       call_back.get_scaler_loss_on_batch_end(loss_sgd);
   std::vector<std::vector<std::vector<tf::tensor>>> dense_1_updated_weights =
       call_back.get_parameter_on_batch_end(
-          dense_1.getLayerPtr(), "updated_weight");
+          dense_1, "updated_weight");
   std::vector<std::vector<std::vector<tf::tensor>>> dense_1_updated_bias =
-      call_back.get_parameter_on_batch_end(dense_1.getLayerPtr(),
+      call_back.get_parameter_on_batch_end(dense_1,
                                            "updated_bias");
   std::vector<std::vector<std::vector<tf::tensor>>> dense_2_updated_weights =
       call_back.get_parameter_on_batch_end(
-          dense_2.getLayerPtr(), "updated_weight");
+          dense_2, "updated_weight");
   std::vector<std::vector<std::vector<tf::tensor>>> dense_2_updated_bias =
-      call_back.get_parameter_on_batch_end(dense_2.getLayerPtr(),
+      call_back.get_parameter_on_batch_end(dense_2,
                                            "updated_bias");
 
   ASSERT_EQ(input_batches.size(), epoch);
@@ -1505,35 +1505,28 @@ TEST_F(FrameworkTest, CallbackTrace_RejectsForeignLayerRegistration) {
   tf::model model2({x2}, dense2_output);
   model2.compile(OptimizerType::SGD, LossType::squared_error);
 
-  Layer *own_layer = dense1.getLayerPtr();
-  Layer *foreign_layer = dense2.getLayerPtr();
-  ASSERT_NE(own_layer, foreign_layer);
+  ASSERT_NE(dense1.id(), dense2.id());
 
   // A model-owned layer must be accepted.
   tf::callback::trace valid;
-  valid.record_parameter_on_epoch_begin(own_layer,
-                                        "weight");
+  valid.record_parameter_on_epoch_begin(dense1, "weight");
   EXPECT_TRUE(valid.callback()->callOnTrainingBegin(model1));
 
   // A layer belonging to a different model must be rejected at every hook.
   tf::callback::trace foreign_epoch_begin;
-  foreign_epoch_begin.record_parameter_on_epoch_begin(
-      foreign_layer, "weight");
+  foreign_epoch_begin.record_parameter_on_epoch_begin(dense2, "weight");
   EXPECT_FALSE(foreign_epoch_begin.callback()->callOnTrainingBegin(model1));
 
   tf::callback::trace foreign_epoch_end;
-  foreign_epoch_end.record_parameter_on_epoch_end(
-      foreign_layer, "weight");
+  foreign_epoch_end.record_parameter_on_epoch_end(dense2, "weight");
   EXPECT_FALSE(foreign_epoch_end.callback()->callOnTrainingBegin(model1));
 
   tf::callback::trace foreign_batch_begin;
-  foreign_batch_begin.record_parameter_on_batch_begin(
-      foreign_layer, "weight");
+  foreign_batch_begin.record_parameter_on_batch_begin(dense2, "weight");
   EXPECT_FALSE(foreign_batch_begin.callback()->callOnTrainingBegin(model1));
 
   tf::callback::trace foreign_batch_end;
-  foreign_batch_end.record_parameter_on_batch_end(
-      foreign_layer, "weight");
+  foreign_batch_end.record_parameter_on_batch_end(dense2, "weight");
   EXPECT_FALSE(foreign_batch_end.callback()->callOnTrainingBegin(model1));
 }
 

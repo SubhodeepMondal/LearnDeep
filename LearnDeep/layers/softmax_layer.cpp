@@ -1,7 +1,6 @@
 // Library Headers
 #include "softmax_layer.hpp"
 #include "layer_enum.hpp"
-#include "layer_graph.hpp"
 #include "layer_registry.hpp"
 #include "layers.hpp"
 #include <core/graph/graph_framework.hpp>
@@ -11,10 +10,11 @@
 // Third party
 #include <absl/log/log.h>
 
-REGISTER_LAYER("softmax", [](const LayerConfig &config) -> Layer * {
-  const unsigned *axis = config.getAs<unsigned>("axis");
-  return new Softmax(axis ? *axis : 0u);
-});
+REGISTER_LAYER("softmax",
+               [](const LayerConfig &config) -> std::unique_ptr<Layer> {
+                 const unsigned *axis = config.getAs<unsigned>("axis");
+                 return std::make_unique<Softmax>(axis ? *axis : 0u);
+               });
 
 Softmax::Softmax(unsigned axis) : axis(axis) {
   this->isForwardGraphCreated = false;
