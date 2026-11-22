@@ -18,21 +18,25 @@ framework `CMakeLists.txt` is edited to add an experiment here.
 ## Layout
 
 - `layer/` — self-registering custom layer plugin (`custom_layer` shared library).
-- `test/` — standalone tests, one executable per `.cpp` file. Both include
-  **only** `<api/tensor.h>` and link the built libraries:
+- `loss/` — self-registering custom loss plugin (`custom_loss` library):
+  `custom_scaled_mse`, a mean squared error with a configurable scale.
+- `test/` — standalone tests, one executable per `.cpp` file. Each includes
+  **only** `<api/tensor.h>` and links the built libraries and plugins:
   - `custom_layer_test.cpp` — registration, handle validity, parameter access.
+  - `custom_loss_test.cpp` — registration and id/type, `setParameter("scale",
+    ...)`, `calculate()`, and `compile()` + `fit()` with `custom_scaled_mse`.
   - `custom_scale_integration.cpp` — full `tf::model` training pipeline: the
     custom `scale` layer feeds `squared_error`, callbacks record
     `training_output`, `grad_input`, the loss tensor and its gradient, and all
     values are checked against NumPy reference data.
   - `data/` — float64 `.bin` reference data used by the integration test.
   - `generate_custom_scale_data.py` — regenerates that data from the notebook.
-- Future `loss/` and `optimizer/` experiment areas can be added in
+- A future `optimizer/` experiment area can be added in
   `custom/CMakeLists.txt` the same way, incrementally.
 
-Adding a source file to `layer/` or `test/` is picked up automatically by the
-`CONFIGURE_DEPENDS` globs: layer sources join the plugin, test sources become
-new CTest entries.
+Adding a source file to `layer/`, `loss/` or `test/` is picked up automatically
+by the `CONFIGURE_DEPENDS` globs: layer/loss sources join their plugins, test
+sources become new CTest entries.
 
 ## Regenerating the integration reference data
 
@@ -50,9 +54,17 @@ calls `LayerRegistry::instance().registerLayer(...)` when the plugin shared
 library is loaded. The registry is a function-local singleton living in
 `liblayer.so`, so the plugin and the framework share one registry instance.
 
-`custom/test/custom_layer_test.cpp` calls the tiny exported anchor
-`ld_custom_layers_load()` so the plugin is actually linked and loaded before a
-handle is created; without it, `--as-needed` linkers may drop an otherwise
+`REGISTER_LOSS` works the same way for `custom/loss/scaled_squared_error.cpp`,
+except the singleton lives in `libloss.so`. Its third argument is a parameter
+setter, so the public `tf::loss::loss::setParameter("scale", 3.0)` path works
+for the generic handle. `model.compile(OptimizerType::SGD,
+"custom_scaled_mse")` creates the loss by its registry key, and callbacks refer
+to it only by `loss_id`.
+
+`custom/test/custom_layer_test.cpp` and `custom/test/custom_loss_test.cpp` call
+the tiny exported anchors `ld_custom_layers_load()` and
+`ld_custom_losses_load()` so each plugin is actually linked and loaded before a
+handle is created; without them, `--as-needed` linkers may drop an otherwise
 unreferenced `DT_NEEDED` entry and the static initializer would never run.
 
 ## Limitations of the "libraries + public header only" boundary
@@ -66,6 +78,9 @@ unreferenced `DT_NEEDED` entry and the static initializer would never run.
 - Consequently a custom layer is compiled against internal C++ headers and is
   tied to the internal `Layer` ABI (`Tensor<std::float64_t>*`, `Optimizer*`,
   pure-virtual layout). An `Optimizer`/`Tensor` change requires recompiling it.
+- The custom loss has the same constraint: it subclasses the internal `Loss`
+  base, so it must be recompiled against the framework headers and library if
+  that ABI changes. The *tests* still use only the public string-key API.
 - The public header itself includes internal headers
   (`core/framework/MathLibrary.h`, `core/graph/graph_context.hpp`,
   `core/ops/opskernel.h`, `optimizers/optimizer_type.hpp`), so "public header
