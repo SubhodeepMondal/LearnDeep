@@ -228,8 +228,10 @@ Model::fit(tf::model &model, const std::vector<tf::tensor> &training_inputs,
   }
 
   this->batch_size = batch_size;
-  this->resetTrainingGraphState();
+  // Destroy the previous update graph before dropping gradient aliases that it
+  // may still reference; resetTrainingGraphState() deletes owned tensors.
   optimizer.reset_update_graph();
+  this->resetTrainingGraphState();
   this->initializeTrainingMappings();
 
   std::vector<tf::tensor> local_temp_outputs =
@@ -686,6 +688,11 @@ void Model::compile(const tf::optimizer::optimizer &optimizer,
     new_losses.push_back(id);
     new_loss_input_mappings[id].push_back(outputs[i]);
   }
+
+  // The previous optimizer may still be shared with the caller. Destroy its
+  // update graph before resetTrainingGraphState() deletes gradient aliases
+  // that the graph can still reference.
+  this->optimizer.reset_update_graph();
 
   // Release the previous optimizer/losses before committing the new ones.
   this->optimizer = {};

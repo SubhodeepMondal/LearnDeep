@@ -152,8 +152,9 @@ public:
 
   const void setPtr(Tensor<std::float64_t> *ptr);
 
-  // Drops this wrapper's pointer without deleting the underlying tensor.
-  // Used when discarding stale gradient aliases before a new training graph.
+  // Deletes the tensor when this wrapper owns it and drops its ownership;
+  // non-owning aliases only drop the pointer. A spare-set tombstone remains so
+  // graphs that still reference the address do not delete it a second time.
   void release() noexcept;
 
   std::float64_t *getData() const { return ptr->getData(); }
@@ -161,6 +162,9 @@ public:
 
 extern std::unordered_map<Tensor<std::float64_t> *, tensor *> tensor_nodes;
 extern std::unordered_set<Tensor<std::float64_t> *> tensor_to_be_spared;
+
+// Diagnostic count of tensors deleted by release(); used by lifecycle tests.
+std::size_t released_tensor_count() noexcept;
 
 using LayerParameterValue =
     std::variant<unsigned, double, std::string, tf::tensor>;

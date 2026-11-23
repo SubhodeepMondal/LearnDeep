@@ -286,3 +286,70 @@ TEST(OptimizerRegistryTest, UpdateGraphProducesExpectedWeightAndBiasValues) {
     EXPECT_NEAR(updated_bias.getData()[i],
                 bias_param_data[i] - 0.5 * bias_gradient_data[i], 1e-12);
 }
+
+TEST(OptimizerRegistryTest, ReleaseDeletesOwnedTensorAndKeepsSparingTombstone) {
+  tf::tensor owned;
+  owned.tf_create(tf_float64, 2, 2);
+  Tensor<std::float64_t> *ptr = owned.getPtr();
+
+  ASSERT_NE(ptr, nullptr);
+  ASSERT_NE(tf::tensor_nodes.find(ptr), tf::tensor_nodes.end());
+  ASSERT_EQ(tf::tensor_nodes.find(ptr)->second, &owned);
+  ASSERT_EQ(tf::tensor_to_be_spared.count(ptr), 1u);
+
+  const std::size_t before = tf::released_tensor_count();
+  owned.release();
+
+  EXPECT_EQ(owned.getPtr(), nullptr);
+  EXPECT_EQ(tf::tensor_nodes.find(ptr), tf::tensor_nodes.end());
+  // The marker must stay: graphs use it to avoid deleting the released tensor.
+  EXPECT_EQ(tf::tensor_to_be_spared.count(ptr), 1u);
+  EXPECT_EQ(tf::released_tensor_count(), before + 1);
+}
+
+TEST(OptimizerRegistryTest, ReleaseOnAliasDoesNotDeleteOwnedTensor) {
+  tf::tensor owned;
+  owned.tf_create(tf_float64, 2, 2);
+  Tensor<std::float64_t> *ptr = owned.getPtr();
+  tf::tensor alias(owned);
+
+  ASSERT_NE(ptr, nullptr);
+  ASSERT_EQ(tf::tensor_nodes.find(ptr)->second, &owned);
+
+  const std::size_t before = tf::released_tensor_count();
+  alias.release();
+
+  EXPECT_EQ(alias.getPtr(), nullptr);
+  EXPECT_EQ(owned.getPtr(), ptr);
+  ASSERT_NE(tf::tensor_nodes.find(ptr), tf::tensor_nodes.end());
+  EXPECT_EQ(tf::tensor_nodes.find(ptr)->second, &owned);
+  EXPECT_EQ(tf::released_tensor_count(), before);
+
+  owned.release();
+}
+
+TEST(OptimizerRegistryTest, RepeatedFitDeletesPreviousGradientTensors) {
+  tf::tensor x;
+  x.tf_create(tf_float64, 2, 2);
+  x.tensor_of(0.0, 1.0);
+
+  tf::tensor target;
+  target.tf_create(tf_float64, 2, 2);
+  target.tensor_of(0.0, 0.0);
+
+  tf::layer::dense dense(2);
+  const std::vector<tf::tensor> outputs = dense({x});
+  tf::model model({x}, outputs);
+  model.shuffle(false);
+  model.compile(tf::optimizer::type::sgd, tf::loss::type::squared_error);
+
+  model.fit({x}, {target}, {}, 1, 2);
+  ASSERT_FALSE(tf::tensor_to_be_spared.empty());
+
+  const std::size_t before = tf::released_tensor_count();
+  model.fit({x}, {target}, {}, 1, 2);
+
+  // The second fit must delete the gradient tensors owned by the first graph
+  // instead of dropping their aliases and leaking them.
+  EXPECT_GT(tf::released_tensor_count(), before);
+}

@@ -44,7 +44,11 @@ LayerConfig config_with(const std::string &key, unsigned value) {
   return config;
 }
 
+std::size_t tensor_release_count = 0;
+
 } // namespace
+
+std::size_t tf::released_tensor_count() noexcept { return tensor_release_count; }
 
 // --- Default Constructor
 tf::tensor::tensor() : ptr(NULL) {}
@@ -166,8 +170,14 @@ void tf::tensor::release() noexcept {
     return;
 
   auto owner = tf::tensor_nodes.find(this->ptr);
-  if (owner != tf::tensor_nodes.end() && owner->second == this)
+  if (owner != tf::tensor_nodes.end() && owner->second == this) {
     tf::tensor_nodes.erase(owner);
+    // Keep the spare-set entry as a tombstone. Graph teardown uses that set to
+    // avoid deleting tensors already released by their API wrapper; erasing it
+    // here would turn a live graph's later teardown into a double delete.
+    delete this->ptr;
+    ++tensor_release_count;
+  }
   this->ptr = nullptr;
 }
 
