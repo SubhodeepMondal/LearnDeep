@@ -148,8 +148,9 @@ how it is integrated with the framework.
 
 Optimizers are selected through the registry and used through the
 shared-owning \texttt{tf::optimizer::optimizer} handle. String keys replace the
-old enum-based selection, and an unknown key is rejected when the handle or
-\texttt{model.compile()} is called.
+old enum-based selection. An unknown key passed to \texttt{model.compile()}
+throws \texttt{std::invalid\_argument}; constructing a handle from an unknown
+key instead yields an invalid handle.
 
 \begin{lstlisting}[
     caption={Selecting an optimizer through the public API},

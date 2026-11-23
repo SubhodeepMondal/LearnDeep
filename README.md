@@ -199,7 +199,7 @@ model.compile(sgd, tf::loss::type::squared_error);
 model.compile("sgd", tf::loss::type::squared_error);
 ```
 
-Unknown optimizer keys are rejected with `std::invalid_argument`. Layers receive the handle, never an internal optimizer object, and the model shares ownership so the optimizer stays alive for the whole training run.
+Unknown optimizer keys passed to `model.compile()` throw `std::invalid_argument`; constructing `tf::optimizer::optimizer` from an unknown key instead produces an invalid handle. Layers receive the handle, never an internal optimizer object, and the model shares ownership so the optimizer stays alive for the whole training run.
 
 The optimizer, loss function, model, and execution engine work together to form the training pipeline.
 

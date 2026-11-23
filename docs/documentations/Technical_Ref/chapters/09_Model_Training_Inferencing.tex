@@ -201,14 +201,17 @@ process.
 ]
 unsigned epochs = 10;
 unsigned batch_size = 128;
+std::vector<std::shared_ptr<Callback>> callbacks = {};
 
 auto history = mymodel.fit(
     {input},
     {target_output},
-    {},
+    callbacks,
     epochs,
     batch_size,
-    callback);
+    {},
+    0,
+    true);
 \end{lstlisting}
 
 The training inputs and corresponding target outputs are
