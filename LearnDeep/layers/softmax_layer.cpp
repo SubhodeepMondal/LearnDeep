@@ -74,7 +74,7 @@ std::vector<tf::tensor> Softmax::calculate(std::vector<tf::tensor> inputs) {
   return output;
 }
 
-void Softmax::backward(Optimizer *optimiser) {
+void Softmax::backward(const tf::optimizer::optimizer &) {
 
   if (!this->isGradRecorded && !this->training_input_aliases.empty()) {
 
@@ -85,6 +85,11 @@ void Softmax::backward(Optimizer *optimiser) {
                    g->getGradientTensor(training_inputs->getPtr()));
     this->isGradRecorded = true;
   }
+}
+
+void Softmax::resetGradientRecording() {
+  this->grad_input.release();
+  this->isGradRecorded = false;
 }
 
 std::string_view Softmax::type() const { return tf::layer::type::softmax; }

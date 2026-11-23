@@ -72,7 +72,7 @@ std::vector<tf::tensor> Relu::calculate(std::vector<tf::tensor> inputs) {
   return output;
 }
 
-void Relu::backward(Optimizer *optimiser) {
+void Relu::backward(const tf::optimizer::optimizer &) {
 
   if (!this->isGradRecorded && !this->training_input_aliases.empty()) {
 
@@ -84,6 +84,11 @@ void Relu::backward(Optimizer *optimiser) {
                    g->getGradientTensor(training_inputs->getPtr()));
     this->isGradRecorded = true;
   }
+}
+
+void Relu::resetGradientRecording() {
+  this->grad_input.release();
+  this->isGradRecorded = false;
 }
 
 std::string_view Relu::type() const { return tf::layer::type::relu; }

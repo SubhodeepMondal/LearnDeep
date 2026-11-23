@@ -31,7 +31,7 @@ public:
 
   std::vector<tf::tensor> calculate(std::vector<tf::tensor> inputs) override;
 
-  void backward(Optimizer *optimizer) override;
+  void backward(const tf::optimizer::optimizer &optimizer) override;
 
   const std::vector<tf::tensor *> &
   operator()(std::vector<tf::tensor> input_tensors) override;

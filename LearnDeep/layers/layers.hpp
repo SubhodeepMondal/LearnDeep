@@ -11,8 +11,6 @@
 // Library Headers
 #include <api/tensor.h>
 
-class Optimizer;
-
 class Layer {
 private:
   tf::layer::layer_id id_;
@@ -51,7 +49,10 @@ public:
 
   virtual std::vector<tf::tensor> calculate(std::vector<tf::tensor> inputs) = 0;
 
-  virtual void backward(Optimizer *optimizer) = 0;
+  virtual void backward(const tf::optimizer::optimizer &optimizer) = 0;
+
+  // Clears one-shot gradient-recording state before a new training graph.
+  virtual void resetGradientRecording() {}
 
   virtual const std::vector<tf::tensor *> &
   operator()(std::vector<tf::tensor> input_tensors) = 0;

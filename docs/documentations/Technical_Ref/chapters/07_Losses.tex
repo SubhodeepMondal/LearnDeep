@@ -102,6 +102,7 @@ public:
     virtual float calculate(std::vector<tf::tensor> inputs) = 0;
     virtual void forward(std::vector<tf::tensor> inputs) = 0;
     virtual void backward() = 0;
+    virtual void resetGradientRecording() {}
 };
 \end{lstlisting}
 
@@ -153,13 +154,19 @@ auto se = tf::loss::loss(tf::loss::type::squared_error);
 auto value = se.calculate(predictions, targets);
 
 tf::model model({x}, dense_output);
-model.compile(OptimizerType::SGD, "custom_scaled_mse");
+model.compile(tf::optimizer::type::sgd, "custom_scaled_mse");
 \end{lstlisting}
 
 A standalone handle owns its loss instance, while callbacks and a compiled
 model refer to it through a stable \texttt{loss\_id}. This keeps loss state
 alive for the whole training run and rejects ids that belong to a different
 loss.
+
+Losses do not hold optimizer objects. \texttt{model.compile()} accepts a loss
+string key together with either an optimizer string key or a preconfigured
+\texttt{tf::optimizer::optimizer} handle. Before a new training graph is built,
+\texttt{resetGradientRecording()} clears the loss's one-shot gradient state and
+drops stale gradient aliases.
 
 \section{Loss Function: Categorical Cross Entropy (CCE)}
 

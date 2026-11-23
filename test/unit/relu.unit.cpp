@@ -193,7 +193,7 @@ TEST_F(FrameworkTest, ReluLayer_Test_1) {
   /* --- model creation --- */
   tf::model mymodel({x}, relu_output);
   mymodel.shuffle(false);
-  mymodel.compile(OptimizerType::SGD, tf::loss::type::squared_error);
+  mymodel.compile(tf::optimizer::type::sgd, tf::loss::type::squared_error);
   /* --- end model creation --- */
 
   auto loss_sgd = mymodel.get_model_loss(relu_output[0]);

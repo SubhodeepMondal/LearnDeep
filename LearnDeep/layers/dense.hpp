@@ -88,7 +88,9 @@ public:
 
   std::vector<tf::tensor> calculate(std::vector<tf::tensor> inputs) override;
 
-  void backward(Optimizer *optimizer) override;
+  void backward(const tf::optimizer::optimizer &optimizer) override;
+
+  void resetGradientRecording() override;
 
   const std::vector<tf::tensor *> &getOutputTensors() override;
 

@@ -103,7 +103,7 @@ int main() {
 
   tf::model model({x}, custom_output);
   model.shuffle(false);
-  model.compile(OptimizerType::SGD, tf::loss::type::squared_error);
+  model.compile(tf::optimizer::type::sgd, tf::loss::type::squared_error);
 
   auto loss = model.get_model_loss(custom_output[0]);
   call_back.record_tensor_loss_on_batch_end(

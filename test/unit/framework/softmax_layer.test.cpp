@@ -49,7 +49,7 @@ TEST_F(FrameworkTest, SoftmaxLayer_Test_1) {
 
   tf::model mymodel({x}, softmax_output);
   mymodel.shuffle(false);
-  mymodel.compile(OptimizerType::SGD, tf::loss::type::squared_error);
+  mymodel.compile(tf::optimizer::type::sgd, tf::loss::type::squared_error);
   mymodel.fit({input}, {output}, {call_back.callback()}, epochs, batch_size, {},
               0, false);
 
@@ -150,7 +150,7 @@ TEST_F(FrameworkTest, SoftmaxLayer_CategoricalClassification_Test_1) {
   // putting things back togather
   tf::model mymodel({x}, softmax_out);
   mymodel.shuffle(false);
-  mymodel.compile(OptimizerType::SGD,
+  mymodel.compile(tf::optimizer::type::sgd,
                   tf::loss::type::categorical_cross_entropy);
 
   auto cce = mymodel.get_model_loss(softmax_out[0]);
@@ -278,7 +278,7 @@ TEST_F(FrameworkTest, SoftmaxLayer_CategoricalClassification_Test_2) {
   // putting things back togather
   tf::model wide_n_deep({x}, softmax_out);
   wide_n_deep.shuffle(false);
-  wide_n_deep.compile(OptimizerType::SGD,
+  wide_n_deep.compile(tf::optimizer::type::sgd,
                       tf::loss::type::categorical_cross_entropy);
 
   auto history = wide_n_deep.fit({input}, {output}, {}, epoches, batch_size);

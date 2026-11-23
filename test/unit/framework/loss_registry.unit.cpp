@@ -103,7 +103,7 @@ TEST(LossRegistryTest, CompileUsesStringLossType) {
   const std::vector<tf::tensor> dense_output = dense({x});
   tf::model model({x}, dense_output);
 
-  model.compile(OptimizerType::SGD, tf::loss::type::squared_error);
+  model.compile(tf::optimizer::type::sgd, tf::loss::type::squared_error);
   auto loss = model.get_model_loss(dense_output[0]);
   ASSERT_TRUE(loss.valid());
   // The historical global uniquifier may append a suffix when other tests
@@ -111,7 +111,7 @@ TEST(LossRegistryTest, CompileUsesStringLossType) {
   EXPECT_EQ(loss.get_loss_name().rfind("mean_squared_loss_1", 0), 0u);
 
   tf::model unknown_model({x}, dense_output);
-  EXPECT_THROW(unknown_model.compile(OptimizerType::SGD, "not_a_loss"),
+  EXPECT_THROW(unknown_model.compile(tf::optimizer::type::sgd, "not_a_loss"),
                std::invalid_argument);
 }
 
@@ -135,7 +135,7 @@ TEST(LossRegistryTest, StaleLossCallbackIdsDoNotBlockTraining) {
   auto dense = tf::layer::dense(3);
   const std::vector<tf::tensor> dense_output = dense({x});
   tf::model model({x}, dense_output);
-  model.compile(OptimizerType::SGD, tf::loss::type::squared_error);
+  model.compile(tf::optimizer::type::sgd, tf::loss::type::squared_error);
   EXPECT_TRUE(trace.callback()->callOnTrainingBegin(model));
 
   tf::tensor target;

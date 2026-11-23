@@ -146,91 +146,96 @@ how it is integrated with the framework.
 
 
 
+Optimizers are selected through the registry and used through the
+shared-owning \texttt{tf::optimizer::optimizer} handle. String keys replace the
+old enum-based selection. An unknown key passed to \texttt{model.compile()}
+throws \texttt{std::invalid\_argument}; constructing a handle from an unknown
+key instead yields an invalid handle.
+
 \begin{lstlisting}[
-    caption={Creating Optimizer class},
+    caption={Selecting an optimizer through the public API},
+    label={lst:optimizer public api}
+]
+auto sgd = tf::optimizer::optimizer(tf::optimizer::type::sgd);
+
+tf::optimizer::config config;
+config.set(std::string(tf::optimizer::parameter::learning_rate), 0.05);
+auto configured = tf::optimizer::optimizer(tf::optimizer::type::sgd, config);
+configured.setParameter(tf::optimizer::parameter::learning_rate, 0.02);
+
+tf::model model({x}, dense_output);
+model.compile(configured, tf::loss::type::squared_error);
+model.compile("sgd", tf::loss::type::squared_error);
+\end{lstlisting}
+
+The handle owns the optimizer instance together with the compiled model, so the
+optimizer stays alive while either one is in use. \texttt{setParameter()}
+dispatches on the optimizer's canonical type, which also works for optimizers
+created through a registry alias.
+
+Internally, \texttt{Optimizer} is still an abstract base class, but its graph
+and update buffers are implementation details. Layers and models never receive
+an internal optimizer object; they call the public handle, and
+\texttt{OptimizerRegistry} routes those calls to the registered implementation.
+
+\begin{lstlisting}[
+    caption={Internal optimizer contract},
     label={lst:Declear Optimizer class}
 ]
 // file optimizer.hpp
-class Optimizer{
-    Graph *optimizer_graph;
+class Optimizer {
+protected:
+  // Discards the previous update graph and its owned buffers.
+  void resetOptimizerGraph();
+  virtual void clearUpdateState() {}
 
+public:
   virtual void createParameterUpdateGraph(tf::tensor param,
                                           tf::tensor &update_param,
                                           tf::tensor gradient_param) = 0;
 
-  void executeOptimizer();
-}
+  // Prepares this optimizer for a fresh training graph.
+  void reset();
+};
 \end{lstlisting}
 
-\begin{lstlisting}[
-    caption={Defining Optimizer class},
-    label={lst:Define Optimizer class}
-]
-// file optimizer.cpp
-#include "optimizers.hpp"
-#include <core/graph/graph_framework.hpp>
-
-Optimizer::Optimizer() { this->optimizer_graph = new Graph(); }
-void Optimizer::executeOptimizer() { this->optimizer_graph->compute(); }
-\end{lstlisting}
-
-So, Optimizer is a abstruct class which works
-as base class for other optimizers.
-
-The createParameterUpdateGraph() subrountine is
-something new. Mostly for industry standard
-frameworks optimizers works in eager mode, in my
-case it is operating in graph mode. Why not to
-attempt something differet.
-
-
+The \texttt{createParameterUpdateGraph()} subroutine is where this framework
+differs from optimizers that work eagerly. Update operations are recorded in a
+dedicated graph during training setup and executed after the forward and
+backward passes. The graph is destroyed safely when the optimizer is replaced or
+destroyed: API-owned tensors are spared first, and the concrete optimizer drops
+any buffers that kept update tensors alive.
 
 \begin{lstlisting}[
     caption={Defining SGD class},
     label={lst:SGD class}
 ]
 // file sgd.cpp
-#include "optimizers.hpp"
-#include <core/graph/graph_manager.hpp>
-
 SGD::SGD() : learning_rate(0.01) {}
 
 void SGD::createParameterUpdateGraph(tf::tensor param, tf::tensor &update_param,
                                      tf::tensor gradient_param) {
+  // RAII guard keeps GraphManager's stack balanced even on exceptions.
+  OptimizerGraphScope scope(this->optimizer_graph);
 
-  GraphManager::instance().pushGraph(this->optimizer_graph);
-  scaler_param.push_back(tf::tensor());
+  UpdateState &state = this->update_states.emplace_back();
+  state.param = param;
+  state.gradient = gradient_param;
+  state.scaled_gradient.tf_create({param.getDimensions()[0],
+                                   param.getDimensions()[1]},
+                                  param.dt_type);
 
-  std::vector<unsigned> dims;
-  for (unsigned i = 0; i < param.getNoOfDimensions(); i++)
-    dims.push_back(param.getDimensions()[i]);
-  scaler_param.back().tf_create(dims, param.dt_type);
-
-  scaler_param.back() = gradient_param.scale(learning_rate);
-  update_param = param.sub(scaler_param.back());
-
-  GraphManager::instance().popGraph();
+  state.scaled_gradient = gradient_param.scale(learning_rate);
+  update_param = state.param.sub(state.scaled_gradient);
 }
-
-void SGD::updateLearningRate(std::float64_t learning_rate) {
-  this->learning_rate = learning_rate;
-}
-
 \end{lstlisting}
 
-Here we can see GraphManager in action. By pushing
-the optimizer graph onto the graph manager, the
-operations used to calculate parameter updates are
-recorded in the appropriate graph.
-
-This graph is constructed during the setup of the
-training process for each trainable parameter.
-Once a training batch has completed its forward and
-backward passes, the training loop executes the
-optimizer graph to calculate the parameter updates.
-
-This separates the construction of the update
-operations from their execution during training.
+The RAII guard pushes the optimizer's internal graph onto the graph manager for
+the duration of update recording and always balances the stack afterwards. Each
+call owns its parameter, gradient, and scaled-gradient tensors in a typed update
+state instead of a growing untyped buffer list. Calling \texttt{reset()} before a
+new training run clears those states and builds a fresh update graph, so
+repeated \texttt{compile()} and \texttt{fit()} calls do not reuse stale ops.
 
 \paragraph{}
 Although vanilla SGD is simple and computationally

@@ -14,8 +14,9 @@
 #include <model/model.hpp>
 #include <numeric>
 #include <optional>
-#include <optimizers/optimizers.hpp>
+#include <optimizers/optimizer_registry.hpp>
 #include <unordered_map>
+#include <utility>
 
 class CallbackTrace;
 class CallbackEarlyStopping;
@@ -43,7 +44,11 @@ LayerConfig config_with(const std::string &key, unsigned value) {
   return config;
 }
 
+std::size_t tensor_release_count = 0;
+
 } // namespace
+
+std::size_t tf::released_tensor_count() noexcept { return tensor_release_count; }
 
 // --- Default Constructor
 tf::tensor::tensor() : ptr(NULL) {}
@@ -159,6 +164,22 @@ void tf::tensor::assign_ptr(void *ptr) {
 Tensor<std::float64_t> *tf::tensor::getPtr() const { return this->ptr; }
 
 const void tf::tensor::setPtr(Tensor<std::float64_t> *ptr) { this->ptr = ptr; }
+
+void tf::tensor::release() noexcept {
+  if (!this->ptr)
+    return;
+
+  auto owner = tf::tensor_nodes.find(this->ptr);
+  if (owner != tf::tensor_nodes.end() && owner->second == this) {
+    tf::tensor_nodes.erase(owner);
+    // Keep the spare-set entry as a tombstone. Graph teardown uses that set to
+    // avoid deleting tensors already released by their API wrapper; erasing it
+    // here would turn a live graph's later teardown into a double delete.
+    delete this->ptr;
+    ++tensor_release_count;
+  }
+  this->ptr = nullptr;
+}
 
 unsigned tf::tensor::getNoOfDimensions() {
   return this->ptr->getNoOfDimensions();
@@ -775,9 +796,14 @@ tf::model::predict(const std::vector<tf::tensor> inputs) {
 
 void tf::model::shuffle(bool shuffle) { model_ptr->shuffle(shuffle); }
 
-void tf::model::compile(const OptimizerType optimizerType,
-                        const std::string_view loss_type) {
-  this->model_ptr->compile(optimizerType, loss_type);
+void tf::model::compile(std::string_view optimizer_type,
+                        std::string_view loss_type) {
+  this->model_ptr->compile(optimizer_type, loss_type);
+}
+
+void tf::model::compile(const tf::optimizer::optimizer &optimizer,
+                        std::string_view loss_type) {
+  this->model_ptr->compile(optimizer, loss_type);
 }
 
 tf::loss::loss tf::model::get_model_loss(tf::tensor output) const {
@@ -1039,20 +1065,74 @@ void tf::history_container::record_history_on_epoch_end(
 // --- End History ---
 
 // --- Optimizer ---
-tf::optimizer::optimizer(OptimizerType optimizerType) {
-  switch (optimizerType) {
-  case (OptimizerType::SGD): {
-    this->optimizer_ptr = new SGD();
-    break;
-  }
-  }
+tf::optimizer::optimizer::optimizer(std::string_view type_name)
+    : optimizer(OptimizerRegistry::instance().create(std::string(type_name))) {}
+
+tf::optimizer::optimizer::optimizer(std::string_view type_name,
+                                    const config &cfg)
+    : optimizer(
+          OptimizerRegistry::instance().create(std::string(type_name), cfg)) {}
+
+tf::optimizer::optimizer::optimizer(std::shared_ptr<Optimizer> owned)
+    : optimizer_ptr_(std::move(owned)) {}
+
+void tf::optimizer::optimizer::create_parameter_update_graph(
+    tf::tensor param, tf::tensor &update_param,
+    tf::tensor gradient_param) const {
+  // Tensor copies are non-owning aliases. Do not move them into the facade:
+  // a move transfers global tensor ownership to a short-lived local wrapper,
+  // which would delete the underlying tensor when the call returns.
+  OptimizerRegistry::instance().createParameterUpdateGraph(
+      this->optimizer_ptr_, param, update_param, gradient_param);
 }
 
-Optimizer *tf::optimizer::getPtr() { return optimizer_ptr; }
-
-void tf::optimizer::execute_optimizer() {
-  this->optimizer_ptr->executeOptimizer();
+void tf::optimizer::optimizer::execute() const {
+  OptimizerRegistry::instance().execute(this->optimizer_ptr_);
 }
+
+void tf::optimizer::optimizer::reset_update_graph() const {
+  OptimizerRegistry::instance().reset(this->optimizer_ptr_);
+}
+
+std::unordered_set<std::string>
+tf::optimizer::optimizer::parameterNames() const {
+  return OptimizerRegistry::instance().optimizerParameterNames(
+      this->optimizer_ptr_);
+}
+
+std::vector<tf::tensor>
+tf::optimizer::optimizer::getParameter(std::string_view name) const {
+  return OptimizerRegistry::instance().optimizerParameters(this->optimizer_ptr_,
+                                                          name);
+}
+
+void tf::optimizer::optimizer::setParameter(
+    std::string_view name, const OptimizerParameterValue &value) {
+  if (!this->optimizer_ptr_)
+    return;
+  // Dispatch on the canonical type rather than the construction key so that
+  // alias-registered optimizers find their registered setter.
+  OptimizerRegistry::instance().setParameter(std::string(this->type()),
+                                             this->optimizer_ptr_,
+                                             std::string(name), value);
+}
+
+std::string_view tf::optimizer::optimizer::type() const {
+  return OptimizerRegistry::instance().typeOf(this->optimizer_ptr_);
+}
+
+tf::optimizer::optimizer_id tf::optimizer::optimizer::id() const {
+  return OptimizerRegistry::instance().idOf(this->optimizer_ptr_);
+}
+
+bool tf::optimizer::optimizer::valid() const {
+  return static_cast<bool>(*this);
+}
+
+tf::optimizer::optimizer::operator bool() const {
+  return static_cast<bool>(this->optimizer_ptr_);
+}
+
 // --- End Optimizer ---
 
 // --- Losses ---

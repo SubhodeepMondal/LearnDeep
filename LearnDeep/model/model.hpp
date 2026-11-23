@@ -23,8 +23,9 @@ private:
   std::vector<Tensor<std::float64_t> *> outputs;
   std::vector<tf::tensor> prediction_outputs;
 
-  tf::tensor *temp_training_input_tensor;
-
+  // Owned batch buffers; local_training_inputs holds non-owning views into
+  // these tensors for the mapping tables.
+  std::vector<std::unique_ptr<tf::tensor>> owned_training_inputs;
   std::vector<tf::tensor *> local_training_inputs;
 
   std::unordered_map<tf::layer::layer_id,
@@ -48,7 +49,7 @@ private:
 
   std::shared_ptr<Layer> lockLayer(tf::layer::layer_id id) const;
 
-  tf::optimizer optimizer;
+  tf::optimizer::optimizer optimizer;
 
   // Losses are owned through the registry and referenced everywhere else by
   // their stable id. This removes dangling raw pointers from callbacks while
@@ -69,6 +70,9 @@ private:
       std::queue<const Tensor<std::float64_t> *> &output_queue);
 
   void initializeTrainingMappings();
+
+  // Clears state that is only valid for one training graph.
+  void resetTrainingGraphState();
 
   void initializePredictionInputMappings();
 
@@ -139,17 +143,19 @@ public:
   /** @param Loss loss to be used */
   /** @param Metric metric to be used */
   /** @return void */
-  // void compile(tf::optimizer = tf::optimizer(),
+  // void compile(tf::optimizer::optimizer = tf::optimizer::optimizer(),
   //              tf::loss::loss = tf::loss::loss(), tf::metric = tf::metric());
 
   /** @file model.hpp basic model implementation */
   /** @brief Updates hyperparamers for training */
-  /** @param Optimizer class will be used for optimization */
+  /** @param Optimizer string key of the optimizer to construct */
   /** @param Loss loss to be used */
-  /** @param Metric metric to be used */
   /** @return void */
-  void compile(const OptimizerType optimizer_type,
-               const std::string_view loss_type);
+  void compile(std::string_view optimizer_type, std::string_view loss_type);
+
+  /** @brief Compile with a preconfigured optimizer handle. */
+  void compile(const tf::optimizer::optimizer &optimizer,
+               std::string_view loss_type);
 
   /** @file model.hpp basic model implementation */
   /** @brief Runs the training loop and updates the gradients */

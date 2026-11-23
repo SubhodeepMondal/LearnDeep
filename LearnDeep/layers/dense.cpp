@@ -144,7 +144,7 @@ std::vector<tf::tensor> Dense::calculate(std::vector<tf::tensor> inputs) {
   return output;
 }
 
-void Dense::backward(Optimizer *optimizer) {
+void Dense::backward(const tf::optimizer::optimizer &optimizer) {
   if (!this->isGradRecorded && !this->training_input_aliases.empty()) {
 
     tf::tensor *training_inputs = &this->training_input_aliases.front();
@@ -161,12 +161,23 @@ void Dense::backward(Optimizer *optimizer) {
     this->incoming_grad =
         tf::tensor(training_inputs->dt_type,
                    g->getGradientTensor(this->training_output.getPtr()));
-    optimizer->createParameterUpdateGraph(
+    optimizer.create_parameter_update_graph(
         this->training_weight, this->updated_weight, this->grad_weight);
-    optimizer->createParameterUpdateGraph(this->training_bias,
-                                          this->updated_bias, this->grad_bias);
+    optimizer.create_parameter_update_graph(
+        this->training_bias, this->updated_bias, this->grad_bias);
     this->isGradRecorded = true;
   }
+}
+
+void Dense::resetGradientRecording() {
+  // Gradient tensors belong to the previous training graph. Drop the aliases
+  // before the next backward() replaces them so assignment cannot delete
+  // tensors that have already been invalidated by graph teardown.
+  this->grad_weight.release();
+  this->grad_bias.release();
+  this->grad_input.release();
+  this->incoming_grad.release();
+  this->isGradRecorded = false;
 }
 
 std::string_view Dense::type() const { return tf::layer::type::dense; }

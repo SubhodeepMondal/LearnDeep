@@ -21,7 +21,6 @@
 #include <core/framework/MathLibrary.h>
 #include <core/graph/graph_context.hpp>
 #include <core/ops/opskernel.h>
-#include <optimizers/optimizer_type.hpp>
 
 class Callback;
 class Dense;
@@ -153,11 +152,19 @@ public:
 
   const void setPtr(Tensor<std::float64_t> *ptr);
 
+  // Deletes the tensor when this wrapper owns it and drops its ownership;
+  // non-owning aliases only drop the pointer. A spare-set tombstone remains so
+  // graphs that still reference the address do not delete it a second time.
+  void release() noexcept;
+
   std::float64_t *getData() const { return ptr->getData(); }
 };
 
 extern std::unordered_map<Tensor<std::float64_t> *, tensor *> tensor_nodes;
 extern std::unordered_set<Tensor<std::float64_t> *> tensor_to_be_spared;
+
+// Diagnostic count of tensors deleted by release(); used by lifecycle tests.
+std::size_t released_tensor_count() noexcept;
 
 using LayerParameterValue =
     std::variant<unsigned, double, std::string, tf::tensor>;
@@ -165,6 +172,9 @@ using LayerParameterValue =
 using LossParameterValue =
     std::variant<unsigned, double, std::string, tf::tensor,
                  std::vector<Tensor<std::float64_t> *>, std::vector<double>>;
+
+using OptimizerParameterValue =
+    std::variant<unsigned, double, std::string, tf::tensor>;
 
 typedef struct graph_context {
 private:
@@ -401,6 +411,57 @@ bool registerBehavior(std::string_view name, behavior_factory factory,
 tf::tensor gradient_of(tf::tensor &input);
 
 } // namespace loss
+
+namespace optimizer {
+
+class optimizer;
+
+using optimizer_id = std::uint64_t;
+inline constexpr optimizer_id invalid_optimizer_id = 0;
+
+namespace type {
+inline constexpr std::string_view sgd{"sgd"};
+} // namespace type
+
+namespace parameter {
+inline constexpr std::string_view learning_rate{"learning_rate"};
+} // namespace parameter
+
+// Public optimizer configuration. This is the canonical type used by both the
+// internal registry and future out-of-tree optimizer plugins.
+struct config {
+  std::unordered_map<std::string, OptimizerParameterValue> values;
+
+  bool empty() const { return values.empty(); }
+
+  bool has(const std::string &key) const { return values.count(key) != 0; }
+
+  const OptimizerParameterValue *get(const std::string &key) const {
+    auto it = values.find(key);
+    return it == values.end() ? nullptr : &it->second;
+  }
+
+  OptimizerParameterValue *get(const std::string &key) {
+    auto it = values.find(key);
+    return it == values.end() ? nullptr : &it->second;
+  }
+
+  void set(std::string key, OptimizerParameterValue value) {
+    values.insert_or_assign(std::move(key), std::move(value));
+  }
+
+  template <typename T> const T *getAs(const std::string &key) const {
+    const OptimizerParameterValue *value = get(key);
+    return value ? std::get_if<T>(value) : nullptr;
+  }
+
+  config &with(std::string key, OptimizerParameterValue value) {
+    set(std::move(key), std::move(value));
+    return *this;
+  }
+};
+
+} // namespace optimizer
 } // namespace tf
 
 // Public self-registration macro. A plugin supplies a behavior_factory (and
@@ -423,6 +484,7 @@ tf::tensor gradient_of(tf::tensor &input);
   } // namespace
 
 using LossConfig = tf::loss::config;
+using OptimizerConfig = tf::optimizer::config;
 
 namespace tf {
 namespace loss {
@@ -619,7 +681,7 @@ public:
   /** @param Loss loss to be used */
   /** @param Metric metric to be used */
   /** @return void */
-  // void compile(tf::optimizer = tf::optimizer(),
+  // void compile(tf::optimizer::optimizer = tf::optimizer::optimizer(),
   //              tf::loss::loss = tf::loss::loss(), tf::metric = tf::metric());
 
   /** @file model.hpp basic model implementation */
@@ -628,8 +690,10 @@ public:
   /** @param Loss loss to be used */
   /** @param Metric metric to be used */
   /** @return void */
-  void compile(const OptimizerType optimizerType,
-               const std::string_view loss_type);
+  void compile(std::string_view optimizer_type, std::string_view loss_type);
+
+  void compile(const tf::optimizer::optimizer &optimizer,
+               std::string_view loss_type);
 
   /** @file tensor.cpp basic model implementation */
   /** @brief Runs the training loop and updates the gradients */
@@ -671,21 +735,51 @@ public:
   std::vector<tf::loss::loss_id> get_losses();
 
 } model;
-typedef struct optimizer {
+namespace optimizer {
+
+// Shared-owning handle to an optimizer created through OptimizerRegistry.
+// Invalid handles are safe no-ops for every operation.
+class optimizer {
 private:
-  OptimizerType optimizer_type;
-  Optimizer *optimizer_ptr;
+  std::shared_ptr<Optimizer> optimizer_ptr_;
 
 public:
   optimizer() = default;
 
-  optimizer(OptimizerType optimizer_type);
+  // String-key construction is the canonical entry point.
+  optimizer(std::string_view type_name);
+  optimizer(std::string_view type_name, const config &cfg);
 
-  Optimizer *getPtr();
+  // Internal: wrap a registry-owned optimizer without creating a new instance.
+  explicit optimizer(std::shared_ptr<Optimizer> owned);
 
-  void execute_optimizer();
+  virtual ~optimizer() = default;
 
-} optimizer;
+  void create_parameter_update_graph(tf::tensor param, tf::tensor &update_param,
+                                     tf::tensor gradient_param) const;
+
+  void execute() const;
+
+  // Drops update ops from a previous training graph.
+  void reset_update_graph() const;
+
+  std::unordered_set<std::string> parameterNames() const;
+
+  std::vector<tf::tensor> getParameter(std::string_view name) const;
+
+  void setParameter(std::string_view name,
+                    const OptimizerParameterValue &value);
+
+  std::string_view type() const;
+
+  optimizer_id id() const;
+
+  bool valid() const;
+
+  explicit operator bool() const;
+};
+
+} // namespace optimizer
 
 typedef struct metric {
 

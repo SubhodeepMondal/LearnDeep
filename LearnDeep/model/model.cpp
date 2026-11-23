@@ -11,7 +11,9 @@
 #include <core/utility/initializers.hpp>
 #include <layers/layer_graph.hpp>
 #include <layers/layers.hpp>
+#include <losses/loss.hpp>
 #include <losses/loss_registry.hpp>
+#include <optimizers/optimizer_registry.hpp>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -42,8 +44,8 @@ Model::Model(const std::vector<tf::tensor> &inputs,
 }
 
 Model::~Model() {
-  for (auto local_training_input : local_training_inputs)
-    delete local_training_input;
+  this->local_training_inputs.clear();
+  this->owned_training_inputs.clear();
 
   this->owned_layers.clear();
   this->owned_losses.clear();
@@ -58,6 +60,18 @@ std::shared_ptr<Layer> Model::lockLayer(tf::layer::layer_id id) const {
 std::shared_ptr<Loss> Model::lockLoss(tf::loss::loss_id id) const {
   auto loss = this->owned_losses.find(id);
   return loss == this->owned_losses.end() ? nullptr : loss->second;
+}
+
+void Model::resetTrainingGraphState() {
+  this->auto_grad_created = false;
+
+  for (tf::layer::layer_id id : this->layers)
+    if (std::shared_ptr<Layer> layer = this->lockLayer(id))
+      layer->resetGradientRecording();
+
+  for (tf::loss::loss_id id : this->losses)
+    if (std::shared_ptr<Loss> loss = this->lockLoss(id))
+      loss->resetGradientRecording();
 }
 
 void Model::initializeTrainingMappings() {
@@ -214,6 +228,10 @@ Model::fit(tf::model &model, const std::vector<tf::tensor> &training_inputs,
   }
 
   this->batch_size = batch_size;
+  // Destroy the previous update graph before dropping gradient aliases that it
+  // may still reference; resetTrainingGraphState() deletes owned tensors.
+  optimizer.reset_update_graph();
+  this->resetTrainingGraphState();
   this->initializeTrainingMappings();
 
   std::vector<tf::tensor> local_temp_outputs =
@@ -284,7 +302,7 @@ Model::fit(tf::model &model, const std::vector<tf::tensor> &training_inputs,
 
               for (tf::layer::layer_id id : this->layers)
                 if (std::shared_ptr<Layer> layer = this->lockLayer(id))
-                  layer->backward(optimizer.getPtr());
+                  layer->backward(optimizer);
 
               for (tf::loss::loss_id id : this->losses)
                 if (std::shared_ptr<Loss> loss = this->lockLoss(id))
@@ -293,7 +311,7 @@ Model::fit(tf::model &model, const std::vector<tf::tensor> &training_inputs,
               this->auto_grad_created = true;
             }
             ctx_compute_n_gradient.compute_gradient(); // back propagation
-            optimizer.execute_optimizer();
+            optimizer.execute();
           }
 
           this->runCallbackOnBatchEnd(callback, i);
@@ -344,15 +362,20 @@ std::vector<tf::tensor> Model::predict(std::vector<tf::tensor> inputs) {
  * is tranculated to batch size*/
 void Model::initilizeInputsForTraining(
     const std::vector<tf::tensor> &incoming_training_inputs) {
+  // Drop the previous fit's batch buffers before creating new mappings.
+  this->local_training_inputs.clear();
+  this->owned_training_inputs.clear();
+
   for (const tf::tensor &input : incoming_training_inputs) {
     std::vector<unsigned> dims;
     for (unsigned i = 0; i < input.getPtr()->getNoOfDimensions() - 1; i++)
       dims.push_back(input.getPtr()->getDimensions()[i]);
 
     dims.push_back(this->batch_size);
-    temp_training_input_tensor = new tf::tensor();
-    temp_training_input_tensor->tf_create(dims, tf_float64);
-    this->local_training_inputs.push_back(temp_training_input_tensor);
+    auto buffer = std::make_unique<tf::tensor>();
+    buffer->tf_create(dims, tf_float64);
+    this->local_training_inputs.push_back(buffer.get());
+    this->owned_training_inputs.push_back(std::move(buffer));
   }
 }
 
@@ -619,9 +642,21 @@ void Model::setTrainingTensorsForInputLayer() {
 
 void Model::shuffle(bool shuffle) { this->shuffle_input = shuffle; }
 
-void Model::compile(const OptimizerType optimizer_type,
-                    const std::string_view loss_type) {
-  this->optimizer = tf::optimizer(optimizer_type);
+void Model::compile(std::string_view optimizer_type,
+                    std::string_view loss_type) {
+  const std::string optimizer_name(optimizer_type);
+  if (!OptimizerRegistry::instance().contains(optimizer_name)) {
+    LOG(ERROR) << "Unknown optimizer type '" << optimizer_name << "'.\n";
+    throw std::invalid_argument("Unknown optimizer type: " + optimizer_name);
+  }
+
+  this->compile(tf::optimizer::optimizer(optimizer_type), loss_type);
+}
+
+void Model::compile(const tf::optimizer::optimizer &optimizer,
+                    std::string_view loss_type) {
+  if (!optimizer.valid())
+    throw std::invalid_argument("Invalid optimizer handle");
 
   const std::string type_name(loss_type);
   if (!LossRegistry::instance().contains(type_name)) {
@@ -634,6 +669,13 @@ void Model::compile(const OptimizerType optimizer_type,
   if (loss_type == tf::loss::type::squared_error)
     base_name = "mean_squared_loss";
 
+  // Build the replacement state first so a failed compile leaves the old
+  // optimizer and losses intact.
+  std::vector<tf::loss::loss_id> new_losses;
+  std::unordered_map<tf::loss::loss_id, std::shared_ptr<Loss>> new_owned_losses;
+  std::unordered_map<tf::loss::loss_id, std::vector<Tensor<std::float64_t> *>>
+      new_loss_input_mappings;
+
   for (unsigned i = 0; i < outputs.size(); i++) {
     LossRegistry::LossHandle loss = LossRegistry::instance().create(
         type_name,
@@ -642,10 +684,30 @@ void Model::compile(const OptimizerType optimizer_type,
       throw std::runtime_error("Failed to create loss: " + type_name);
 
     const tf::loss::loss_id id = LossRegistry::instance().idOf(loss);
-    this->owned_losses[id] = std::move(loss);
-    this->losses.push_back(id);
-    loss_input_mappings[id].push_back(outputs[i]);
+    new_owned_losses[id] = std::move(loss);
+    new_losses.push_back(id);
+    new_loss_input_mappings[id].push_back(outputs[i]);
   }
+
+  // The previous optimizer may still be shared with the caller. Destroy its
+  // update graph before resetTrainingGraphState() deletes gradient aliases
+  // that the graph can still reference.
+  this->optimizer.reset_update_graph();
+
+  // Release the previous optimizer/losses before committing the new ones.
+  this->optimizer = {};
+  this->owned_losses.clear();
+  this->losses.clear();
+  this->loss_input_mappings.clear();
+  this->loss_training_input_mappings.clear();
+
+  this->optimizer = optimizer;
+  this->owned_losses = std::move(new_owned_losses);
+  this->losses = std::move(new_losses);
+  this->loss_input_mappings = std::move(new_loss_input_mappings);
+
+  this->resetTrainingGraphState();
+  optimizer.reset_update_graph();
 }
 
 tf::loss::loss Model::getModelLoss(Tensor<std::float64_t> *output_tensor) {
