@@ -359,7 +359,7 @@ TEST(Kan34ModelExecution, TrainingUsesCorrectSourceOutput) {
 
 // --- Phase 3: bookkeeping, readiness and diagnostics ---
 
-TEST(Kan34ModelExecution, DISABLED_InputLayersAreDeduplicated) {
+TEST(Kan34ModelExecution, InputLayersAreDeduplicated) {
   const tf::tensor x0 = vector(1.0, 1.0);
   const tf::tensor x1 = vector(10.0, 10.0);
 
@@ -368,15 +368,20 @@ TEST(Kan34ModelExecution, DISABLED_InputLayersAreDeduplicated) {
   ASSERT_EQ(outputs.size(), 1u);
 
   tf::model model({x0, x1}, {outputs[0]});
+  const auto before_params = producer.getParameter("calculate_calls");
+  ASSERT_EQ(before_params.size(), 1u);
+  const tf::tensor before = before_params.front().copy();
+
   model.predict({x0, x1});
 
-  const auto calls = producer.getParameter("calculate_calls");
-  ASSERT_EQ(calls.size(), 1u);
+  const auto after_params = producer.getParameter("calculate_calls");
+  ASSERT_EQ(after_params.size(), 1u);
+  const tf::tensor after = after_params.front().copy();
   // Both inputs feed the same producer; it must still execute exactly once.
-  expectNear(firstValue(calls.front()), 1.0);
+  expectNear(firstValue(after) - firstValue(before), 1.0);
 }
 
-TEST(Kan34ModelExecution, DISABLED_PredictionWaitsForAllInputs) {
+TEST(Kan34ModelExecution, PredictionWaitsForAllInputs) {
   const tf::tensor x0 = vector(1.0, 1.0);
   const tf::tensor x1 = vector(10.0, 10.0);
 

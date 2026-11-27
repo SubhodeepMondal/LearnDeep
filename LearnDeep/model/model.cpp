@@ -423,7 +423,8 @@ std::vector<const Tensor<std::float64_t> *> Model::getLayersNBackTrackInputs(
     }
 
     if (layer_set.count(id)) {
-      LOG(ERROR) << "Fatal! A tensor is not connected to any layer.\n";
+      // This layer was already visited through another output. That is a
+      // normal DAG fan-in/fan-out, not a missing producer.
       continue;
     }
 
@@ -587,12 +588,18 @@ void Model::doLayerCalculation() {
       continue;
     }
 
-    /** if all the inputs are ready for a layer(i.e !nullptr) call forward on
-     * that layer else, push it back on the queue for subsequent layers to give
-     * its output
-     */
-    if (this->layer_prediction_input_mappings[id].size() ==
-        layer_input_mappings[id].size()) {
+    /** A layer is ready only when every input slot has been filled with a
+     * real tensor; matching sizes are not enough because unfilled slots hold
+     * default-constructed (null) aliases. */
+    const std::vector<tf::tensor> &ready_inputs =
+        this->layer_prediction_input_mappings[id];
+    const bool all_inputs_ready =
+        ready_inputs.size() == layer_input_mappings[id].size() &&
+        std::ranges::none_of(ready_inputs, [](const tf::tensor &input) {
+          return input.getPtr() == nullptr;
+        });
+
+    if (all_inputs_ready) {
       std::vector<tf::tensor> this_layer_prediction_outputs =
           this_layer.calculate(this->layer_prediction_input_mappings[id]);
 
