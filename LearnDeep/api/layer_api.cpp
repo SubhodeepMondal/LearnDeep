@@ -1,17 +1,17 @@
-// Implementation of the public tf::layer::layer handle family.
+// Implementation of the public tf::layer::layer API.
 //
-// This lives in the layers library (not tensor_api) so that Model can use the
-// public handle ABI without introducing a model <-> tensor_api link cycle.
+// Built as a separate layer_api library under LearnDeep/api so Model and
+// Callback can consume the public handle ABI without depending on tensor_api.
 
+#include <api/layer_api_helpers.hpp>
 #include <api/tensor.h>
 
 #include <absl/log/log.h>
 
-#include "layer_graph.hpp"
-#include "layer_handle_helpers.hpp"
-#include "layer_manager.hpp"
-#include "layer_registry.hpp"
-#include "layers.hpp"
+#include <layers/layer_graph.hpp>
+#include <layers/layer_manager.hpp>
+#include <layers/layer_registry.hpp>
+#include <layers/layers.hpp>
 
 #include <string>
 #include <utility>

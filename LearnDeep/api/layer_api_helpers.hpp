@@ -1,9 +1,9 @@
-#ifndef LD_LAYER_HANDLE_HELPERS_HPP
-#define LD_LAYER_HANDLE_HELPERS_HPP
+#ifndef LD_LAYER_API_HELPERS_HPP
+#define LD_LAYER_API_HELPERS_HPP
 
-// Internal helpers shared by the public layer handle implementation and the
-// API translation unit. They deliberately live in the layers module so the
-// model library can use them without depending on tensor_api.
+// Internal helpers shared by the public layer API implementation and the
+// tensor API translation unit. They live in the api module because both
+// consumers are API implementation files.
 
 #include <api/tensor.h>
 #include <layers/layer_registry.hpp>
@@ -33,4 +33,4 @@ inline LayerConfig config_with(const std::string &key, unsigned value) {
 
 } // namespace ld::detail
 
-#endif // LD_LAYER_HANDLE_HELPERS_HPP
+#endif // LD_LAYER_API_HELPERS_HPP

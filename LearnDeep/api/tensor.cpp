@@ -6,8 +6,8 @@
 
 // Library Headers
 #include <callback/callback.hpp>
+#include <api/layer_api_helpers.hpp>
 #include <layers/layer_graph.hpp>
-#include <layers/layer_handle_helpers.hpp>
 #include <layers/layer_registry.hpp>
 #include <layers/layers.hpp>
 #include <limits>
@@ -571,8 +571,8 @@ void tf::graph_context::compute_gradient() {
 // -------------- Graph Context ------------
 
 // --- Layers ---
-// Layer handle implementations live in layers/layer_handle.cpp so that Model
-// can consume the public handle ABI without linking tensor_api.
+// Public layer API implementations live in api/layer_api.cpp, built as the
+// separate layer_api target that Model and Callback can link directly.
 // --- End of Layers ---
 
 // --- Model ---
