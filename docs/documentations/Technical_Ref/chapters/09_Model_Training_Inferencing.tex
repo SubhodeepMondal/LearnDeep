@@ -133,6 +133,37 @@ The supported graph structures ultimately depend on the
 operations and execution strategies implemented by
 LearnDeep.
 
+\paragraph{Layer Execution and Output Routing}
+
+The model interacts with layers through the public
+\texttt{tf::layer::layer} handle rather than internal layer
+interfaces. During construction it discovers the layers that
+produce the declared outputs, deduplicates the layers that
+consume model inputs, and validates the resulting dependency
+graph. A single topological execution order is computed once
+from these dependencies. If an input has no live producer, or
+if the dependencies contain a cycle, model construction fails
+immediately rather than retrying layers indefinitely.
+
+Both prediction and training follow this validated order.
+This makes execution deterministic for branching graphs and
+ensures that a layer runs exactly once even when several of
+its inputs come directly from the model input list.
+
+For layers with multiple outputs, downstream inputs, loss
+inputs, and final model outputs are routed by the ordinal of
+the source output. The destination slot and the model-output
+position are therefore independent of which source output is
+actually consumed. This preserves correct wiring when, for
+example, only the second output of a layer is connected to a
+later layer or to a loss function.
+
+Before a layer executes, its input mappings are checked for
+real tensors. Matching vector sizes alone are not sufficient,
+because an unfilled slot holds a null alias. Invalid mappings
+are reported as errors instead of silently producing an
+incorrect forward pass.
+
 \paragraph{Compilation}
 
 Once the model has been constructed, compile() configures
