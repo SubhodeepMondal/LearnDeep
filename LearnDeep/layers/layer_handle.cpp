@@ -7,8 +7,9 @@
 
 #include <absl/log/log.h>
 
-#include "layer_handle_helpers.hpp"
 #include "layer_graph.hpp"
+#include "layer_handle_helpers.hpp"
+#include "layer_manager.hpp"
 #include "layer_registry.hpp"
 #include "layers.hpp"
 
@@ -27,7 +28,7 @@ tf::layer::layer::layer(std::string_view type_name)
 
 tf::layer::layer::layer(std::string_view type_name, const LayerConfig &config) {
   this->layer_ptr =
-      LayerRegistry::instance().create(std::string(type_name), config);
+      LayerManager::instance().create(std::string(type_name), config);
 }
 
 tf::layer::layer::~layer() = default;
@@ -41,17 +42,17 @@ std::vector<const tf::tensor *> tf::layer::layer::input_tensor_aliases() const {
 tf::layer::layer tf::layer::layer::from_id(layer_id id) {
   if (id == invalid_layer_id)
     return {};
-  return layer(global_layer_graph.lock(id));
+  return layer(global_layer_graph_manager.lock(id));
 }
 
 tf::layer::layer_id
 tf::layer::layer::producer_of(const Tensor<std::float64_t> *tensor) {
-  return global_layer_graph.getLayerOfOutgoingTensor(tensor);
+  return global_layer_graph_manager.producerOf(tensor);
 }
 
 std::vector<tf::layer::layer_id>
 tf::layer::layer::consumers_of(const Tensor<std::float64_t> *tensor) {
-  return global_layer_graph.getLayersOfIncomingTensor(tensor);
+  return global_layer_graph_manager.consumersOf(tensor);
 }
 
 std::vector<tf::tensor>

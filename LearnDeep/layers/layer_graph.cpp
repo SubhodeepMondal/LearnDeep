@@ -6,18 +6,21 @@
 #include "layer_graph.hpp"
 #include "layers.hpp"
 
-LayerGraph global_layer_graph;
+LayerGraphManager global_layer_graph_manager;
+LayerGraphManager &global_layer_graph = global_layer_graph_manager;
 
-void LayerGraph::addNode(const std::shared_ptr<Layer> &node) {
-  if (!node)
+void LayerGraphManager::registerLayer(const std::shared_ptr<Layer> &layer) {
+  if (!layer)
     return;
 
-  layers.insert_or_assign(node->id(), node);
+  layers.insert_or_assign(layer->id(), layer);
 }
 
-void LayerGraph::removeNode(tf::layer::layer_id id) { layers.erase(id); }
+void LayerGraphManager::unregisterLayer(tf::layer::layer_id id) {
+  layers.erase(id);
+}
 
-void LayerGraph::prune() {
+void LayerGraphManager::prune() {
   for (auto it = layers.begin(); it != layers.end();) {
     if (it->second.expired())
       it = layers.erase(it);
@@ -26,7 +29,7 @@ void LayerGraph::prune() {
   }
 }
 
-std::shared_ptr<Layer> LayerGraph::lock(tf::layer::layer_id id) {
+std::shared_ptr<Layer> LayerGraphManager::lock(tf::layer::layer_id id) {
   auto entry = layers.find(id);
   if (entry == layers.end())
     return {};
@@ -37,11 +40,11 @@ std::shared_ptr<Layer> LayerGraph::lock(tf::layer::layer_id id) {
   return layer;
 }
 
-bool LayerGraph::contains(tf::layer::layer_id id) {
+bool LayerGraphManager::contains(tf::layer::layer_id id) {
   return static_cast<bool>(this->lock(id));
 }
 
-std::vector<tf::layer::layer_id> LayerGraph::getLayersOfIncomingTensor(
+std::vector<tf::layer::layer_id> LayerGraphManager::consumersOf(
     const Tensor<std::float64_t> *tensor) {
   this->prune();
 
@@ -58,7 +61,7 @@ std::vector<tf::layer::layer_id> LayerGraph::getLayersOfIncomingTensor(
   return layers_with_incoming_tensor;
 }
 
-tf::layer::layer_id LayerGraph::getLayerOfOutgoingTensor(
+tf::layer::layer_id LayerGraphManager::producerOf(
     const Tensor<std::float64_t> *tensor) {
   this->prune();
 
