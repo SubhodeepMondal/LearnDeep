@@ -3,7 +3,7 @@
 // Built as a separate layer_api library under LearnDeep/api so Model and
 // Callback can consume the public handle ABI without depending on tensor_api.
 
-#include <api/layer_api_helpers.hpp>
+#include <api/layer_api.h>
 #include <api/tensor.h>
 
 #include <absl/log/log.h>
@@ -15,6 +15,16 @@
 
 #include <string>
 #include <utility>
+
+namespace {
+
+LayerConfig config_with(const std::string &key, unsigned value) {
+  LayerConfig config;
+  config.set(key, value);
+  return config;
+}
+
+} // namespace
 
 // --- Generic layer handle ---
 
@@ -173,7 +183,7 @@ tf::layer::layer_id tf::layer::layer::id() const {
 // --- Dense ---
 
 tf::layer::dense::dense(unsigned unit)
-    : layer(tf::layer::type::dense, ld::detail::config_with("units", unit)) {}
+    : layer(tf::layer::type::dense, config_with("units", unit)) {}
 
 tf::layer::dense::~dense() = default;
 
@@ -232,7 +242,7 @@ std::vector<tf::tensor> tf::layer::relu::get_output_tensors() {
 // --- Softmax ---
 
 tf::layer::softmax::softmax(unsigned axis)
-    : layer(tf::layer::type::softmax, ld::detail::config_with("axis", axis)) {}
+    : layer(tf::layer::type::softmax, config_with("axis", axis)) {}
 
 tf::layer::softmax::~softmax() = default;
 

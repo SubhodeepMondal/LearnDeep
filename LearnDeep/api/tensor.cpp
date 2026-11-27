@@ -6,7 +6,7 @@
 
 // Library Headers
 #include <callback/callback.hpp>
-#include <api/layer_api_helpers.hpp>
+#include <api/layer_api.h>
 #include <layers/layer_graph.hpp>
 #include <layers/layer_registry.hpp>
 #include <layers/layers.hpp>
@@ -618,7 +618,7 @@ tf::loss::loss tf::model::get_model_loss(tf::tensor output) const {
   return this->model_ptr->getModelLoss(output.getPtr());
 }
 
-std::vector<tf::layer::layer_id> tf::model::get_layers() {
+std::vector<std::uint64_t> tf::model::get_layers() {
   return model_ptr->getLayers();
 }
 

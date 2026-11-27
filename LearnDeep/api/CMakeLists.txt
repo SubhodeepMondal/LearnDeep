@@ -3,7 +3,7 @@ enable_language(CXX)
 
 add_library(layer_api SHARED
     layer_api.cpp
-    layer_api_helpers.hpp
+    layer_api.h
 )
 
 target_include_directories(layer_api PUBLIC ${CMAKE_SOURCE_DIR})
@@ -20,6 +20,7 @@ target_link_libraries(layer_api
 add_library(tensor_api SHARED
     tensor.h
     tensor.cpp
+    layer_api.h
 )
 
 target_include_directories(tensor_api PUBLIC ${CMAKE_SOURCE_DIR})
