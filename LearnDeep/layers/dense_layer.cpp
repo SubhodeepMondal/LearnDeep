@@ -1,5 +1,5 @@
 // Library Headers
-#include "dense.hpp"
+#include "dense_layer.hpp"
 #include "layer_enum.hpp"
 #include "layer_registry.hpp"
 #include "layers.hpp"

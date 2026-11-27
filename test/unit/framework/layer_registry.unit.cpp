@@ -2,7 +2,7 @@
 #include <LearnDeep/api/tensor.h>
 #include <callback/callback.hpp>
 #include <gtest/gtest.h>
-#include <layers/dense.hpp>
+#include <layers/dense_layer.hpp>
 #include <layers/layer_graph.hpp>
 #include <layers/layer_manager.hpp>
 #include <layers/layer_registry.hpp>

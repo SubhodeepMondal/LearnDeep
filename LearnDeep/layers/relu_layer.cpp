@@ -1,5 +1,5 @@
 // Library Headers
-#include "relu.hpp"
+#include "relu_layer.hpp"
 #include "layer_enum.hpp"
 #include "layer_registry.hpp"
 #include "layers.hpp"
