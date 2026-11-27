@@ -31,6 +31,10 @@ class Optimizer;
 struct LayerConfig;
 
 namespace tf {
+namespace optimizer {
+class optimizer;
+} // namespace optimizer
+
 class tensor {
   // mutable std::vector<Ops *> opsPtr;
   Tensor<std::float64_t> *ptr{nullptr};
@@ -231,6 +235,8 @@ class layer {
 private:
   std::shared_ptr<Layer> layer_ptr;
 
+  explicit layer(std::shared_ptr<Layer> layer_ptr);
+
 protected:
   // Pointers into the owning layer's alias storage. The handle itself keeps no
   // input state, so these cannot dangle and cannot go stale during training.
@@ -242,6 +248,16 @@ public:
   layer(std::string_view type_name, const LayerConfig &config);
   virtual ~layer();
 
+  // Resolve a live layer from the public id space. Invalid ids and dead layers
+  // produce an inert handle.
+  static layer from_id(layer_id id);
+
+  // Graph topology queries exposed through the public API so that consumers do
+  // not need the internal LayerGraph ABI.
+  static layer_id producer_of(const Tensor<std::float64_t> *tensor);
+  static std::vector<layer_id>
+  consumers_of(const Tensor<std::float64_t> *tensor);
+
   std::vector<tf::tensor> operator()(const std::vector<tf::tensor> &inputs);
 
   std::vector<tf::tensor> forward(const std::vector<tf::tensor> &inputs,
@@ -249,7 +265,16 @@ public:
 
   std::vector<tf::tensor> calculate(std::vector<tf::tensor> inputs);
 
+  // Non-owning aliases whose getPtr() values identify the layer's real graph
+  // tensors. Used by Model to build its execution graph.
+  std::vector<tf::tensor> get_input_tensors() const;
+  std::vector<tf::tensor> get_output_tensors() const;
+
   void initialize_parameters();
+
+  void backward(const tf::optimizer::optimizer &optimizer);
+
+  void reset_gradient_recording();
 
   std::unordered_set<std::string> parameterNames() const;
 

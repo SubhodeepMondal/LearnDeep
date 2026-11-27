@@ -9,8 +9,6 @@
 #include <absl/log/log.h>
 #include <callback/callback.hpp>
 #include <core/utility/initializers.hpp>
-#include <layers/layer_graph.hpp>
-#include <layers/layers.hpp>
 #include <losses/loss.hpp>
 #include <losses/loss_registry.hpp>
 #include <optimizers/optimizer_registry.hpp>
@@ -49,12 +47,12 @@ Model::~Model() {
 
   this->owned_layers.clear();
   this->owned_losses.clear();
-  global_layer_graph.prune();
 }
 
-std::shared_ptr<Layer> Model::lockLayer(tf::layer::layer_id id) const {
+tf::layer::layer Model::lockLayer(tf::layer::layer_id id) const {
   auto layer = this->owned_layers.find(id);
-  return layer == this->owned_layers.end() ? nullptr : layer->second;
+  return layer == this->owned_layers.end() ? tf::layer::layer{}
+                                           : layer->second;
 }
 
 std::shared_ptr<Loss> Model::lockLoss(tf::loss::loss_id id) const {
@@ -66,8 +64,8 @@ void Model::resetTrainingGraphState() {
   this->auto_grad_created = false;
 
   for (tf::layer::layer_id id : this->layers)
-    if (std::shared_ptr<Layer> layer = this->lockLayer(id))
-      layer->resetGradientRecording();
+    if (tf::layer::layer layer = this->lockLayer(id))
+      layer.reset_gradient_recording();
 
   for (tf::loss::loss_id id : this->losses)
     if (std::shared_ptr<Loss> loss = this->lockLoss(id))
@@ -75,6 +73,7 @@ void Model::resetTrainingGraphState() {
 }
 
 void Model::initializeTrainingMappings() {
+  this->layer_training_output_mappings.clear();
   for (tf::layer::layer_id id : this->layers)
     this->layer_training_input_mappings[id].assign(
         this->layer_input_mappings[id].size(), nullptr);
@@ -286,8 +285,8 @@ Model::fit(tf::model &model, const std::vector<tf::tensor> &training_inputs,
           this->loadTrainingBatch(training_inputs, batch_index);
 
           for (tf::layer::layer_id id : this->layers)
-            if (std::shared_ptr<Layer> layer = this->lockLayer(id))
-              layer->initializeParameters();
+            if (tf::layer::layer layer = this->lockLayer(id))
+              layer.initialize_parameters();
 
           /* making loss graph */
           this->setTargetOutputForLoss(training_target, local_temp_outputs,
@@ -301,8 +300,8 @@ Model::fit(tf::model &model, const std::vector<tf::tensor> &training_inputs,
               ctx_compute_n_gradient.initialize_gradient();
 
               for (tf::layer::layer_id id : this->layers)
-                if (std::shared_ptr<Layer> layer = this->lockLayer(id))
-                  layer->backward(optimizer);
+                if (tf::layer::layer layer = this->lockLayer(id))
+                  layer.backward(optimizer);
 
               for (tf::loss::loss_id id : this->losses)
                 if (std::shared_ptr<Loss> loss = this->lockLoss(id))
@@ -319,13 +318,14 @@ Model::fit(tf::model &model, const std::vector<tf::tensor> &training_inputs,
         } // end of batch
 
         for (tf::layer::layer_id id : this->layers)
-          if (std::shared_ptr<Layer> layer = this->lockLayer(id))
-            layer->initializeParameters();
+          if (tf::layer::layer layer = this->lockLayer(id))
+            layer.initialize_parameters();
 
         std::vector<tf::tensor> epoch_level_predicted_output =
             this->predict(training_inputs);
         if (!this->pred_mapping)
-          this->pred_mapping = true;
+          this->pred_mapping = true; // for a full training run pred_mapping
+                                     // required to stay true.
 
         std::unordered_map<std::string, std::float64_t> epoch_level_losses =
             this->getEpochlevelLosses(epoch_level_predicted_output,
@@ -391,8 +391,7 @@ void Model::initializeInputsForPrediction(
       auto it = std::find(layer_input_mappings[id].begin(),
                           layer_input_mappings[id].end(), input);
       if (it != layer_input_mappings[id].end()) {
-        unsigned index =
-            std::distance(layer_input_mappings[id].begin(), it);
+        unsigned index = std::distance(layer_input_mappings[id].begin(), it);
 
         this->layer_prediction_input_mappings[id][index] = prediction_inputs[i];
       }
@@ -416,7 +415,7 @@ std::vector<const Tensor<std::float64_t> *> Model::getLayersNBackTrackInputs(
     output_queue.pop();
 
     const tf::layer::layer_id id =
-        global_layer_graph.getLayerOfOutgoingTensor(output_tensor);
+        tf::layer::layer::producer_of(output_tensor);
 
     if (id == tf::layer::invalid_layer_id) {
       validation_inputs.push_back(output_tensor);
@@ -428,7 +427,7 @@ std::vector<const Tensor<std::float64_t> *> Model::getLayersNBackTrackInputs(
       continue;
     }
 
-    std::shared_ptr<Layer> layer = global_layer_graph.lock(id);
+    tf::layer::layer layer = tf::layer::layer::from_id(id);
     if (!layer) {
       validation_inputs.push_back(output_tensor);
       continue;
@@ -437,9 +436,11 @@ std::vector<const Tensor<std::float64_t> *> Model::getLayersNBackTrackInputs(
     layer_set.insert(id);
     this->layers.push_back(id);
     this->owned_layers.insert_or_assign(id, layer);
-    layer_input_mappings[id] = layer->getInputTensors();
 
-    for (tf::tensor *output : layer->getOutputTensors())
+    for (const tf::tensor &input : layer.get_input_tensors())
+      layer_input_mappings[id].push_back(input.getPtr());
+
+    for (const tf::tensor &output : layer.get_output_tensors())
       layer_output_mappings[id].push_back(output);
 
     for (const Tensor<std::float64_t> *input : layer_input_mappings[id])
@@ -454,7 +455,7 @@ std::vector<const Tensor<std::float64_t> *> Model::getLayersNBackTrackInputs(
 void Model::doTensorAndLayerMappings() {
   for (const Tensor<std::float64_t> *input : this->inputs) {
     const std::vector<tf::layer::layer_id> input_layer_ids =
-        global_layer_graph.getLayersOfIncomingTensor(input);
+        tf::layer::layer::consumers_of(input);
     for (tf::layer::layer_id id : this->layers)
       if (std::ranges::contains(input_layer_ids, id)) {
         this->input_layer_mappings[input].push_back(id);
@@ -479,7 +480,7 @@ void Model::doDummyAndTrainingTensorMapping() {
     const tf::layer::layer_id id = training_layers.front();
     training_layers.pop();
 
-    std::shared_ptr<Layer> this_layer = this->lockLayer(id);
+    tf::layer::layer this_layer = this->lockLayer(id);
     if (!this_layer) {
       LOG(ERROR) << "Fatal! A model layer is no longer available.\n";
       continue;
@@ -491,26 +492,33 @@ void Model::doDummyAndTrainingTensorMapping() {
      */
     if (!std::ranges::contains(this->layer_training_input_mappings[id],
                                nullptr)) {
-      const std::vector<tf::tensor *> &this_layer_training_outputs =
-          this_layer->forward(this->layer_training_input_mappings[id],
-                              this->batch_size);
+      std::vector<tf::tensor> forward_inputs;
+      forward_inputs.reserve(this->layer_training_input_mappings[id].size());
+      for (const tf::tensor *input : this->layer_training_input_mappings[id])
+        forward_inputs.push_back(*input);
+
+      // The handle returns non-owning aliases. Keep them in Model-owned storage
+      // so downstream mappings never point into an internal layer ABI vector.
+      this->layer_training_output_mappings[id] =
+          this_layer.forward(forward_inputs, this->batch_size);
+      const std::vector<tf::tensor> &this_layer_training_outputs =
+          this->layer_training_output_mappings[id];
 
       /* now find where each output is going*/
       for (tf::layer::layer_id downstream_id : this->layers) {
         flag = false;
         unsigned i = 0;
-        for (const tf::tensor *this_layer_output :
+        for (const tf::tensor &this_layer_output :
              this->layer_output_mappings[id]) {
-          auto it = std::find(
-              this->layer_input_mappings[downstream_id].begin(),
-              this->layer_input_mappings[downstream_id].end(),
-              this_layer_output->getPtr());
+          auto it = std::find(this->layer_input_mappings[downstream_id].begin(),
+                              this->layer_input_mappings[downstream_id].end(),
+                              this_layer_output.getPtr());
 
           if (it != this->layer_input_mappings[downstream_id].end()) {
             unsigned index = std::distance(
                 this->layer_input_mappings[downstream_id].begin(), it);
             this->layer_training_input_mappings[downstream_id][index] =
-                this_layer_training_outputs[i++];
+                &this_layer_training_outputs[i++];
             flag = true;
           }
         }
@@ -520,17 +528,17 @@ void Model::doDummyAndTrainingTensorMapping() {
       /* map training layer output with loss training input */
       for (tf::loss::loss_id loss_id : this->losses) {
         unsigned i = 0;
-        for (const tf::tensor *this_layer_output :
+        for (const tf::tensor &this_layer_output :
              this->layer_output_mappings[id]) {
           auto it = std::find(this->loss_input_mappings[loss_id].begin(),
                               this->loss_input_mappings[loss_id].end(),
-                              this_layer_output->getPtr());
+                              this_layer_output.getPtr());
 
           if (it != this->loss_input_mappings[loss_id].end()) {
             unsigned index =
                 std::distance(this->loss_input_mappings[loss_id].begin(), it);
             this->loss_training_input_mappings[loss_id][index] =
-                this_layer_training_outputs[i++];
+                const_cast<tf::tensor *>(&this_layer_training_outputs[i++]);
           }
         }
       }
@@ -566,7 +574,7 @@ void Model::doLayerCalculation() {
     const tf::layer::layer_id id = prediction_layers.front();
     prediction_layers.pop();
 
-    std::shared_ptr<Layer> this_layer = this->lockLayer(id);
+    tf::layer::layer this_layer = this->lockLayer(id);
     if (!this_layer) {
       LOG(ERROR) << "Fatal! A model layer is no longer available.\n";
       continue;
@@ -579,18 +587,17 @@ void Model::doLayerCalculation() {
     if (this->layer_prediction_input_mappings[id].size() ==
         layer_input_mappings[id].size()) {
       std::vector<tf::tensor> this_layer_prediction_outputs =
-          this_layer->calculate(this->layer_prediction_input_mappings[id]);
+          this_layer.calculate(this->layer_prediction_input_mappings[id]);
 
       /* now find where each output is going*/
       for (tf::layer::layer_id downstream_id : this->layers) {
         flag = false;
         unsigned i = 0;
-        for (const tf::tensor *this_layer_output :
+        for (const tf::tensor &this_layer_output :
              this->layer_output_mappings[id]) {
-          auto it = std::find(
-              this->layer_input_mappings[downstream_id].begin(),
-              this->layer_input_mappings[downstream_id].end(),
-              this_layer_output->getPtr());
+          auto it = std::find(this->layer_input_mappings[downstream_id].begin(),
+                              this->layer_input_mappings[downstream_id].end(),
+                              this_layer_output.getPtr());
 
           if (it != this->layer_input_mappings[downstream_id].end()) {
             unsigned index = std::distance(
@@ -604,9 +611,9 @@ void Model::doLayerCalculation() {
           prediction_layers.push(downstream_id);
       }
       // place outputs to its place
-      for (const tf::tensor *layer_output : layer_output_mappings[id]) {
+      for (const tf::tensor &layer_output : layer_output_mappings[id]) {
         auto it = std::find(this->outputs.begin(), this->outputs.end(),
-                            layer_output->getPtr());
+                            layer_output.getPtr());
 
         if (it != this->outputs.end()) {
           unsigned index = std::distance(this->outputs.begin(), it);

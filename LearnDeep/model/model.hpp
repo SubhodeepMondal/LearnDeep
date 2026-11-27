@@ -31,11 +31,15 @@ private:
   std::unordered_map<tf::layer::layer_id,
                      std::vector<const Tensor<std::float64_t> *>>
       layer_input_mappings;
-  std::unordered_map<tf::layer::layer_id, std::vector<const tf::tensor *>>
+  std::unordered_map<tf::layer::layer_id, std::vector<tf::tensor>>
       layer_output_mappings;
 
   std::unordered_map<tf::layer::layer_id, std::vector<const tf::tensor *>>
       layer_training_input_mappings;
+  // Stable aliases returned by tf::layer::layer::forward(); downstream mappings
+  // point into these vectors instead of into the layer's internal ABI.
+  std::unordered_map<tf::layer::layer_id, std::vector<tf::tensor>>
+      layer_training_output_mappings;
   std::unordered_map<tf::layer::layer_id, std::vector<tf::tensor>>
       layer_prediction_input_mappings;
 
@@ -43,11 +47,14 @@ private:
                      std::vector<tf::layer::layer_id>>
       input_layer_mappings;
 
-  std::unordered_map<tf::layer::layer_id, std::shared_ptr<Layer>> owned_layers;
-  std::vector<tf::layer::layer_id> layers;
-  std::vector<tf::layer::layer_id> input_layers;
+  // The model owns public layer handles; it never reaches through to the
+  // internal Layer ABI.
+  std::unordered_map<tf::layer::layer_id, tf::layer::layer> owned_layers;
+  std::vector<tf::layer::layer_id> layers; // all the layers for the model
+  std::vector<tf::layer::layer_id>
+      input_layers; // layers that are receiving inputs
 
-  std::shared_ptr<Layer> lockLayer(tf::layer::layer_id id) const;
+  tf::layer::layer lockLayer(tf::layer::layer_id id) const;
 
   tf::optimizer::optimizer optimizer;
 
@@ -105,12 +112,12 @@ private:
       const std::vector<std::shared_ptr<Callback>> &callbacks,
       unsigned const epoch_no);
 
-  void runCallbackOnBatchEnd(
-      const std::vector<std::shared_ptr<Callback>> &callbacks,
-      unsigned const epoch_no);
+  void
+  runCallbackOnBatchEnd(const std::vector<std::shared_ptr<Callback>> &callbacks,
+                        unsigned const epoch_no);
 
-  bool checkEarlyStopping(
-      const std::vector<std::shared_ptr<Callback>> &callbacks);
+  bool
+  checkEarlyStopping(const std::vector<std::shared_ptr<Callback>> &callbacks);
 
   void setTrainingTensorsForInputLayer();
 
