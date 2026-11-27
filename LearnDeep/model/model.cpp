@@ -39,6 +39,7 @@ Model::Model(const std::vector<tf::tensor> &inputs,
       break;
     }
   this->doTensorAndLayerMappings();
+  this->execution_order = this->buildExecutionOrder();
 }
 
 Model::~Model() {
@@ -467,91 +468,139 @@ void Model::doTensorAndLayerMappings() {
   }
 }
 
+/** Build a single, validated execution order from the model's layer graph.
+ *  A layer may only run after every layer that produced one of its inputs has
+ *  run. Unknown producers and cycles are rejected instead of being retried
+ *  forever by the old queue-based schedulers. */
+std::vector<tf::layer::layer_id> Model::buildExecutionOrder() const {
+  std::unordered_map<tf::layer::layer_id, std::vector<tf::layer::layer_id>>
+      dependents;
+  std::unordered_map<tf::layer::layer_id, std::size_t> pending_inputs;
+  std::vector<tf::layer::layer_id> ready;
+
+  for (tf::layer::layer_id id : this->layers) {
+    pending_inputs[id] = 0;
+    auto mapping = this->layer_input_mappings.find(id);
+    if (mapping == this->layer_input_mappings.end())
+      continue;
+
+    for (const Tensor<std::float64_t> *input : mapping->second) {
+      const tf::layer::layer_id producer =
+          tf::layer::layer::producer_of(input);
+
+      if (producer == tf::layer::invalid_layer_id) {
+        if (std::ranges::contains(this->inputs, input))
+          continue;
+        throw std::runtime_error(
+            "Model input tensor has no producer and was not supplied to the "
+            "model.");
+      }
+
+      if (!std::ranges::contains(this->layers, producer))
+        throw std::runtime_error(
+            "Model depends on an output from a layer outside the model.");
+
+      dependents[producer].push_back(id);
+      ++pending_inputs[id];
+    }
+  }
+
+  for (tf::layer::layer_id id : this->layers)
+    if (pending_inputs[id] == 0)
+      ready.push_back(id);
+
+  std::vector<tf::layer::layer_id> order;
+  order.reserve(this->layers.size());
+  while (!ready.empty()) {
+    const tf::layer::layer_id id = ready.back();
+    ready.pop_back();
+    order.push_back(id);
+
+    auto downstream = dependents.find(id);
+    if (downstream == dependents.end())
+      continue;
+    for (tf::layer::layer_id consumer : downstream->second)
+      if (--pending_inputs[consumer] == 0)
+        ready.push_back(consumer);
+  }
+
+  if (order.size() != this->layers.size())
+    throw std::runtime_error("Cycle detected in the model layer graph.");
+
+  return order;
+}
+
 /** At fit: this subroutine primarily does
  * 1. feed each layer with it's proper input and calls forward().
  * 2 forward give output vector for the layer down stream.
  * 3. based the output it feed the ouput tensor to each layer's input and then
  * call forward() on them recursively. */
 void Model::doDummyAndTrainingTensorMapping() {
-  std::queue<tf::layer::layer_id> training_layers;
-  bool flag;
-
-  for (tf::layer::layer_id id : this->input_layers)
-    training_layers.push(id);
-
-  while (training_layers.size()) {
-    const tf::layer::layer_id id = training_layers.front();
-    training_layers.pop();
-
+  for (tf::layer::layer_id id : this->execution_order) {
     tf::layer::layer this_layer = this->lockLayer(id);
-    if (!this_layer) {
-      LOG(ERROR) << "Fatal! A model layer is no longer available.\n";
-      continue;
+    if (!this_layer)
+      throw std::runtime_error(
+          "A model layer is no longer available during training.");
+
+    if (std::ranges::contains(this->layer_training_input_mappings[id],
+                              nullptr))
+      throw std::runtime_error("A training input was not mapped to a layer.");
+
+    std::vector<tf::tensor> forward_inputs;
+    forward_inputs.reserve(this->layer_training_input_mappings[id].size());
+    for (const tf::tensor *input : this->layer_training_input_mappings[id])
+      forward_inputs.push_back(*input);
+
+    // The handle returns non-owning aliases. Keep them in Model-owned storage
+    // so downstream mappings never point into an internal layer ABI vector.
+    this->layer_training_output_mappings[id] =
+        this_layer.forward(forward_inputs, this->batch_size);
+    const std::vector<tf::tensor> &this_layer_training_outputs =
+        this->layer_training_output_mappings[id];
+
+    if (this_layer_training_outputs.size() <
+        this->layer_output_mappings[id].size())
+      throw std::runtime_error(
+          "A layer produced fewer training outputs than the model expects.");
+
+    /* now find where each output is going. `output_index` is the ordinal of
+     * the source output, independent of where it lands in a consumer. */
+    for (tf::layer::layer_id downstream_id : this->layers) {
+      std::size_t output_index = 0;
+      for (const tf::tensor &this_layer_output :
+           this->layer_output_mappings[id]) {
+        auto it = std::find(this->layer_input_mappings[downstream_id].begin(),
+                            this->layer_input_mappings[downstream_id].end(),
+                            this_layer_output.getPtr());
+
+        if (it != this->layer_input_mappings[downstream_id].end()) {
+          unsigned index = std::distance(
+              this->layer_input_mappings[downstream_id].begin(), it);
+          this->layer_training_input_mappings[downstream_id][index] =
+              const_cast<tf::tensor *>(
+                  &this_layer_training_outputs[output_index]);
+        }
+        ++output_index;
+      }
     }
+    /* map training layer output with loss training input */
+    for (tf::loss::loss_id loss_id : this->losses) {
+      std::size_t output_index = 0;
+      for (const tf::tensor &this_layer_output :
+           this->layer_output_mappings[id]) {
+        auto it = std::find(this->loss_input_mappings[loss_id].begin(),
+                            this->loss_input_mappings[loss_id].end(),
+                            this_layer_output.getPtr());
 
-    /** if all the inputs are ready for a layer(i.e !nullptr) call forward on
-     * that layer else, push it back on the queue for subsequent layers to give
-     * its output
-     */
-    if (!std::ranges::contains(this->layer_training_input_mappings[id],
-                               nullptr)) {
-      std::vector<tf::tensor> forward_inputs;
-      forward_inputs.reserve(this->layer_training_input_mappings[id].size());
-      for (const tf::tensor *input : this->layer_training_input_mappings[id])
-        forward_inputs.push_back(*input);
-
-      // The handle returns non-owning aliases. Keep them in Model-owned storage
-      // so downstream mappings never point into an internal layer ABI vector.
-      this->layer_training_output_mappings[id] =
-          this_layer.forward(forward_inputs, this->batch_size);
-      const std::vector<tf::tensor> &this_layer_training_outputs =
-          this->layer_training_output_mappings[id];
-
-      /* now find where each output is going. `output_index` is the ordinal of
-       * the source output, independent of where it lands in a consumer. */
-      for (tf::layer::layer_id downstream_id : this->layers) {
-        flag = false;
-        std::size_t output_index = 0;
-        for (const tf::tensor &this_layer_output :
-             this->layer_output_mappings[id]) {
-          auto it = std::find(this->layer_input_mappings[downstream_id].begin(),
-                              this->layer_input_mappings[downstream_id].end(),
-                              this_layer_output.getPtr());
-
-          if (it != this->layer_input_mappings[downstream_id].end()) {
-            unsigned index = std::distance(
-                this->layer_input_mappings[downstream_id].begin(), it);
-            this->layer_training_input_mappings[downstream_id][index] =
-                const_cast<tf::tensor *>(
-                    &this_layer_training_outputs[output_index]);
-            flag = true;
-          }
-          ++output_index;
+        if (it != this->loss_input_mappings[loss_id].end()) {
+          unsigned index =
+              std::distance(this->loss_input_mappings[loss_id].begin(), it);
+          this->loss_training_input_mappings[loss_id][index] =
+              const_cast<tf::tensor *>(
+                  &this_layer_training_outputs[output_index]);
         }
-        if (flag)
-          training_layers.push(downstream_id);
+        ++output_index;
       }
-      /* map training layer output with loss training input */
-      for (tf::loss::loss_id loss_id : this->losses) {
-        std::size_t output_index = 0;
-        for (const tf::tensor &this_layer_output :
-             this->layer_output_mappings[id]) {
-          auto it = std::find(this->loss_input_mappings[loss_id].begin(),
-                              this->loss_input_mappings[loss_id].end(),
-                              this_layer_output.getPtr());
-
-          if (it != this->loss_input_mappings[loss_id].end()) {
-            unsigned index =
-                std::distance(this->loss_input_mappings[loss_id].begin(), it);
-            this->loss_training_input_mappings[loss_id][index] =
-                const_cast<tf::tensor *>(
-                    &this_layer_training_outputs[output_index]);
-          }
-          ++output_index;
-        }
-      }
-    } else {
-      training_layers.push(id);
     }
   }
 
@@ -572,76 +621,59 @@ void Model::doDummyAndTrainingTensorMapping() {
 }
 
 void Model::doLayerCalculation() {
-  std::queue<tf::layer::layer_id> prediction_layers;
-
-  bool flag;
-  for (tf::layer::layer_id id : this->input_layers)
-    prediction_layers.push(id);
-
-  while (prediction_layers.size()) {
-    const tf::layer::layer_id id = prediction_layers.front();
-    prediction_layers.pop();
-
+  for (tf::layer::layer_id id : this->execution_order) {
     tf::layer::layer this_layer = this->lockLayer(id);
-    if (!this_layer) {
-      LOG(ERROR) << "Fatal! A model layer is no longer available.\n";
-      continue;
-    }
+    if (!this_layer)
+      throw std::runtime_error(
+          "A model layer is no longer available during prediction.");
 
-    /** A layer is ready only when every input slot has been filled with a
-     * real tensor; matching sizes are not enough because unfilled slots hold
-     * default-constructed (null) aliases. */
     const std::vector<tf::tensor> &ready_inputs =
         this->layer_prediction_input_mappings[id];
-    const bool all_inputs_ready =
-        ready_inputs.size() == layer_input_mappings[id].size() &&
-        std::ranges::none_of(ready_inputs, [](const tf::tensor &input) {
+    if (ready_inputs.size() != layer_input_mappings[id].size() ||
+        std::ranges::any_of(ready_inputs, [](const tf::tensor &input) {
           return input.getPtr() == nullptr;
-        });
+        }))
+      throw std::runtime_error("A prediction input was not mapped to a layer.");
 
-    if (all_inputs_ready) {
-      std::vector<tf::tensor> this_layer_prediction_outputs =
-          this_layer.calculate(this->layer_prediction_input_mappings[id]);
+    std::vector<tf::tensor> this_layer_prediction_outputs =
+        this_layer.calculate(ready_inputs);
 
-      /* now find where each output is going. `output_index` is the ordinal of
-       * the source output, independent of the destination slot. */
-      for (tf::layer::layer_id downstream_id : this->layers) {
-        flag = false;
-        std::size_t output_index = 0;
-        for (const tf::tensor &this_layer_output :
-             this->layer_output_mappings[id]) {
-          auto it = std::find(this->layer_input_mappings[downstream_id].begin(),
-                              this->layer_input_mappings[downstream_id].end(),
-                              this_layer_output.getPtr());
+    if (this_layer_prediction_outputs.size() <
+        this->layer_output_mappings[id].size())
+      throw std::runtime_error(
+          "A layer produced fewer prediction outputs than the model expects.");
 
-          if (it != this->layer_input_mappings[downstream_id].end()) {
-            unsigned index = std::distance(
-                this->layer_input_mappings[downstream_id].begin(), it);
-            this->layer_prediction_input_mappings[downstream_id][index] =
-                this_layer_prediction_outputs[output_index].copy();
-            flag = true;
-          }
-          ++output_index;
-        }
-        if (flag)
-          prediction_layers.push(downstream_id);
-      }
-      // place outputs to its place
+    /* now find where each output is going. `output_index` is the ordinal of
+     * the source output, independent of the destination slot. */
+    for (tf::layer::layer_id downstream_id : this->layers) {
       std::size_t output_index = 0;
-      for (const tf::tensor &layer_output : layer_output_mappings[id]) {
-        auto it = std::find(this->outputs.begin(), this->outputs.end(),
-                            layer_output.getPtr());
+      for (const tf::tensor &this_layer_output :
+           this->layer_output_mappings[id]) {
+        auto it = std::find(this->layer_input_mappings[downstream_id].begin(),
+                            this->layer_input_mappings[downstream_id].end(),
+                            this_layer_output.getPtr());
 
-        if (it != this->outputs.end()) {
-          unsigned index = std::distance(this->outputs.begin(), it);
-          this->prediction_outputs[index] =
+        if (it != this->layer_input_mappings[downstream_id].end()) {
+          unsigned index = std::distance(
+              this->layer_input_mappings[downstream_id].begin(), it);
+          this->layer_prediction_input_mappings[downstream_id][index] =
               this_layer_prediction_outputs[output_index].copy();
         }
         ++output_index;
       }
+    }
+    // place outputs to its place
+    std::size_t output_index = 0;
+    for (const tf::tensor &layer_output : layer_output_mappings[id]) {
+      auto it = std::find(this->outputs.begin(), this->outputs.end(),
+                          layer_output.getPtr());
 
-    } else {
-      prediction_layers.push(id);
+      if (it != this->outputs.end()) {
+        unsigned index = std::distance(this->outputs.begin(), it);
+        this->prediction_outputs[index] =
+            this_layer_prediction_outputs[output_index].copy();
+      }
+      ++output_index;
     }
   }
 }

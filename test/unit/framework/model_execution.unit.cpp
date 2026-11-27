@@ -11,6 +11,7 @@
 
 #include <algorithm>
 #include <memory>
+#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <unordered_set>
@@ -403,7 +404,7 @@ TEST(Kan34ModelExecution, PredictionWaitsForAllInputs) {
 
 // --- Phase 4: fail-fast scheduler ---
 
-TEST(Kan34ModelExecution, DISABLED_UnresolvedDependencyThrows) {
+TEST(Kan34ModelExecution, UnresolvedDependencyThrows) {
   const tf::tensor x = vector(1.0, 1.0);
 
   tf::layer::layer producer = probe(1, 1);
@@ -411,9 +412,8 @@ TEST(Kan34ModelExecution, DISABLED_UnresolvedDependencyThrows) {
   tf::layer::layer consumer = probe(1, 1);
   const auto consumer_outputs = consumer({producer_outputs[0]});
 
-  tf::model model({x}, {consumer_outputs[0]});
-  // Dropping the producer handle leaves a dangling graph edge. The scheduler
-  // must reject it rather than retry forever.
+  // Dropping the producer leaves the consumer's input without a live producer.
+  // Model must reject the graph immediately instead of retrying forever.
   producer = tf::layer::layer{};
-  EXPECT_NO_THROW(model.predict({x}));
+  EXPECT_THROW(tf::model model({x}, {consumer_outputs[0]}), std::runtime_error);
 }

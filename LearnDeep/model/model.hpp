@@ -53,8 +53,12 @@ private:
   std::vector<tf::layer::layer_id> layers; // all the layers for the model
   std::vector<tf::layer::layer_id>
       input_layers; // layers that are receiving inputs
+  // Validated topological order, computed once from the layer graph. Execution
+  // follows this order instead of retrying layers whose inputs are not ready.
+  std::vector<tf::layer::layer_id> execution_order;
 
   tf::layer::layer lockLayer(tf::layer::layer_id id) const;
+  std::vector<tf::layer::layer_id> buildExecutionOrder() const;
 
   tf::optimizer::optimizer optimizer;
 
