@@ -3,6 +3,7 @@
 
 // C++ Headers
 #include <memory>
+#include <queue>
 #include <stdfloat>
 #include <string_view>
 #include <unordered_map>
@@ -15,6 +16,24 @@ class Loss;
 
 class Model {
 private:
+  // Construction builds the layer graph in a temporary state and commits it
+  // only after validation succeeds. Keeping these fields together prevents a
+  // failed model from leaving partially populated mapping tables behind.
+  struct GraphConstructionState {
+    std::unordered_map<tf::layer::layer_id,
+                       std::vector<const Tensor<std::float64_t> *>>
+        layer_input_mappings;
+    std::unordered_map<tf::layer::layer_id, std::vector<tf::tensor>>
+        layer_output_mappings;
+    std::unordered_map<const Tensor<std::float64_t> *,
+                       std::vector<tf::layer::layer_id>>
+        input_layer_mappings;
+    std::unordered_map<tf::layer::layer_id, tf::layer::layer> owned_layers;
+    std::vector<tf::layer::layer_id> layers;
+    std::vector<tf::layer::layer_id> input_layers;
+    std::vector<tf::layer::layer_id> execution_order;
+  };
+
   unsigned batch_size;
   bool shuffle_input;
   bool auto_grad_created;
@@ -58,7 +77,12 @@ private:
   std::vector<tf::layer::layer_id> execution_order;
 
   tf::layer::layer lockLayer(tf::layer::layer_id id) const;
-  std::vector<tf::layer::layer_id> buildExecutionOrder() const;
+
+  static std::vector<tf::layer::layer_id>
+  buildExecutionOrder(const GraphConstructionState &graph,
+                      const std::vector<Tensor<std::float64_t> *> &inputs);
+
+  void commitGraphConstructionState(GraphConstructionState &graph);
 
   tf::optimizer::optimizer optimizer;
 
@@ -78,7 +102,8 @@ private:
   //   tf::metric metric;
 
   std::vector<const Tensor<std::float64_t> *> getLayersNBackTrackInputs(
-      std::queue<const Tensor<std::float64_t> *> &output_queue);
+      std::queue<const Tensor<std::float64_t> *> &output_queue,
+      GraphConstructionState &graph);
 
   void initializeTrainingMappings();
 
@@ -133,7 +158,7 @@ private:
 
   void doLayerCalculation();
 
-  void doTensorAndLayerMappings();
+  void doTensorAndLayerMappings(GraphConstructionState &graph);
 
   void
   initilizeInputsForTraining(const std::vector<tf::tensor> &training_inputs);

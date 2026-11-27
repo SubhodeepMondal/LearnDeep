@@ -42,21 +42,25 @@ Model::Model(const std::vector<tf::tensor> &inputs,
   for (tf::tensor output : outputs)
     this->outputs.push_back(output.getPtr());
 
+  GraphConstructionState graph;
+
   std::queue<const Tensor<std::float64_t> *> output_queue;
 
   for (const Tensor<std::float64_t> *output : this->outputs)
     output_queue.push(output);
 
   std::vector<const Tensor<std::float64_t> *> validation_inputs =
-      getLayersNBackTrackInputs(output_queue);
+      getLayersNBackTrackInputs(output_queue, graph);
 
   for (const Tensor<std::float64_t> *validation_input : validation_inputs)
     if (!std::ranges::contains(this->inputs, validation_input))
       throw std::runtime_error(
           "Model output depends on a tensor that is neither a model input nor "
           "a layer output.");
-  this->doTensorAndLayerMappings();
-  this->execution_order = this->buildExecutionOrder();
+
+  this->doTensorAndLayerMappings(graph);
+  graph.execution_order = buildExecutionOrder(graph, this->inputs);
+  this->commitGraphConstructionState(graph);
 }
 
 Model::~Model() {
@@ -71,6 +75,18 @@ tf::layer::layer Model::lockLayer(tf::layer::layer_id id) const {
   auto layer = this->owned_layers.find(id);
   return layer == this->owned_layers.end() ? tf::layer::layer{}
                                            : layer->second;
+}
+
+// Swap rather than move so tf::tensor aliases are never re-registered as
+// owners while their non-owning copies are transferred into the model.
+void Model::commitGraphConstructionState(GraphConstructionState &graph) {
+  this->layer_input_mappings.swap(graph.layer_input_mappings);
+  this->layer_output_mappings.swap(graph.layer_output_mappings);
+  this->input_layer_mappings.swap(graph.input_layer_mappings);
+  this->owned_layers.swap(graph.owned_layers);
+  this->layers.swap(graph.layers);
+  this->input_layers.swap(graph.input_layers);
+  this->execution_order.swap(graph.execution_order);
 }
 
 std::shared_ptr<Loss> Model::lockLoss(tf::loss::loss_id id) const {
@@ -432,7 +448,8 @@ void Model::initializeInputsForPrediction(
  * 2. then back tracks each layer with its output to reach input then at the end
  * the child nodes are kept in a vector to validate the inputs */
 std::vector<const Tensor<std::float64_t> *> Model::getLayersNBackTrackInputs(
-    std::queue<const Tensor<std::float64_t> *> &output_queue) {
+    std::queue<const Tensor<std::float64_t> *> &output_queue,
+    GraphConstructionState &graph) {
 
   std::vector<const Tensor<std::float64_t> *> validation_inputs;
   std::unordered_set<tf::layer::layer_id> layer_set;
@@ -462,22 +479,22 @@ std::vector<const Tensor<std::float64_t> *> Model::getLayersNBackTrackInputs(
     }
 
     layer_set.insert(id);
-    this->layers.push_back(id);
-    this->owned_layers.insert_or_assign(id, layer);
+    graph.layers.push_back(id);
+    graph.owned_layers.insert_or_assign(id, layer);
 
     for (const tf::tensor &input : layer.get_input_tensors())
-      layer_input_mappings[id].push_back(input.getPtr());
+      graph.layer_input_mappings[id].push_back(input.getPtr());
 
     // tf::tensor's move constructor transfers ownership of the underlying
     // Tensor. Reserve before growing so these non-owning aliases keep their
     // ownership bookkeeping and never steal the layer's tensors.
     const std::vector<tf::tensor> outputs = layer.get_output_tensors();
-    auto &output_mapping = this->layer_output_mappings[id];
+    auto &output_mapping = graph.layer_output_mappings[id];
     output_mapping.reserve(outputs.size());
     for (const tf::tensor &output : outputs)
       output_mapping.push_back(output);
 
-    for (const Tensor<std::float64_t> *input : layer_input_mappings[id])
+    for (const Tensor<std::float64_t> *input : graph.layer_input_mappings[id])
       output_queue.push(input);
   }
   return validation_inputs;
@@ -486,16 +503,16 @@ std::vector<const Tensor<std::float64_t> *> Model::getLayersNBackTrackInputs(
 /** this subroutine at creates a unordered map of layer-&-tensor where it
  * identifies the layers associated with inputs (i.e input layers) then creates
  * a layer-tensor map */
-void Model::doTensorAndLayerMappings() {
+void Model::doTensorAndLayerMappings(GraphConstructionState &graph) {
   std::unordered_set<tf::layer::layer_id> scheduled;
   for (const Tensor<std::float64_t> *input : this->inputs) {
     const std::vector<tf::layer::layer_id> input_layer_ids =
         tf::layer::layer::consumers_of(input);
-    for (tf::layer::layer_id id : this->layers)
+    for (tf::layer::layer_id id : graph.layers)
       if (std::ranges::contains(input_layer_ids, id)) {
-        this->input_layer_mappings[input].push_back(id);
+        graph.input_layer_mappings[input].push_back(id);
         if (scheduled.insert(id).second)
-          this->input_layers.push_back(id);
+          graph.input_layers.push_back(id);
       }
   }
 }
@@ -504,16 +521,18 @@ void Model::doTensorAndLayerMappings() {
  *  A layer may only run after every layer that produced one of its inputs has
  *  run. Unknown producers and cycles are rejected instead of being retried
  *  forever by the old queue-based schedulers. */
-std::vector<tf::layer::layer_id> Model::buildExecutionOrder() const {
+std::vector<tf::layer::layer_id> Model::buildExecutionOrder(
+    const GraphConstructionState &graph,
+    const std::vector<Tensor<std::float64_t> *> &inputs) {
   std::unordered_map<tf::layer::layer_id, std::vector<tf::layer::layer_id>>
       dependents;
   std::unordered_map<tf::layer::layer_id, std::size_t> pending_inputs;
   std::vector<tf::layer::layer_id> ready;
 
-  for (tf::layer::layer_id id : this->layers) {
+  for (tf::layer::layer_id id : graph.layers) {
     pending_inputs[id] = 0;
-    auto mapping = this->layer_input_mappings.find(id);
-    if (mapping == this->layer_input_mappings.end())
+    auto mapping = graph.layer_input_mappings.find(id);
+    if (mapping == graph.layer_input_mappings.end())
       continue;
 
     for (const Tensor<std::float64_t> *input : mapping->second) {
@@ -521,14 +540,14 @@ std::vector<tf::layer::layer_id> Model::buildExecutionOrder() const {
           tf::layer::layer::producer_of(input);
 
       if (producer == tf::layer::invalid_layer_id) {
-        if (std::ranges::contains(this->inputs, input))
+        if (std::ranges::contains(inputs, input))
           continue;
         throw std::runtime_error(
             "Model input tensor has no producer and was not supplied to the "
             "model.");
       }
 
-      if (!std::ranges::contains(this->layers, producer))
+      if (!std::ranges::contains(graph.layers, producer))
         throw std::runtime_error(
             "Model depends on an output from a layer outside the model.");
 
@@ -540,12 +559,12 @@ std::vector<tf::layer::layer_id> Model::buildExecutionOrder() const {
     }
   }
 
-  for (tf::layer::layer_id id : this->layers)
+  for (tf::layer::layer_id id : graph.layers)
     if (pending_inputs[id] == 0)
       ready.push_back(id);
 
   std::vector<tf::layer::layer_id> order;
-  order.reserve(this->layers.size());
+  order.reserve(graph.layers.size());
   while (!ready.empty()) {
     const tf::layer::layer_id id = ready.back();
     ready.pop_back();
@@ -559,7 +578,7 @@ std::vector<tf::layer::layer_id> Model::buildExecutionOrder() const {
         ready.push_back(consumer);
   }
 
-  if (order.size() != this->layers.size())
+  if (order.size() != graph.layers.size())
     throw std::runtime_error("Cycle detected in the model layer graph.");
 
   return order;

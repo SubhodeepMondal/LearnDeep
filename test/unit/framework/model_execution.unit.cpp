@@ -479,3 +479,35 @@ TEST(Kan34ModelExecution, DeclaredInputCanBeDeclaredOutput) {
   ASSERT_EQ(predicted.size(), 1u);
   expectNear(firstValue(predicted[0]), 3.0);
 }
+
+// --- Phase 7: transactional construction ---
+
+TEST(Kan34ModelExecution, FailedConstructionDoesNotInvalidateLayerOutputs) {
+  const tf::tensor x = vector(1.0, 1.0);
+  tf::tensor orphan;
+  orphan.tf_create(tf_float64, 1u, 2u);
+
+  tf::layer::layer producer = probe(1, 1);
+  const auto producer_outputs = producer({x});
+  ASSERT_EQ(producer_outputs.size(), 1u);
+
+  // The second consumer slot has no producer and is not a declared model
+  // input, so model construction must fail after discovering both layers.
+  tf::layer::layer consumer = probe(2, 1);
+  const auto consumer_outputs = consumer({producer_outputs[0], orphan});
+  ASSERT_EQ(consumer_outputs.size(), 1u);
+  expectNear(firstValue(consumer_outputs[0]), 4.0);
+
+  EXPECT_THROW(tf::model model({x}, {consumer_outputs[0]}), std::runtime_error);
+
+  // Discarding the temporary graph state must not transfer ownership of the
+  // live layers' tensors to short-lived aliases.
+  ASSERT_NE(producer_outputs[0].getPtr(), nullptr);
+  expectNear(firstValue(producer_outputs[0]), 2.0);
+  ASSERT_NE(consumer_outputs[0].getPtr(), nullptr);
+  expectNear(firstValue(consumer_outputs[0]), 4.0);
+
+  const auto refreshed = producer({x});
+  ASSERT_EQ(refreshed.size(), 1u);
+  expectNear(firstValue(refreshed[0]), 2.0);
+}
