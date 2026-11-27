@@ -47,6 +47,25 @@ class Kan34ProbeLayer : public Layer {
     return 2.0 + static_cast<double>(output_index);
   }
 
+  // Training tensors are built before the first batch is loaded, so their
+  // values are still zero when a consumer records them. Give the dual-input
+  // probe's outputs distinct shapes instead, so a test can tell which source
+  // output reached the consumer.
+  tf::tensor makeTrainingOutput(tf::tensor &source, unsigned output_index) {
+    if (output_count_ <= 1)
+      return source.scale(factor(output_index));
+
+    const unsigned columns = source_input(output_index) == 1 ? 2u : 3u;
+    tf::tensor result;
+    result.tf_create(std::vector<unsigned>{1u, columns}, tf_float64);
+    const unsigned source_elements = source.getPtr()->getNoOfElem();
+    const unsigned result_elements = result.getPtr()->getNoOfElem();
+    const unsigned copied = std::min(source_elements, result_elements);
+    for (unsigned i = 0; i < copied; ++i)
+      result.getData()[i] = source.getData()[i] * factor(output_index);
+    return result;
+  }
+
   void refreshCounters() {
     calculate_calls_tensor_.tensor_of(static_cast<double>(calculate_calls_),
                                       static_cast<double>(calculate_calls_));
@@ -105,6 +124,7 @@ public:
   const std::vector<tf::tensor *> &
   forward(std::vector<const tf::tensor *> &input, unsigned batch_size) override {
     (void)batch_size;
+    this->recordTrainingInputs(input);
     ++forward_calls_;
     refreshCounters();
     captureInputs(input, last_forward_inputs_);
@@ -119,7 +139,7 @@ public:
     for (unsigned i = 0; i < output_count_; ++i) {
       tf::tensor &source =
           this->training_input_aliases[source_input(i)];
-      training_outputs_.emplace_back(source.scale(factor(i)));
+      training_outputs_.emplace_back(makeTrainingOutput(source, i));
       training_output_ptrs_.push_back(&training_outputs_.back());
     }
     return training_output_ptrs_;
@@ -208,8 +228,8 @@ REGISTER_LAYER(
 tf::tensor vector(double a, double b) {
   tf::tensor result;
   result.tf_create(tf_float64, 1u, 2u);
-  std::float64_t data[2] = {a, b};
-  result.tensor_of(data);
+  result.getData()[0] = a;
+  result.getData()[1] = b;
   return result;
 }
 
@@ -285,19 +305,24 @@ TEST(Kan34ModelExecution, ProbeLayersExposeDistinctOutputsAndCallCounts) {
 
 // --- Phase 2: source-output indexing (enabled after the indexing fix) ---
 
-TEST(Kan34ModelExecution, DISABLED_PredictionUsesCorrectSourceOutput) {
+TEST(Kan34ModelExecution, PredictionUsesCorrectSourceOutput) {
   const tf::tensor x0 = vector(1.0, 1.0);
   const tf::tensor x1 = vector(10.0, 10.0);
+  ASSERT_NE(x0.getData(), nullptr);
+  ASSERT_NE(x1.getData(), nullptr);
 
   tf::layer::layer producer = probe(2, 2);
   const auto producer_outputs = producer({x0, x1});
   ASSERT_EQ(producer_outputs.size(), 2u);
+  ASSERT_NE(x0.getData(), nullptr);
 
   tf::layer::layer consumer = probe(1, 1);
   const auto consumer_outputs = consumer({producer_outputs[1]});
   ASSERT_EQ(consumer_outputs.size(), 1u);
+  ASSERT_NE(x0.getData(), nullptr);
 
   tf::model model({x0, x1}, {consumer_outputs[0]});
+  ASSERT_NE(x0.getData(), nullptr);
   const auto predicted = model.predict({x0, x1});
   ASSERT_EQ(predicted.size(), 1u);
 
@@ -306,7 +331,7 @@ TEST(Kan34ModelExecution, DISABLED_PredictionUsesCorrectSourceOutput) {
   expectNear(firstValue(predicted[0]), 60.0);
 }
 
-TEST(Kan34ModelExecution, DISABLED_TrainingUsesCorrectSourceOutput) {
+TEST(Kan34ModelExecution, TrainingUsesCorrectSourceOutput) {
   const tf::tensor x0 = vector(1.0, 1.0);
   const tf::tensor x1 = vector(10.0, 10.0);
 
@@ -325,8 +350,11 @@ TEST(Kan34ModelExecution, DISABLED_TrainingUsesCorrectSourceOutput) {
 
   const auto captured = consumer.getParameter("fwd_input_0");
   ASSERT_EQ(captured.size(), 1u);
-  // Training must receive producer output #1 (3*x1), not output #0 (2*x0).
-  expectNear(firstValue(captured.front()), 30.0);
+  tf::tensor captured_input = captured.front();
+  // Training must receive producer output #1, whose shape is [1, 2]. The old
+  // indexing bug routed output #0 ([1, 3]) into the consumer instead.
+  ASSERT_EQ(captured_input.getNoOfDimensions(), 2u);
+  EXPECT_EQ(captured_input.getDimensions()[1], 2u);
 }
 
 // --- Phase 3: bookkeeping, readiness and diagnostics ---

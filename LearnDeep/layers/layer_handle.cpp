@@ -92,8 +92,13 @@ std::vector<tf::tensor> tf::layer::layer::get_input_tensors() const {
   if (!this->layer_ptr)
     return {};
 
+  const std::vector<const tf::tensor *> input_aliases =
+      this->layer_ptr->getInputTensorAliases();
   std::vector<tf::tensor> aliases;
-  for (const tf::tensor *alias : this->layer_ptr->getInputTensorAliases())
+  // Reserve up front: tf::tensor's move constructor transfers ownership, so
+  // vector reallocation would turn these non-owning aliases into owners.
+  aliases.reserve(input_aliases.size());
+  for (const tf::tensor *alias : input_aliases)
     if (alias)
       aliases.push_back(*alias);
   return aliases;

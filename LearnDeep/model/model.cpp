@@ -453,13 +453,15 @@ std::vector<const Tensor<std::float64_t> *> Model::getLayersNBackTrackInputs(
  * identifies the layers associated with inputs (i.e input layers) then creates
  * a layer-tensor map */
 void Model::doTensorAndLayerMappings() {
+  std::unordered_set<tf::layer::layer_id> scheduled;
   for (const Tensor<std::float64_t> *input : this->inputs) {
     const std::vector<tf::layer::layer_id> input_layer_ids =
         tf::layer::layer::consumers_of(input);
     for (tf::layer::layer_id id : this->layers)
       if (std::ranges::contains(input_layer_ids, id)) {
         this->input_layer_mappings[input].push_back(id);
-        this->input_layers.push_back(id);
+        if (scheduled.insert(id).second)
+          this->input_layers.push_back(id);
       }
   }
 }
@@ -504,10 +506,11 @@ void Model::doDummyAndTrainingTensorMapping() {
       const std::vector<tf::tensor> &this_layer_training_outputs =
           this->layer_training_output_mappings[id];
 
-      /* now find where each output is going*/
+      /* now find where each output is going. `output_index` is the ordinal of
+       * the source output, independent of where it lands in a consumer. */
       for (tf::layer::layer_id downstream_id : this->layers) {
         flag = false;
-        unsigned i = 0;
+        std::size_t output_index = 0;
         for (const tf::tensor &this_layer_output :
              this->layer_output_mappings[id]) {
           auto it = std::find(this->layer_input_mappings[downstream_id].begin(),
@@ -518,16 +521,18 @@ void Model::doDummyAndTrainingTensorMapping() {
             unsigned index = std::distance(
                 this->layer_input_mappings[downstream_id].begin(), it);
             this->layer_training_input_mappings[downstream_id][index] =
-                &this_layer_training_outputs[i++];
+                const_cast<tf::tensor *>(
+                    &this_layer_training_outputs[output_index]);
             flag = true;
           }
+          ++output_index;
         }
         if (flag)
           training_layers.push(downstream_id);
       }
       /* map training layer output with loss training input */
       for (tf::loss::loss_id loss_id : this->losses) {
-        unsigned i = 0;
+        std::size_t output_index = 0;
         for (const tf::tensor &this_layer_output :
              this->layer_output_mappings[id]) {
           auto it = std::find(this->loss_input_mappings[loss_id].begin(),
@@ -538,8 +543,10 @@ void Model::doDummyAndTrainingTensorMapping() {
             unsigned index =
                 std::distance(this->loss_input_mappings[loss_id].begin(), it);
             this->loss_training_input_mappings[loss_id][index] =
-                const_cast<tf::tensor *>(&this_layer_training_outputs[i++]);
+                const_cast<tf::tensor *>(
+                    &this_layer_training_outputs[output_index]);
           }
+          ++output_index;
         }
       }
     } else {
@@ -589,10 +596,11 @@ void Model::doLayerCalculation() {
       std::vector<tf::tensor> this_layer_prediction_outputs =
           this_layer.calculate(this->layer_prediction_input_mappings[id]);
 
-      /* now find where each output is going*/
+      /* now find where each output is going. `output_index` is the ordinal of
+       * the source output, independent of the destination slot. */
       for (tf::layer::layer_id downstream_id : this->layers) {
         flag = false;
-        unsigned i = 0;
+        std::size_t output_index = 0;
         for (const tf::tensor &this_layer_output :
              this->layer_output_mappings[id]) {
           auto it = std::find(this->layer_input_mappings[downstream_id].begin(),
@@ -603,14 +611,16 @@ void Model::doLayerCalculation() {
             unsigned index = std::distance(
                 this->layer_input_mappings[downstream_id].begin(), it);
             this->layer_prediction_input_mappings[downstream_id][index] =
-                this_layer_prediction_outputs[index].copy();
+                this_layer_prediction_outputs[output_index].copy();
             flag = true;
           }
+          ++output_index;
         }
         if (flag)
           prediction_layers.push(downstream_id);
       }
       // place outputs to its place
+      std::size_t output_index = 0;
       for (const tf::tensor &layer_output : layer_output_mappings[id]) {
         auto it = std::find(this->outputs.begin(), this->outputs.end(),
                             layer_output.getPtr());
@@ -618,8 +628,9 @@ void Model::doLayerCalculation() {
         if (it != this->outputs.end()) {
           unsigned index = std::distance(this->outputs.begin(), it);
           this->prediction_outputs[index] =
-              this_layer_prediction_outputs[index].copy();
+              this_layer_prediction_outputs[output_index].copy();
         }
+        ++output_index;
       }
 
     } else {
