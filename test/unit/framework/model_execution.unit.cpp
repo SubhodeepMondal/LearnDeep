@@ -417,3 +417,65 @@ TEST(Kan34ModelExecution, UnresolvedDependencyThrows) {
   producer = tf::layer::layer{};
   EXPECT_THROW(tf::model model({x}, {consumer_outputs[0]}), std::runtime_error);
 }
+
+// --- Phase 6: alias ownership, duplicate slots and construction validation ---
+
+TEST(Kan34ModelExecution, ModelOutputAliasesDoNotStealLayerTensorOwnership) {
+  const tf::tensor x = vector(1.0, 1.0);
+  tf::layer::layer producer = probe(1, 8);
+  const auto outputs = producer({x});
+  ASSERT_EQ(outputs.size(), 8u);
+
+  {
+    // Eight outputs force several growth steps in Model's output mapping.
+    // Without an upfront reserve, vector moves would make those aliases own
+    // the layer's tensors and delete them when the model is destroyed.
+    tf::model model({x}, {outputs.back()});
+    const auto predicted = model.predict({x});
+    ASSERT_EQ(predicted.size(), 1u);
+  }
+
+  ASSERT_NE(outputs.front().getPtr(), nullptr);
+  expectNear(firstValue(outputs.front()), 2.0);
+  const auto refreshed = producer({x});
+  ASSERT_EQ(refreshed.size(), 8u);
+  expectNear(firstValue(refreshed.front()), 2.0);
+}
+
+TEST(Kan34ModelExecution, DuplicateSlotsFromOneOutputAreAllRouted) {
+  const tf::tensor x = vector(1.0, 1.0);
+
+  tf::layer::layer producer = probe(1, 1);
+  const auto producer_outputs = producer({x});
+  ASSERT_EQ(producer_outputs.size(), 1u);
+
+  // Both consumer slots consume the same producer output, and the same model
+  // output is declared twice. Every matching slot must be filled.
+  tf::layer::layer consumer = probe(2, 1);
+  const auto consumer_outputs =
+      consumer({producer_outputs[0], producer_outputs[0]});
+  ASSERT_EQ(consumer_outputs.size(), 1u);
+
+  tf::model model({x}, {consumer_outputs[0], consumer_outputs[0]});
+  const auto predicted = model.predict({x});
+  ASSERT_EQ(predicted.size(), 2u);
+  expectNear(firstValue(predicted[0]), 4.0);
+  expectNear(firstValue(predicted[1]), 4.0);
+}
+
+TEST(Kan34ModelExecution, UnrelatedDeclaredOutputThrows) {
+  const tf::tensor x = vector(1.0, 1.0);
+  tf::tensor unrelated;
+  unrelated.tf_create(tf_float64, 1u, 2u);
+
+  EXPECT_THROW(tf::model model({x}, {unrelated}), std::runtime_error);
+}
+
+TEST(Kan34ModelExecution, DeclaredInputCanBeDeclaredOutput) {
+  const tf::tensor x = vector(3.0, 4.0);
+
+  tf::model model({x}, {x});
+  const auto predicted = model.predict({x});
+  ASSERT_EQ(predicted.size(), 1u);
+  expectNear(firstValue(predicted[0]), 3.0);
+}

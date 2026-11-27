@@ -16,6 +16,23 @@
 #include <unordered_map>
 #include <vector>
 
+namespace {
+
+// Route one source output to every matching destination slot. std::find alone
+// would fill only the first slot when the same tensor is used more than once.
+template <typename PointerVector, typename Assign>
+void for_each_matching_slot(const PointerVector &slots,
+                            const Tensor<std::float64_t> *tensor,
+                            Assign assign) {
+  auto it = std::find(slots.begin(), slots.end(), tensor);
+  while (it != slots.end()) {
+    assign(static_cast<std::size_t>(std::distance(slots.begin(), it)));
+    it = std::find(std::next(it), slots.end(), tensor);
+  }
+}
+
+} // namespace
+
 Model::Model(const std::vector<tf::tensor> &inputs,
              const std::vector<tf::tensor> &outputs)
     : auto_grad_created(false), pred_mapping(false) {
@@ -34,10 +51,10 @@ Model::Model(const std::vector<tf::tensor> &inputs,
       getLayersNBackTrackInputs(output_queue);
 
   for (const Tensor<std::float64_t> *validation_input : validation_inputs)
-    if (!std::ranges::contains(this->inputs, validation_input)) {
-      LOG(ERROR) << "Fatal! there is a input mismatch.\n";
-      break;
-    }
+    if (!std::ranges::contains(this->inputs, validation_input))
+      throw std::runtime_error(
+          "Model output depends on a tensor that is neither a model input nor "
+          "a layer output.");
   this->doTensorAndLayerMappings();
   this->execution_order = this->buildExecutionOrder();
 }
@@ -387,17 +404,26 @@ void Model::initializeInputsForPrediction(
     this->layer_prediction_input_mappings[id].resize(
         layer_input_mappings[id].size());
 
-    unsigned i = 0;
-    for (Tensor<std::float64_t> *input : this->inputs) {
-      auto it = std::find(layer_input_mappings[id].begin(),
-                          layer_input_mappings[id].end(), input);
-      if (it != layer_input_mappings[id].end()) {
-        unsigned index = std::distance(layer_input_mappings[id].begin(), it);
-
-        this->layer_prediction_input_mappings[id][index] = prediction_inputs[i];
-      }
-      i++;
+    for (std::size_t input_index = 0; input_index < this->inputs.size();
+         ++input_index) {
+      for_each_matching_slot(
+          layer_input_mappings[id], this->inputs[input_index],
+          [&](std::size_t slot) {
+            this->layer_prediction_input_mappings[id][slot] =
+                prediction_inputs[input_index];
+          });
     }
+  }
+
+  // A declared output may also be a declared input. Since such an output has
+  // no producing layer, pass it straight through to the prediction results.
+  for (std::size_t output_index = 0; output_index < this->outputs.size();
+       ++output_index) {
+    for_each_matching_slot(
+        this->inputs, this->outputs[output_index], [&](std::size_t input_index) {
+          this->prediction_outputs[output_index] =
+              prediction_inputs[input_index].copy();
+        });
   }
 }
 
@@ -442,8 +468,14 @@ std::vector<const Tensor<std::float64_t> *> Model::getLayersNBackTrackInputs(
     for (const tf::tensor &input : layer.get_input_tensors())
       layer_input_mappings[id].push_back(input.getPtr());
 
-    for (const tf::tensor &output : layer.get_output_tensors())
-      layer_output_mappings[id].push_back(output);
+    // tf::tensor's move constructor transfers ownership of the underlying
+    // Tensor. Reserve before growing so these non-owning aliases keep their
+    // ownership bookkeeping and never steal the layer's tensors.
+    const std::vector<tf::tensor> outputs = layer.get_output_tensors();
+    auto &output_mapping = this->layer_output_mappings[id];
+    output_mapping.reserve(outputs.size());
+    for (const tf::tensor &output : outputs)
+      output_mapping.push_back(output);
 
     for (const Tensor<std::float64_t> *input : layer_input_mappings[id])
       output_queue.push(input);
@@ -500,6 +532,9 @@ std::vector<tf::layer::layer_id> Model::buildExecutionOrder() const {
         throw std::runtime_error(
             "Model depends on an output from a layer outside the model.");
 
+      // Dependencies are counted per input slot. A producer that fills two
+      // slots of the same consumer therefore contributes two edges, and the
+      // routing phase must fill both slots before the consumer can execute.
       dependents[producer].push_back(id);
       ++pending_inputs[id];
     }
@@ -569,17 +604,13 @@ void Model::doDummyAndTrainingTensorMapping() {
       std::size_t output_index = 0;
       for (const tf::tensor &this_layer_output :
            this->layer_output_mappings[id]) {
-        auto it = std::find(this->layer_input_mappings[downstream_id].begin(),
-                            this->layer_input_mappings[downstream_id].end(),
-                            this_layer_output.getPtr());
-
-        if (it != this->layer_input_mappings[downstream_id].end()) {
-          unsigned index = std::distance(
-              this->layer_input_mappings[downstream_id].begin(), it);
-          this->layer_training_input_mappings[downstream_id][index] =
-              const_cast<tf::tensor *>(
-                  &this_layer_training_outputs[output_index]);
-        }
+        for_each_matching_slot(
+            this->layer_input_mappings[downstream_id],
+            this_layer_output.getPtr(), [&](std::size_t slot) {
+              this->layer_training_input_mappings[downstream_id][slot] =
+                  const_cast<tf::tensor *>(
+                      &this_layer_training_outputs[output_index]);
+            });
         ++output_index;
       }
     }
@@ -588,17 +619,13 @@ void Model::doDummyAndTrainingTensorMapping() {
       std::size_t output_index = 0;
       for (const tf::tensor &this_layer_output :
            this->layer_output_mappings[id]) {
-        auto it = std::find(this->loss_input_mappings[loss_id].begin(),
-                            this->loss_input_mappings[loss_id].end(),
-                            this_layer_output.getPtr());
-
-        if (it != this->loss_input_mappings[loss_id].end()) {
-          unsigned index =
-              std::distance(this->loss_input_mappings[loss_id].begin(), it);
-          this->loss_training_input_mappings[loss_id][index] =
-              const_cast<tf::tensor *>(
-                  &this_layer_training_outputs[output_index]);
-        }
+        for_each_matching_slot(
+            this->loss_input_mappings[loss_id], this_layer_output.getPtr(),
+            [&](std::size_t slot) {
+              this->loss_training_input_mappings[loss_id][slot] =
+                  const_cast<tf::tensor *>(
+                      &this_layer_training_outputs[output_index]);
+            });
         ++output_index;
       }
     }
@@ -649,30 +676,23 @@ void Model::doLayerCalculation() {
       std::size_t output_index = 0;
       for (const tf::tensor &this_layer_output :
            this->layer_output_mappings[id]) {
-        auto it = std::find(this->layer_input_mappings[downstream_id].begin(),
-                            this->layer_input_mappings[downstream_id].end(),
-                            this_layer_output.getPtr());
-
-        if (it != this->layer_input_mappings[downstream_id].end()) {
-          unsigned index = std::distance(
-              this->layer_input_mappings[downstream_id].begin(), it);
-          this->layer_prediction_input_mappings[downstream_id][index] =
-              this_layer_prediction_outputs[output_index].copy();
-        }
+        for_each_matching_slot(
+            this->layer_input_mappings[downstream_id],
+            this_layer_output.getPtr(), [&](std::size_t slot) {
+              this->layer_prediction_input_mappings[downstream_id][slot] =
+                  this_layer_prediction_outputs[output_index].copy();
+            });
         ++output_index;
       }
     }
     // place outputs to its place
     std::size_t output_index = 0;
     for (const tf::tensor &layer_output : layer_output_mappings[id]) {
-      auto it = std::find(this->outputs.begin(), this->outputs.end(),
-                          layer_output.getPtr());
-
-      if (it != this->outputs.end()) {
-        unsigned index = std::distance(this->outputs.begin(), it);
-        this->prediction_outputs[index] =
-            this_layer_prediction_outputs[output_index].copy();
-      }
+      for_each_matching_slot(
+          this->outputs, layer_output.getPtr(), [&](std::size_t slot) {
+            this->prediction_outputs[slot] =
+                this_layer_prediction_outputs[output_index].copy();
+          });
       ++output_index;
     }
   }
