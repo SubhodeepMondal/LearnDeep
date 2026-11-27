@@ -27,6 +27,7 @@ add_executable(unit_test
     unit/framework/dense_layer.unit.cpp
     unit/framework/layer_registry.unit.cpp
     unit/framework/loss_registry.unit.cpp
+    unit/framework/model_execution.unit.cpp
     unit/framework/optimizer_registry.unit.cpp
     unit/framework/softmax_layer.test.cpp
 )
