@@ -59,6 +59,13 @@ public:
   bool registerLayer(const std::string &name, Factory factory,
                      ParameterSetter setter = {});
 
+  // Factory-only operation: returns an instance that is not yet tracked as a
+  // live layer instance. Use LayerManager for the registered creation path.
+  std::unique_ptr<Layer> createInstance(const std::string &name,
+                                        const LayerConfig &config = {}) const;
+
+  // Compatibility wrapper that delegates to LayerManager so existing callers
+  // still receive a graph-registered layer.
   LayerHandle create(const std::string &name,
                      const LayerConfig &config = {}) const;
 

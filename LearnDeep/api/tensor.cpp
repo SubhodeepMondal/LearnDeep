@@ -6,6 +6,7 @@
 
 // Library Headers
 #include <callback/callback.hpp>
+#include <api/layer_api.h>
 #include <layers/layer_graph.hpp>
 #include <layers/layer_registry.hpp>
 #include <layers/layers.hpp>
@@ -25,24 +26,6 @@ std::unordered_map<Tensor<std::float64_t> *, tf::tensor *> tf::tensor_nodes;
 std::unordered_set<Tensor<std::float64_t> *> tf::tensor_to_be_spared;
 
 namespace {
-
-std::vector<tf::tensor>
-copy_output_tensors(const std::vector<tf::tensor *> &tensors) {
-  std::vector<tf::tensor> copies;
-  copies.reserve(tensors.size());
-
-  for (const tf::tensor *tensor : tensors)
-    if (tensor)
-      copies.push_back(*tensor);
-
-  return copies;
-}
-
-LayerConfig config_with(const std::string &key, unsigned value) {
-  LayerConfig config;
-  config.set(key, value);
-  return config;
-}
 
 std::size_t tensor_release_count = 0;
 
@@ -588,183 +571,8 @@ void tf::graph_context::compute_gradient() {
 // -------------- Graph Context ------------
 
 // --- Layers ---
-
-// --- Generic layer handle ---
-
-tf::layer::layer::layer() = default;
-
-tf::layer::layer::layer(std::string_view type_name)
-    : layer(type_name, LayerConfig{}) {}
-
-tf::layer::layer::layer(std::string_view type_name, const LayerConfig &config) {
-  this->layer_ptr =
-      LayerRegistry::instance().create(std::string(type_name), config);
-}
-
-tf::layer::layer::~layer() = default;
-
-std::vector<const tf::tensor *> tf::layer::layer::input_tensor_aliases() const {
-  if (!this->layer_ptr)
-    return {};
-  return this->layer_ptr->getInputTensorAliases();
-}
-
-std::vector<tf::tensor>
-tf::layer::layer::operator()(const std::vector<tf::tensor> &inputs) {
-  if (!this->layer_ptr)
-    return {};
-
-  this->layer_ptr->recordInputTensors(inputs);
-  return copy_output_tensors((*this->layer_ptr)(inputs));
-}
-
-std::vector<tf::tensor>
-tf::layer::layer::forward(const std::vector<tf::tensor> &inputs,
-                          unsigned batch_size) {
-  if (!this->layer_ptr)
-    return {};
-
-  this->layer_ptr->recordInputTensors(inputs);
-  std::vector<const tf::tensor *> raw_inputs;
-  raw_inputs.reserve(inputs.size());
-  for (const tf::tensor &input : inputs)
-    raw_inputs.push_back(&input);
-
-  return copy_output_tensors(this->layer_ptr->forward(raw_inputs, batch_size));
-}
-
-std::vector<tf::tensor>
-tf::layer::layer::calculate(std::vector<tf::tensor> inputs) {
-  if (!this->layer_ptr)
-    return {};
-
-  this->layer_ptr->recordInputTensors(inputs);
-  return this->layer_ptr->calculate(inputs);
-}
-
-void tf::layer::layer::initialize_parameters() {
-  if (this->layer_ptr)
-    this->layer_ptr->initializeParameters();
-}
-
-std::unordered_set<std::string> tf::layer::layer::parameterNames() const {
-  if (!this->layer_ptr)
-    return {};
-
-  return this->layer_ptr->parameterNames();
-}
-
-std::vector<tf::tensor>
-tf::layer::layer::getParameter(std::string_view name) const {
-  if (!this->layer_ptr)
-    return {};
-
-  return copy_output_tensors(this->layer_ptr->getLayerParameter(name));
-}
-
-void tf::layer::layer::setParameter(std::string_view name,
-                                    const LayerParameterValue &value) {
-  if (!this->layer_ptr)
-    return;
-
-  // Dispatch on the layer's canonical type, not the registry key used to
-  // construct the handle: aliases must still find their registered setter.
-  LayerRegistry::instance().setParameter(std::string(this->layer_ptr->type()),
-                                         this->layer_ptr, std::string(name),
-                                         value);
-}
-
-std::string_view tf::layer::layer::type() const {
-  return this->layer_ptr ? this->layer_ptr->type() : std::string_view{};
-}
-
-tf::layer::layer::operator bool() const {
-  return static_cast<bool>(this->layer_ptr);
-}
-
-bool tf::layer::layer::valid() const { return static_cast<bool>(*this); }
-
-tf::layer::layer_id tf::layer::layer::id() const {
-  return this->layer_ptr ? this->layer_ptr->id() : tf::layer::invalid_layer_id;
-}
-
-// --- End of Generic layer handle ---
-
-// --- Dense ---
-
-tf::layer::dense::dense(unsigned unit)
-    : layer(tf::layer::type::dense, config_with("units", unit)) {}
-
-tf::layer::dense::~dense() = default;
-
-std::vector<const tf::tensor *> tf::layer::dense::get_input_tensors() {
-  return this->input_tensor_aliases();
-}
-
-std::vector<tf::tensor> tf::layer::dense::get_output_tensors() {
-  return this->getParameter(tf::layer::parameter::output);
-}
-
-std::vector<tf::tensor> tf::layer::dense::get_output_training_tensor() {
-  return this->getParameter(tf::layer::parameter::training_output);
-}
-
-std::vector<tf::tensor> tf::layer::dense::get_output_training_weight() {
-  return this->getParameter(tf::layer::parameter::training_weight);
-}
-
-void tf::layer::dense::set_weight(const tf::tensor &weight_tensor) {
-  if (!weight_tensor.getPtr()) {
-    LOG(ERROR) << "Fatal! given tensor is not initialized with data\n";
-    return;
-  }
-
-  this->setParameter(tf::layer::parameter::weight, weight_tensor);
-}
-
-void tf::layer::dense::set_bias(const tf::tensor &bias_tensor) {
-  if (!bias_tensor.getPtr()) {
-    LOG(ERROR) << "Fatal! given tensor is not initialized with data\n";
-    return;
-  }
-
-  this->setParameter(tf::layer::parameter::bias, bias_tensor);
-}
-
-// --- End of Dense ---
-
-// --- Relu ---
-
-tf::layer::relu::relu() : layer(tf::layer::type::relu) {}
-
-tf::layer::relu::~relu() = default;
-
-std::vector<const tf::tensor *> tf::layer::relu::get_input_tensors() {
-  return this->input_tensor_aliases();
-}
-
-std::vector<tf::tensor> tf::layer::relu::get_output_tensors() {
-  return this->getParameter(tf::layer::parameter::output);
-}
-
-// --- End of Relu ---
-
-// --- Softmax ---
-
-tf::layer::softmax::softmax(unsigned axis)
-    : layer(tf::layer::type::softmax, config_with("axis", axis)) {}
-
-tf::layer::softmax::~softmax() = default;
-
-std::vector<const tf::tensor *> tf::layer::softmax::get_input_tensors() {
-  return this->input_tensor_aliases();
-}
-
-std::vector<tf::tensor> tf::layer::softmax::get_output_tensors() {
-  return this->getParameter(tf::layer::parameter::output);
-}
-
-// --- End of Softmax ---
+// Public layer API implementations live in api/layer_api.cpp, built as the
+// separate layer_api target that Model and Callback can link directly.
 // --- End of Layers ---
 
 // --- Model ---
@@ -810,7 +618,7 @@ tf::loss::loss tf::model::get_model_loss(tf::tensor output) const {
   return this->model_ptr->getModelLoss(output.getPtr());
 }
 
-std::vector<tf::layer::layer_id> tf::model::get_layers() {
+std::vector<std::uint64_t> tf::model::get_layers() {
   return model_ptr->getLayers();
 }
 
@@ -1185,7 +993,7 @@ std::unordered_set<std::string> tf::loss::loss::parameterNames() const {
 
 std::vector<tf::tensor>
 tf::loss::loss::getParameter(std::string_view name) const {
-  return copy_output_tensors(
+  return ld::detail::copy_output_tensors(
       LossRegistry::instance().lossParameters(this->loss_ptr_, name));
 }
 

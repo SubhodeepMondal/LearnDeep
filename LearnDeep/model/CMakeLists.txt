@@ -2,5 +2,5 @@
 
 add_library(model SHARED model.hpp model.cpp)
 target_include_directories(model PUBLIC ${CMAKE_SOURCE_DIR})
-target_link_libraries(model PUBLIC core layer loss optimizer absl::log
+target_link_libraries(model PUBLIC core layer layer_api loss optimizer absl::log
                       absl::log_initialize absl::flags_parse)

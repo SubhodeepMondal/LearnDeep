@@ -8,5 +8,5 @@ set(ATTACHED_FILES
 
 add_library(callback SHARED ${ATTACHED_FILES})
 target_include_directories(callback PUBLIC ${CMAKE_SOURCE_DIR})
-target_link_libraries(callback PUBLIC core layer loss absl::log absl::log_initialize
+target_link_libraries(callback PUBLIC core layer layer_api loss absl::log absl::log_initialize
                       absl::flags_parse)

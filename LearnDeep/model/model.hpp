@@ -3,6 +3,7 @@
 
 // C++ Headers
 #include <memory>
+#include <queue>
 #include <stdfloat>
 #include <string_view>
 #include <unordered_map>
@@ -15,6 +16,24 @@ class Loss;
 
 class Model {
 private:
+  // Construction builds the layer graph in a temporary state and commits it
+  // only after validation succeeds. Keeping these fields together prevents a
+  // failed model from leaving partially populated mapping tables behind.
+  struct GraphConstructionState {
+    std::unordered_map<tf::layer::layer_id,
+                       std::vector<const Tensor<std::float64_t> *>>
+        layer_input_mappings;
+    std::unordered_map<tf::layer::layer_id, std::vector<tf::tensor>>
+        layer_output_mappings;
+    std::unordered_map<const Tensor<std::float64_t> *,
+                       std::vector<tf::layer::layer_id>>
+        input_layer_mappings;
+    std::unordered_map<tf::layer::layer_id, tf::layer::layer> owned_layers;
+    std::vector<tf::layer::layer_id> layers;
+    std::vector<tf::layer::layer_id> input_layers;
+    std::vector<tf::layer::layer_id> execution_order;
+  };
+
   unsigned batch_size;
   bool shuffle_input;
   bool auto_grad_created;
@@ -31,11 +50,15 @@ private:
   std::unordered_map<tf::layer::layer_id,
                      std::vector<const Tensor<std::float64_t> *>>
       layer_input_mappings;
-  std::unordered_map<tf::layer::layer_id, std::vector<const tf::tensor *>>
+  std::unordered_map<tf::layer::layer_id, std::vector<tf::tensor>>
       layer_output_mappings;
 
   std::unordered_map<tf::layer::layer_id, std::vector<const tf::tensor *>>
       layer_training_input_mappings;
+  // Stable aliases returned by tf::layer::layer::forward(); downstream mappings
+  // point into these vectors instead of into the layer's internal ABI.
+  std::unordered_map<tf::layer::layer_id, std::vector<tf::tensor>>
+      layer_training_output_mappings;
   std::unordered_map<tf::layer::layer_id, std::vector<tf::tensor>>
       layer_prediction_input_mappings;
 
@@ -43,11 +66,23 @@ private:
                      std::vector<tf::layer::layer_id>>
       input_layer_mappings;
 
-  std::unordered_map<tf::layer::layer_id, std::shared_ptr<Layer>> owned_layers;
-  std::vector<tf::layer::layer_id> layers;
-  std::vector<tf::layer::layer_id> input_layers;
+  // The model owns public layer handles; it never reaches through to the
+  // internal Layer ABI.
+  std::unordered_map<tf::layer::layer_id, tf::layer::layer> owned_layers;
+  std::vector<tf::layer::layer_id> layers; // all the layers for the model
+  std::vector<tf::layer::layer_id>
+      input_layers; // layers that are receiving inputs
+  // Validated topological order, computed once from the layer graph. Execution
+  // follows this order instead of retrying layers whose inputs are not ready.
+  std::vector<tf::layer::layer_id> execution_order;
 
-  std::shared_ptr<Layer> lockLayer(tf::layer::layer_id id) const;
+  tf::layer::layer lockLayer(tf::layer::layer_id id) const;
+
+  static std::vector<tf::layer::layer_id>
+  buildExecutionOrder(const GraphConstructionState &graph,
+                      const std::vector<Tensor<std::float64_t> *> &inputs);
+
+  void commitGraphConstructionState(GraphConstructionState &graph);
 
   tf::optimizer::optimizer optimizer;
 
@@ -67,7 +102,8 @@ private:
   //   tf::metric metric;
 
   std::vector<const Tensor<std::float64_t> *> getLayersNBackTrackInputs(
-      std::queue<const Tensor<std::float64_t> *> &output_queue);
+      std::queue<const Tensor<std::float64_t> *> &output_queue,
+      GraphConstructionState &graph);
 
   void initializeTrainingMappings();
 
@@ -105,12 +141,12 @@ private:
       const std::vector<std::shared_ptr<Callback>> &callbacks,
       unsigned const epoch_no);
 
-  void runCallbackOnBatchEnd(
-      const std::vector<std::shared_ptr<Callback>> &callbacks,
-      unsigned const epoch_no);
+  void
+  runCallbackOnBatchEnd(const std::vector<std::shared_ptr<Callback>> &callbacks,
+                        unsigned const epoch_no);
 
-  bool checkEarlyStopping(
-      const std::vector<std::shared_ptr<Callback>> &callbacks);
+  bool
+  checkEarlyStopping(const std::vector<std::shared_ptr<Callback>> &callbacks);
 
   void setTrainingTensorsForInputLayer();
 
@@ -122,7 +158,7 @@ private:
 
   void doLayerCalculation();
 
-  void doTensorAndLayerMappings();
+  void doTensorAndLayerMappings(GraphConstructionState &graph);
 
   void
   initilizeInputsForTraining(const std::vector<tf::tensor> &training_inputs);

@@ -1,6 +1,6 @@
 // Library Headers
 #include "layer_registry.hpp"
-#include <layers/layer_graph.hpp>
+#include <layers/layer_manager.hpp>
 #include <layers/layers.hpp>
 
 // Third party
@@ -30,8 +30,9 @@ bool LayerRegistry::registerLayer(const std::string &name, Factory factory,
   return true;
 }
 
-LayerRegistry::LayerHandle
-LayerRegistry::create(const std::string &name, const LayerConfig &config) const {
+std::unique_ptr<Layer>
+LayerRegistry::createInstance(const std::string &name,
+                              const LayerConfig &config) const {
   auto factory = factories_.find(name);
   if (factory == factories_.end()) {
     LOG(ERROR) << "Unknown layer type '" << name << "'.\n";
@@ -39,20 +40,15 @@ LayerRegistry::create(const std::string &name, const LayerConfig &config) const 
   }
 
   std::unique_ptr<Layer> created = factory->second(config);
-  if (!created) {
+  if (!created)
     LOG(ERROR) << "Failed to create layer type '" << name << "'.\n";
-    return nullptr;
-  }
 
-  LayerHandle layer(created.release(), [](Layer *owned_layer) {
-    if (!owned_layer)
-      return;
+  return created;
+}
 
-    global_layer_graph.removeNode(owned_layer->id());
-    delete owned_layer;
-  });
-  global_layer_graph.addNode(layer);
-  return layer;
+LayerRegistry::LayerHandle
+LayerRegistry::create(const std::string &name, const LayerConfig &config) const {
+  return LayerManager::instance().create(name, config);
 }
 
 bool LayerRegistry::setParameter(const std::string &name,

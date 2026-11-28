@@ -72,6 +72,19 @@ Layers receive the shared-owning \texttt{tf::optimizer::optimizer} handle, never
 an internal optimizer object. The handle is valid for the whole training run
 because the compiled model shares ownership of the same optimizer instance.
 
+Layer creation is split across three components. \texttt{LayerRegistry} knows
+which layer types are available and how to construct an unregistered instance
+of each type. \texttt{LayerGraphManager} tracks live instances and their tensor
+producer and consumer relationships. \texttt{LayerManager} orchestrates the
+creation workflow: it asks the registry for an instance, registers that
+instance with the graph manager, and returns the shared handle used by the
+public API. This keeps type registration, instance tracking, and object
+construction independent.
+
+Concrete layer sources follow a \texttt{*\_layer.hpp} and
+\texttt{*\_layer.cpp} naming convention, for example
+\texttt{dense\_layer.hpp} and \texttt{relu\_layer.hpp}.
+
 Now lets take a look at each layer and how they're constructed
 
 \section{Layer: Dense}
@@ -130,7 +143,7 @@ No Lets take a look at how to properly make the abstruction
     caption={Dense constuctor and basic structure},
     label={lst:Dense constructor and basic structure}
 ]
-// file dense.hpp
+// file dense_layer.hpp
 #include <layer.hpp>
 
 Class Dense : protected Layer{
@@ -161,8 +174,8 @@ methods are set. Which is not shown here.
     label={lst:Dense () overloaad}
 ]
 
-// file dense.cpp
-#include "dense.hpp"
+// file dense_layer.cpp
+#include "dense_layer.hpp"
 
 const std::vector<tf::tensor *> &
 Dense::operator()(std::vector<const tf::tensor> input_tensors){
@@ -212,8 +225,8 @@ cardinality.
     label={lst:Dense calculate}
 ]
 
-// file dense.cpp
-#include "dense.hpp"
+// file dense_layer.cpp
+#include "dense_layer.hpp"
 
 const std::vector<tf::tensor *> &
 Dense::forward(std:;vector<const tf::tensor *> &inpyt, unsigned batch_size){

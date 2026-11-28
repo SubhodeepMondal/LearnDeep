@@ -2,8 +2,9 @@
 #include <LearnDeep/api/tensor.h>
 #include <callback/callback.hpp>
 #include <gtest/gtest.h>
-#include <layers/dense.hpp>
+#include <layers/dense_layer.hpp>
 #include <layers/layer_graph.hpp>
+#include <layers/layer_manager.hpp>
 #include <layers/layer_registry.hpp>
 
 #include <algorithm>
@@ -17,6 +18,35 @@ TEST_F(FrameworkTest, LayerRegistryContainsBuiltInLayers) {
   EXPECT_TRUE(names.count("dense"));
   EXPECT_TRUE(names.count("relu"));
   EXPECT_TRUE(names.count("softmax"));
+}
+
+TEST_F(FrameworkTest, RegistryFactoryDoesNotRegisterButManagerDoes) {
+  LayerConfig config;
+  config.set("units", 3u);
+
+  std::unique_ptr<Layer> created =
+      LayerRegistry::instance().createInstance("dense", config);
+  ASSERT_NE(created, nullptr);
+  const tf::layer::layer_id created_id = created->id();
+  EXPECT_FALSE(global_layer_graph_manager.contains(created_id));
+
+  created.reset();
+  EXPECT_FALSE(global_layer_graph_manager.contains(created_id));
+
+  LayerRegistry::LayerHandle managed =
+      LayerManager::instance().create("dense", config);
+  ASSERT_NE(managed, nullptr);
+  const tf::layer::layer_id managed_id = managed->id();
+  EXPECT_TRUE(global_layer_graph_manager.contains(managed_id));
+
+  LayerRegistry::LayerHandle viaCompatibilityWrapper =
+      LayerRegistry::instance().create("dense", config);
+  ASSERT_NE(viaCompatibilityWrapper, nullptr);
+  EXPECT_TRUE(
+      global_layer_graph_manager.contains(viaCompatibilityWrapper->id()));
+
+  managed.reset();
+  EXPECT_FALSE(global_layer_graph_manager.contains(managed_id));
 }
 
 TEST_F(FrameworkTest, GenericLayerHandleSupportsRegistryAndParameters) {
